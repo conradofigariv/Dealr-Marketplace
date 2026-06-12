@@ -11,3 +11,14 @@ export async function compressPhoto(file: File): Promise<File> {
     useWebWorker: true,
   })
 }
+
+// Avatares: se ven chicos (máx 80px en pantalla), 512px alcanza de sobra.
+export async function compressAvatar(file: File): Promise<File> {
+  return imageCompression(file, {
+    maxSizeMB: 0.05,
+    maxWidthOrHeight: 512,
+    initialQuality: 0.8,
+    fileType: 'image/webp',
+    useWebWorker: true,
+  })
+}

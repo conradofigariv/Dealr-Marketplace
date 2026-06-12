@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatPrice, timeAgo } from '../lib/format'
+import { compressAvatar } from '../lib/images'
 import type { Listing } from '../lib/types'
+import Avatar from '../components/Avatar'
 import SellerBadges from '../components/SellerBadges'
 import StarRating from '../components/StarRating'
 import Modal from '../components/Modal'
@@ -22,7 +24,11 @@ export default function Profile() {
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
   const [nameError, setNameError] = useState('')
+  const [editingZone, setEditingZone] = useState(false)
+  const [zoneDraft, setZoneDraft] = useState('')
+  const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [verifyOpen, setVerifyOpen] = useState(false)
+  const avatarInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
     if (!loading && !session) navigate('/auth')
@@ -57,6 +63,42 @@ export default function Profile() {
     refreshProfile()
   }
 
+  async function changeAvatar(file: File) {
+    if (!session || !profile) return
+    setUploadingAvatar(true)
+    setNameError('')
+    try {
+      const compressed = await compressAvatar(file)
+      const path = `${session.user.id}/avatar-${Date.now()}.webp`
+      const { error: upErr } = await supabase.storage.from('listing-photos').upload(path, compressed)
+      if (upErr) throw upErr
+      const old = profile.avatar_url
+      const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: path }).eq('id', session.user.id)
+      if (dbErr) throw dbErr
+      if (old) await supabase.storage.from('listing-photos').remove([old])
+      await refreshProfile()
+    } catch {
+      setNameError('No pudimos subir la foto. Probá de nuevo.')
+    } finally {
+      setUploadingAvatar(false)
+    }
+  }
+
+  async function saveZone() {
+    setNameError('')
+    const zone = zoneDraft.trim().slice(0, 60)
+    const { error } = await supabase
+      .from('profiles')
+      .update({ zone: zone || null })
+      .eq('id', session!.user.id)
+    if (error) {
+      setNameError('No pudimos guardar la zona. Probá de nuevo.')
+      return
+    }
+    setEditingZone(false)
+    refreshProfile()
+  }
+
   async function setStatus(listingId: string, status: Listing['status'], renew = false) {
     const patch: Record<string, unknown> = { status }
     if (renew) patch.last_renewed_at = new Date().toISOString()
@@ -74,9 +116,35 @@ export default function Profile() {
   return (
     <div className="pb-28">
       <header className="px-5 pb-6 pt-[max(2rem,env(safe-area-inset-top))] text-center">
-        <div className="mx-auto mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-neutral-900 text-2xl font-bold text-white ring-1 ring-neutral-800">
-          {profile.username.slice(0, 1).toUpperCase()}
-        </div>
+        <button
+          onClick={() => avatarInput.current?.click()}
+          disabled={uploadingAvatar}
+          aria-label="Cambiar foto de perfil"
+          className="relative mx-auto mb-4 block disabled:opacity-60"
+        >
+          <Avatar profile={profile} size="lg" />
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-7 w-7 items-center justify-center rounded-full bg-white text-black ring-2 ring-black">
+            {uploadingAvatar ? (
+              <span className="h-3 w-3 animate-pulse rounded-full bg-black" />
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z" />
+                <circle cx="12" cy="13" r="3" />
+              </svg>
+            )}
+          </span>
+        </button>
+        <input
+          ref={avatarInput}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) changeAvatar(file)
+            e.target.value = ''
+          }}
+        />
         {editingName ? (
           <div className="mx-auto flex max-w-xs items-end gap-3">
             <input
@@ -106,6 +174,38 @@ export default function Profile() {
         <p className="mt-1 text-xs text-neutral-500">
           En Dealr desde {new Date(profile.created_at).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
         </p>
+        {editingZone ? (
+          <div className="mx-auto mt-2 flex max-w-xs items-end gap-3">
+            <input
+              autoFocus
+              value={zoneDraft}
+              onChange={(e) => setZoneDraft(e.target.value)}
+              maxLength={60}
+              placeholder="Ej: Palermo, CABA"
+              className="input-line text-center text-sm"
+            />
+            <button onClick={saveZone} className="shrink-0 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black">
+              OK
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => {
+              setZoneDraft(profile.zone ?? '')
+              setEditingZone(true)
+            }}
+            className="mt-1 text-xs text-neutral-500"
+          >
+            {profile.zone ? (
+              <>
+                <span className="text-neutral-300">{profile.zone}</span>
+                <span className="ml-2 text-neutral-600">editar</span>
+              </>
+            ) : (
+              '+ Agregar tu zona'
+            )}
+          </button>
+        )}
         {nameError && <p className="mt-2 text-xs text-red-400">{nameError}</p>}
         <div className="mt-4 flex justify-center">
           <SellerBadges profile={profile} />

@@ -13,6 +13,7 @@ const Publish = lazy(() => import('./pages/Publish'))
 const Chats = lazy(() => import('./pages/Chats'))
 const ChatThread = lazy(() => import('./pages/ChatThread'))
 const Profile = lazy(() => import('./pages/Profile'))
+const PublicProfile = lazy(() => import('./pages/PublicProfile'))
 
 function Shell() {
   const location = useLocation()
@@ -95,6 +96,7 @@ export default function App() {
             <Route path="/chats" element={<Chats />} />
             <Route path="/chats/:id" element={<ChatThread />} />
             <Route path="/perfil" element={<Profile />} />
+            <Route path="/u/:username" element={<PublicProfile />} />
           </Route>
         </Routes>
       </BrowserRouter>

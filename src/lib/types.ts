@@ -7,6 +7,7 @@ export interface Profile {
   id: string
   username: string
   avatar_url: string | null
+  zone: string | null
   phone_verified: boolean
   identity_verified: boolean
   seller_score: number | null
