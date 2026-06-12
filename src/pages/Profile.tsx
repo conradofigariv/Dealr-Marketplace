@@ -19,7 +19,7 @@ const statusLabels: Record<Listing['status'], string> = {
 
 export default function Profile() {
   const navigate = useNavigate()
-  const { session, profile, loading, refreshProfile } = useAuth()
+  const { session, profile, profileError, loading, refreshProfile } = useAuth()
   const [listings, setListings] = useState<Listing[]>([])
   const [editingName, setEditingName] = useState(false)
   const [nameDraft, setNameDraft] = useState('')
@@ -117,6 +117,7 @@ export default function Profile() {
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-10 text-center">
         <p className="text-sm text-neutral-400">No pudimos cargar tu perfil.</p>
+        {profileError && <p className="break-words text-xs text-neutral-600">{profileError}</p>}
         <button
           onClick={() => refreshProfile()}
           className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black"

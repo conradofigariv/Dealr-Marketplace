@@ -6,6 +6,7 @@ import type { Profile } from '../lib/types'
 interface AuthState {
   session: Session | null
   profile: Profile | null
+  profileError: string | null
   loading: boolean
   refreshProfile: () => Promise<void>
 }
@@ -13,6 +14,7 @@ interface AuthState {
 const AuthContext = createContext<AuthState>({
   session: null,
   profile: null,
+  profileError: null,
   loading: true,
   refreshProfile: async () => {},
 })
@@ -20,22 +22,30 @@ const AuthContext = createContext<AuthState>({
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
+  const [profileError, setProfileError] = useState<string | null>(null)
   const [loading, setLoading] = useState(supabaseConfigured)
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+    setProfileError(null)
+    const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
     if (data) {
       setProfile(data)
       return
     }
     // Cuenta sin fila en profiles (creada antes del trigger handle_new_user):
     // la creamos desde acá con el username provisorio, igual que el trigger.
-    const { data: created } = await supabase
+    const { data: created, error: insertError } = await supabase
       .from('profiles')
       .insert({ id: userId, username: `usuario_${userId.slice(0, 8)}` })
       .select('*')
       .single()
-    if (created) setProfile(created)
+    if (created) {
+      setProfile(created)
+      return
+    }
+    // El mensaje crudo se muestra en pantalla: es la única vía de
+    // diagnóstico cuando el problema es la base (esquema sin correr, RLS).
+    setProfileError((insertError ?? error)?.message ?? 'Error desconocido al cargar el perfil')
   }
 
   useEffect(() => {
@@ -60,6 +70,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         session,
         profile,
+        profileError,
         loading,
         refreshProfile: async () => {
           if (session) await loadProfile(session.user.id)
