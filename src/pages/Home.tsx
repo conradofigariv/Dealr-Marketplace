@@ -1,28 +1,51 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Category, Listing } from '../lib/types'
 import ListingCard from '../components/ListingCard'
 
+// Cache en memoria del feed: al volver desde un producto no se recarga
+// ni se pierde la posición de scroll. Se siente nativo.
+let feedCache: {
+  listings: Listing[]
+  search: string
+  categoryId: number | null
+  onlyVerified: boolean
+  scrollY: number
+} | null = null
+let categoriesCache: Category[] = []
+
 export default function Home() {
-  const [listings, setListings] = useState<Listing[]>([])
-  const [categories, setCategories] = useState<Category[]>([])
-  const [search, setSearch] = useState('')
-  const [searchOpen, setSearchOpen] = useState(false)
-  const [categoryId, setCategoryId] = useState<number | null>(null)
-  const [onlyVerified, setOnlyVerified] = useState(false)
-  const [loading, setLoading] = useState(true)
+  const [listings, setListings] = useState<Listing[]>(feedCache?.listings ?? [])
+  const [categories, setCategories] = useState<Category[]>(categoriesCache)
+  const [search, setSearch] = useState(feedCache?.search ?? '')
+  const [searchOpen, setSearchOpen] = useState(Boolean(feedCache?.search))
+  const [categoryId, setCategoryId] = useState<number | null>(feedCache?.categoryId ?? null)
+  const [onlyVerified, setOnlyVerified] = useState(feedCache?.onlyVerified ?? false)
+  const [loading, setLoading] = useState(!feedCache)
+  const restoredScroll = useRef(false)
+
+  // Restaurar scroll una sola vez, antes del primer paint
+  useLayoutEffect(() => {
+    if (feedCache && !restoredScroll.current) {
+      restoredScroll.current = true
+      window.scrollTo(0, feedCache.scrollY)
+    }
+  }, [])
 
   useEffect(() => {
+    if (categoriesCache.length) return
     supabase
       .from('categories')
       .select('*')
       .order('name')
-      .then(({ data }) => setCategories(data ?? []))
+      .then(({ data }) => {
+        categoriesCache = data ?? []
+        setCategories(categoriesCache)
+      })
   }, [])
 
   useEffect(() => {
     const timer = setTimeout(async () => {
-      setLoading(true)
       // !inner permite filtrar por columnas del vendedor (solo verificados)
       let query = supabase
         .from('listings')
@@ -37,11 +60,22 @@ export default function Home() {
       if (categoryId) query = query.eq('category_id', categoryId)
       if (onlyVerified) query = query.eq('profiles.identity_verified', true)
       const { data } = await query
-      setListings((data as Listing[]) ?? [])
+      const fresh = (data as Listing[]) ?? []
+      setListings(fresh)
       setLoading(false)
+      feedCache = { listings: fresh, search, categoryId, onlyVerified, scrollY: feedCache?.scrollY ?? 0 }
     }, 300)
     return () => clearTimeout(timer)
   }, [search, categoryId, onlyVerified])
+
+  // Guardar la posición de scroll al salir del feed
+  useEffect(() => {
+    return () => {
+      if (feedCache) feedCache.scrollY = window.scrollY
+    }
+  }, [])
+
+  const showSkeleton = loading && listings.length === 0
 
   return (
     <div className="pb-28">
@@ -108,7 +142,7 @@ export default function Home() {
         </button>
       </div>
 
-      {loading ? (
+      {showSkeleton ? (
         <div className="columns-2 gap-0.5 px-0">
           {[280, 200, 240, 320, 180, 260].map((h, i) => (
             <div key={i} className="mb-0.5 animate-pulse bg-neutral-900" style={{ height: h }} />

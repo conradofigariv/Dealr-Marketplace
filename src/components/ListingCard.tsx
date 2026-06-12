@@ -13,7 +13,7 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       style={{ breakInside: 'avoid' }}
     >
       {photo ? (
-        <img src={photoUrl(photo)} alt={listing.title} loading="lazy" className="block h-auto w-full" />
+        <img src={photoUrl(photo)} alt={listing.title} loading="lazy" decoding="async" className="block h-auto w-full" />
       ) : (
         <div className="flex aspect-square items-center justify-center text-neutral-700">
           <svg viewBox="0 0 24 24" className="h-10 w-10" fill="none" stroke="currentColor" strokeWidth="1.5">

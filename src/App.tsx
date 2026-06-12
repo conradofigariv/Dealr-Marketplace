@@ -1,14 +1,17 @@
+import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom'
 import { AuthProvider } from './hooks/useAuth'
 import { supabaseConfigured } from './lib/supabase'
 import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
-import Auth from './pages/Auth'
-import ListingDetail from './pages/ListingDetail'
-import Publish from './pages/Publish'
-import Chats from './pages/Chats'
-import ChatThread from './pages/ChatThread'
-import Profile from './pages/Profile'
+
+// Code-splitting: el feed carga al instante, el resto bajo demanda
+const Auth = lazy(() => import('./pages/Auth'))
+const ListingDetail = lazy(() => import('./pages/ListingDetail'))
+const Publish = lazy(() => import('./pages/Publish'))
+const Chats = lazy(() => import('./pages/Chats'))
+const ChatThread = lazy(() => import('./pages/ChatThread'))
+const Profile = lazy(() => import('./pages/Profile'))
 
 function Shell() {
   const location = useLocation()
@@ -16,7 +19,9 @@ function Shell() {
   const hideNav = /^\/(chats|p)\/.+/.test(location.pathname)
   return (
     <div className="mx-auto min-h-dvh max-w-lg bg-black">
-      <Outlet />
+      <Suspense fallback={<div className="min-h-dvh bg-black" />}>
+        <Outlet />
+      </Suspense>
       {!hideNav && <BottomNav />}
     </div>
   )
@@ -42,7 +47,14 @@ export default function App() {
     <AuthProvider>
       <BrowserRouter>
         <Routes>
-          <Route path="/auth" element={<Auth />} />
+          <Route
+            path="/auth"
+            element={
+              <Suspense fallback={<div className="min-h-dvh bg-black" />}>
+                <Auth />
+              </Suspense>
+            }
+          />
           <Route element={<Shell />}>
             <Route path="/" element={<Home />} />
             <Route path="/p/:id" element={<ListingDetail />} />

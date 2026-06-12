@@ -14,6 +14,27 @@ html {
 
 body {
   @apply bg-black text-white antialiased;
+  /* Evita el rebote de scroll encadenado y el pull-to-refresh accidental */
+  overscroll-behavior-y: contain;
+}
+
+/* Tacto nativo: sin highlight gris al tocar, sin delay de doble tap */
+* {
+  -webkit-tap-highlight-color: transparent;
+}
+button,
+a,
+label {
+  touch-action: manipulation;
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+/* iOS hace zoom si un input tiene menos de 16px: nunca bajar de ahí */
+input,
+select,
+textarea {
+  font-size: max(1rem, 1em);
 }
 
 /* Botón primario: pill blanca, texto negro */
