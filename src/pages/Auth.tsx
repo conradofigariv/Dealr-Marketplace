@@ -1,6 +1,7 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../lib/authErrors'
 
 type Channel = 'email' | 'phone'
@@ -8,14 +9,29 @@ type Channel = 'email' | 'phone'
 // El login por SMS queda oculto hasta configurar el proveedor (Twilio).
 const phoneEnabled = import.meta.env.VITE_ENABLE_PHONE_AUTH === 'true'
 
+const RESEND_SECONDS = 60
+
 export default function Auth() {
   const navigate = useNavigate()
+  const { session } = useAuth()
   const [channel, setChannel] = useState<Channel>('email')
   const [identifier, setIdentifier] = useState('')
   const [code, setCode] = useState('')
-  const [codeSent, setCodeSent] = useState(false)
+  const [linkSent, setLinkSent] = useState(false)
+  const [resendIn, setResendIn] = useState(0)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+
+  // Si la sesión aparece (tocó el magic link), entrar automáticamente
+  useEffect(() => {
+    if (session) navigate('/', { replace: true })
+  }, [session, navigate])
+
+  useEffect(() => {
+    if (resendIn <= 0) return
+    const t = setTimeout(() => setResendIn((s) => s - 1), 1000)
+    return () => clearTimeout(t)
+  }, [resendIn])
 
   // El teléfono verificado es la señal de confianza base de Dealr.
   function normalizedPhone() {
@@ -23,27 +39,35 @@ export default function Auth() {
     return digits.startsWith('+') ? digits : `+54${digits}`
   }
 
-  async function sendCode(e: FormEvent) {
-    e.preventDefault()
+  async function send(e?: FormEvent) {
+    e?.preventDefault()
     setBusy(true)
     setError('')
     const { error: err } =
       channel === 'phone'
         ? await supabase.auth.signInWithOtp({ phone: normalizedPhone() })
-        : await supabase.auth.signInWithOtp({ email: identifier.trim() })
+        : await supabase.auth.signInWithOtp({
+            email: identifier.trim(),
+            options: { emailRedirectTo: window.location.origin },
+          })
     setBusy(false)
-    if (err) setError(translateAuthError(err.message))
-    else setCodeSent(true)
+    if (err) {
+      setError(translateAuthError(err.message))
+    } else {
+      setLinkSent(true)
+      setResendIn(RESEND_SECONDS)
+    }
   }
 
-  async function verifyCode(e: FormEvent) {
+  async function verifyPhoneCode(e: FormEvent) {
     e.preventDefault()
     setBusy(true)
     setError('')
-    const { error: err } =
-      channel === 'phone'
-        ? await supabase.auth.verifyOtp({ phone: normalizedPhone(), token: code.trim(), type: 'sms' })
-        : await supabase.auth.verifyOtp({ email: identifier.trim(), token: code.trim(), type: 'email' })
+    const { error: err } = await supabase.auth.verifyOtp({
+      phone: normalizedPhone(),
+      token: code.trim(),
+      type: 'sms',
+    })
     setBusy(false)
     if (err) setError(translateAuthError(err.message))
     else navigate('/')
@@ -64,8 +88,8 @@ export default function Auth() {
       <div className="flex flex-1 flex-col justify-center">
         <h1 className="mb-16 text-center text-6xl font-bold tracking-tight text-white">Dealr</h1>
 
-        {!codeSent ? (
-          <form onSubmit={sendCode} className="space-y-8">
+        {!linkSent ? (
+          <form onSubmit={send} className="space-y-8">
             <input
               type={channel === 'phone' ? 'tel' : 'email'}
               required
@@ -93,10 +117,39 @@ export default function Auth() {
               </button>
             )}
           </form>
+        ) : channel === 'email' ? (
+          <div className="space-y-8 text-center">
+            <p className="text-neutral-400">
+              Te enviamos un link a <strong className="text-white">{identifier}</strong>.
+              <br />
+              Abrilo para entrar.
+            </p>
+            <div className="flex justify-center">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-white" />
+            </div>
+            <button
+              type="button"
+              disabled={resendIn > 0 || busy}
+              onClick={() => send()}
+              className="w-full text-center text-sm text-neutral-500 disabled:opacity-60"
+            >
+              {resendIn > 0 ? `Reenviar en ${resendIn}s` : 'Reenviar el link'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setLinkSent(false)
+                setError('')
+              }}
+              className="w-full text-center text-sm text-neutral-500"
+            >
+              Cambiar email
+            </button>
+          </div>
         ) : (
-          <form onSubmit={verifyCode} className="space-y-8">
+          <form onSubmit={verifyPhoneCode} className="space-y-8">
             <p className="text-center text-neutral-400">
-              Revisá tu {channel === 'phone' ? 'teléfono' : 'email'}, te enviamos un código.
+              Revisá tu teléfono, te enviamos un código.
             </p>
             <input
               inputMode="numeric"
@@ -113,7 +166,7 @@ export default function Auth() {
             <button
               type="button"
               onClick={() => {
-                setCodeSent(false)
+                setLinkSent(false)
                 setCode('')
                 setError('')
               }}
