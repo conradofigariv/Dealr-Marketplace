@@ -1,30 +1,52 @@
 @import "tailwindcss";
 
 @theme {
-  /* Paleta Dealr: verde profundo + tinte claro, acento naranja para badges */
-  --color-brand-50: #eef7f1;
-  --color-brand-100: #d9f2e3;
-  --color-brand-200: #b5e4ca;
-  --color-brand-400: #2f9e6e;
-  --color-brand-500: #148755;
-  --color-brand-600: #0e7549;
-  --color-brand-700: #0a6847;
-  --color-brand-800: #07523a;
-  --color-brand-900: #053d2c;
-  --color-accent-500: #f04d23;
-  --color-accent-600: #d83e17;
-  --font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  /* Dealr dark — estética Savee: negro absoluto, blanco, grises neutros */
+  --color-surface: #0e0e0e;
+  --color-surface-2: #1a1a1a;
+  --color-line: #2a2a2a;
+  --font-sans: "Inter", "Helvetica Neue", ui-sans-serif, system-ui, -apple-system, sans-serif;
 }
 
 html {
-  background: #f6f7f6;
+  background: #000;
 }
 
 body {
-  @apply text-gray-900 antialiased;
+  @apply bg-black text-white antialiased;
 }
 
-/* Scrollbars discretos en listas horizontales */
+/* Botón primario: pill blanca, texto negro */
+.btn-primary {
+  @apply w-full rounded-full bg-white py-3.5 text-base font-semibold text-black transition active:scale-[0.98] disabled:opacity-40;
+}
+
+/* Botón secundario: pill delineada */
+.btn-outline {
+  @apply w-full rounded-full border border-neutral-700 py-3.5 text-base font-semibold text-white transition active:scale-[0.98] disabled:opacity-40;
+}
+
+/* Input estilo Savee: solo línea inferior */
+.input-line {
+  @apply w-full border-b border-neutral-700 bg-transparent pb-2.5 pt-2 text-base text-white placeholder-neutral-500 outline-none transition focus:border-white;
+}
+
+/* Chip de selección */
+.chip {
+  @apply shrink-0 rounded-full px-3.5 py-1.5 text-sm font-medium transition;
+}
+.chip-on {
+  @apply bg-white text-black;
+}
+.chip-off {
+  @apply bg-transparent text-neutral-400 ring-1 ring-neutral-800;
+}
+
+/* Tarjeta/superficie elevada */
+.surface {
+  @apply rounded-2xl bg-[#141414] ring-1 ring-neutral-800;
+}
+
 .no-scrollbar::-webkit-scrollbar {
   display: none;
 }

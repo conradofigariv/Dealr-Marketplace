@@ -7,6 +7,7 @@ export default function Home() {
   const [listings, setListings] = useState<Listing[]>([])
   const [categories, setCategories] = useState<Category[]>([])
   const [search, setSearch] = useState('')
+  const [searchOpen, setSearchOpen] = useState(false)
   const [categoryId, setCategoryId] = useState<number | null>(null)
   const [onlyVerified, setOnlyVerified] = useState(false)
   const [loading, setLoading] = useState(true)
@@ -43,34 +44,48 @@ export default function Home() {
   }, [search, categoryId, onlyVerified])
 
   return (
-    <div className="pb-20">
-      <header className="bg-brand-700 px-4 pb-4 pt-[max(1rem,env(safe-area-inset-top))]">
-        <h1 className="mb-3 text-xl font-extrabold tracking-tight text-white">
-          Dealr
-          <span className="ml-2 text-sm font-normal text-brand-100">Usados en Córdoba</span>
-        </h1>
-        <div className="flex items-center gap-2 rounded-full bg-white/15 px-4 py-2.5">
-          <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-brand-100" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-            <circle cx="11" cy="11" r="7" />
-            <path d="m20 20-3.5-3.5" />
-          </svg>
+    <div className="pb-28">
+      <header className="px-4 pb-1 pt-[max(1.25rem,env(safe-area-inset-top))]">
+        <div className="flex items-center justify-between">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Dealr</h1>
+          <button
+            onClick={() => {
+              setSearchOpen(!searchOpen)
+              if (searchOpen) setSearch('')
+            }}
+            aria-label="Buscar"
+            className="p-2 text-white"
+          >
+            {searchOpen ? (
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+            )}
+          </button>
+        </div>
+        {searchOpen && (
           <input
+            autoFocus
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar productos..."
-            className="w-full bg-transparent text-sm text-white placeholder-brand-100 outline-none"
+            placeholder="Buscar productos"
+            className="input-line mt-2 text-lg"
           />
-        </div>
+        )}
       </header>
 
-      <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-3">
+      {/* Filtros como tabs de texto, no pills de color */}
+      <div className="no-scrollbar flex items-center gap-5 overflow-x-auto px-4 py-3">
         <button
-          onClick={() => setOnlyVerified(!onlyVerified)}
-          className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
-            onlyVerified ? 'bg-brand-700 text-white' : 'bg-white text-gray-600 ring-1 ring-gray-200'
-          }`}
+          onClick={() => setCategoryId(null)}
+          className={`shrink-0 text-sm font-medium transition ${!categoryId ? 'text-white' : 'text-neutral-500'}`}
         >
-          ✓ Solo verificados
+          Todo
         </button>
         {categories
           .filter((c) => !c.parent_id)
@@ -78,29 +93,35 @@ export default function Home() {
             <button
               key={cat.id}
               onClick={() => setCategoryId(categoryId === cat.id ? null : cat.id)}
-              className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                categoryId === cat.id ? 'bg-brand-700 text-white' : 'bg-white text-gray-600 ring-1 ring-gray-200'
+              className={`shrink-0 text-sm font-medium transition ${
+                categoryId === cat.id ? 'text-white' : 'text-neutral-500'
               }`}
             >
               {cat.name}
             </button>
           ))}
+        <button
+          onClick={() => setOnlyVerified(!onlyVerified)}
+          className={`shrink-0 text-sm font-medium transition ${onlyVerified ? 'text-white' : 'text-neutral-500'}`}
+        >
+          ✓ Verificados
+        </button>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 gap-3 px-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <div key={i} className="aspect-[3/4] animate-pulse rounded-xl bg-gray-200" />
+        <div className="columns-2 gap-0.5 px-0">
+          {[280, 200, 240, 320, 180, 260].map((h, i) => (
+            <div key={i} className="mb-0.5 animate-pulse bg-neutral-900" style={{ height: h }} />
           ))}
         </div>
       ) : listings.length === 0 ? (
-        <div className="px-4 py-16 text-center text-sm text-gray-500">
-          <p className="mb-1 text-3xl">🔍</p>
+        <div className="px-8 py-24 text-center text-sm text-neutral-500">
           No encontramos publicaciones.
-          {(search || categoryId || onlyVerified) && <p>Probá con otros filtros.</p>}
+          {(search || categoryId || onlyVerified) && <p className="mt-1">Probá con otros filtros.</p>}
         </div>
       ) : (
-        <div className="grid grid-cols-2 gap-3 px-4">
+        /* Masonry edge-to-edge con separación mínima, estilo Savee */
+        <div className="columns-2 gap-0.5">
           {listings.map((listing) => (
             <ListingCard key={listing.id} listing={listing} />
           ))}

@@ -14,12 +14,12 @@ export default function SellerBadges({ profile }: { profile: Profile }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {profile.identity_verified && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-800">
+        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-black">
           <Check /> Identidad verificada
         </span>
       )}
       {profile.phone_verified && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-medium text-gray-600">
+        <span className="inline-flex items-center gap-1 rounded-full bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-300">
           <Check /> Teléfono verificado
         </span>
       )}

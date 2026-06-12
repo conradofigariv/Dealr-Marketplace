@@ -133,29 +133,29 @@ export default function ChatThread() {
     }
   }
 
-  if (!conversation) return <div className="p-4 text-sm text-gray-400">Cargando…</div>
+  if (!conversation) return <div className="p-5 text-sm text-neutral-600">Cargando…</div>
 
   const listing = conversation.listing!
 
   return (
-    <div className="flex h-dvh flex-col">
+    <div className="flex h-dvh flex-col bg-black">
       {/* Encabezado con contexto de la publicación */}
-      <header className="bg-brand-700 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <header className="border-b border-neutral-900 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/chats')} aria-label="Volver" className="p-1 text-white">
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+          <button onClick={() => navigate('/chats')} aria-label="Volver" className="p-1.5 text-white">
+            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 18 9 12l6-6" />
             </svg>
           </button>
-          <Link to={`/p/${listing.id}`} className="flex min-w-0 flex-1 items-center gap-2.5">
-            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-white/20">
+          <Link to={`/p/${listing.id}`} className="flex min-w-0 flex-1 items-center gap-3">
+            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-neutral-900">
               {listing.photos?.[0] && (
                 <img src={photoUrl(listing.photos[0])} alt="" className="h-full w-full object-cover" />
               )}
             </div>
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-white">{listing.title}</p>
-              <p className="text-xs text-brand-100">
+              <p className="text-xs text-neutral-500">
                 {formatPrice(listing.price, listing.currency)} · con {other?.username}
               </p>
             </div>
@@ -163,7 +163,7 @@ export default function ChatThread() {
           {canRate && (
             <button
               onClick={() => setRatingOpen(true)}
-              className="shrink-0 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-brand-700"
+              className="shrink-0 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black"
             >
               Calificar
             </button>
@@ -172,15 +172,15 @@ export default function ChatThread() {
       </header>
 
       {/* Mensajes */}
-      <div className="flex-1 space-y-2 overflow-y-auto bg-gray-50 px-3 py-3">
+      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && iAmBuyer && (
           <div className="space-y-2 py-4">
-            <p className="text-center text-xs text-gray-400">Empezá con una pregunta concreta:</p>
+            <p className="pb-2 text-center text-xs text-neutral-600">Empezá con una pregunta concreta:</p>
             {QUICK_REPLIES.map((qr) => (
               <button
                 key={qr}
                 onClick={() => send(qr)}
-                className="block w-full rounded-xl bg-white px-4 py-2.5 text-left text-sm text-gray-700 ring-1 ring-gray-200"
+                className="block w-full rounded-2xl px-4 py-3 text-left text-sm text-neutral-300 ring-1 ring-neutral-800 transition active:bg-neutral-900"
               >
                 {qr}
               </button>
@@ -190,10 +190,10 @@ export default function ChatThread() {
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.sender_id === myId ? 'justify-end' : 'justify-start'}`}>
             <div
-              className={`max-w-[80%] rounded-2xl px-3.5 py-2 text-sm ${
+              className={`max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] ${
                 m.sender_id === myId
-                  ? 'rounded-br-md bg-brand-700 text-white'
-                  : 'rounded-bl-md bg-white text-gray-800 ring-1 ring-gray-200'
+                  ? 'rounded-br-lg bg-white text-black'
+                  : 'rounded-bl-lg bg-neutral-900 text-neutral-100'
               }`}
             >
               {m.body}
@@ -206,18 +206,18 @@ export default function ChatThread() {
       {/* Input */}
       <form
         onSubmit={onSubmit}
-        className="flex gap-2 border-t border-gray-200 bg-white px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))]"
+        className="flex items-center gap-3 border-t border-neutral-900 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       >
         <input
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
-          placeholder="Escribí un mensaje..."
-          className="w-full rounded-full border border-gray-200 px-4 py-2.5 text-sm outline-none focus:border-brand-500"
+          placeholder="Escribí un mensaje"
+          className="w-full rounded-full bg-neutral-900 px-5 py-3 text-[15px] text-white placeholder-neutral-500 outline-none"
         />
         <button
           disabled={!draft.trim()}
           aria-label="Enviar"
-          className="shrink-0 rounded-full bg-brand-700 p-2.5 text-white disabled:opacity-40"
+          className="shrink-0 rounded-full bg-white p-3 text-black transition disabled:opacity-30"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="m22 2-11 11M22 2l-7 20-4-9-9-4 20-7Z" />
@@ -228,24 +228,23 @@ export default function ChatThread() {
       {ratingOpen && (
         <Modal title={`Calificar a ${other?.username}`} onClose={() => setRatingOpen(false)}>
           {ratingSent ? (
-            <div className="py-4 text-center">
-              <p className="mb-1 text-3xl">⭐</p>
-              <p className="font-semibold">¡Gracias por calificar!</p>
-              <p className="mt-1 text-sm text-gray-500">
+            <div className="py-6 text-center">
+              <p className="font-semibold text-white">¡Gracias por calificar!</p>
+              <p className="mt-1 text-sm text-neutral-400">
                 Tu calificación se publica cuando {other?.username} también califique, o a los 14 días.
               </p>
             </div>
           ) : (
-            <div className="space-y-4">
-              <p className="text-sm text-gray-600">
+            <div className="space-y-6">
+              <p className="text-sm text-neutral-400">
                 La calificación es ciega: {other?.username} no la ve hasta calificarte también.
               </p>
-              <div className="flex justify-center gap-2">
+              <div className="flex justify-center gap-3">
                 {[1, 2, 3, 4, 5].map((n) => (
                   <button key={n} onClick={() => setStars(n)} aria-label={`${n} estrellas`}>
                     <svg
                       viewBox="0 0 24 24"
-                      className={`h-9 w-9 ${n <= stars ? 'fill-amber-400' : 'fill-gray-200'}`}
+                      className={`h-9 w-9 transition ${n <= stars ? 'fill-white' : 'fill-neutral-800'}`}
                     >
                       <path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8L12 2z" />
                     </svg>
@@ -257,13 +256,9 @@ export default function ChatThread() {
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 placeholder="Comentario (opcional)"
-                className="w-full rounded-xl border border-gray-200 px-4 py-3 text-sm outline-none focus:border-brand-500"
+                className="input-line resize-none"
               />
-              <button
-                onClick={submitRating}
-                disabled={stars === 0}
-                className="w-full rounded-xl bg-brand-700 py-3 font-semibold text-white disabled:opacity-40"
-              >
+              <button onClick={submitRating} disabled={stars === 0} className="btn-primary">
                 Enviar calificación
               </button>
             </div>

@@ -12,10 +12,10 @@ import Profile from './pages/Profile'
 
 function Shell() {
   const location = useLocation()
-  // El hilo de chat maneja su propio layout de pantalla completa
-  const hideNav = /^\/chats\/.+/.test(location.pathname)
+  // El hilo de chat y el detalle manejan sus propias acciones a pantalla completa
+  const hideNav = /^\/(chats|p)\/.+/.test(location.pathname)
   return (
-    <div className="mx-auto min-h-dvh max-w-lg bg-gray-50">
+    <div className="mx-auto min-h-dvh max-w-lg bg-black">
       <Outlet />
       {!hideNav && <BottomNav />}
     </div>
@@ -24,13 +24,13 @@ function Shell() {
 
 function SetupNotice() {
   return (
-    <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-3 px-8 text-center">
-      <h1 className="text-3xl font-extrabold text-brand-700">Dealr</h1>
-      <p className="text-sm text-gray-600">
+    <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-10 text-center">
+      <h1 className="text-5xl font-bold tracking-tight text-white">Dealr</h1>
+      <p className="text-sm text-neutral-400">
         Faltan las variables de entorno de Supabase. Configurá{' '}
-        <code className="rounded bg-gray-100 px-1">VITE_SUPABASE_URL</code> y{' '}
-        <code className="rounded bg-gray-100 px-1">VITE_SUPABASE_ANON_KEY</code> (ver{' '}
-        <code className="rounded bg-gray-100 px-1">.env.example</code>) y recargá.
+        <code className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-200">VITE_SUPABASE_URL</code> y{' '}
+        <code className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-200">VITE_SUPABASE_ANON_KEY</code>{' '}
+        (ver <code className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-200">.env.example</code>) y recargá.
       </p>
     </div>
   )

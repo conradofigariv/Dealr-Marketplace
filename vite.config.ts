@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Dealr — Marketplace de usados',
         short_name: 'Dealr',
         description: 'Comprá y vendé usados en Córdoba con confianza',
-        theme_color: '#0a6847',
-        background_color: '#ffffff',
+        theme_color: '#000000',
+        background_color: '#000000',
         display: 'standalone',
         start_url: '/',
         icons: [

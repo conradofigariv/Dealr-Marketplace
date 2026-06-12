@@ -11,7 +11,7 @@ const tabs = [
   {
     to: '/publicar',
     label: 'Vender',
-    icon: <path d="M12 5v14M5 12h14" strokeWidth="2.4" />,
+    icon: <path d="M12 5v14M5 12h14" strokeWidth="2.2" />,
   },
   {
     to: '/chats',
@@ -32,18 +32,18 @@ const tabs = [
   },
 ]
 
+// Nav flotante tipo píldora, solo íconos (estilo Savee)
 export default function BottomNav() {
   return (
-    <nav className="fixed bottom-0 left-1/2 z-30 w-full max-w-lg -translate-x-1/2 border-t border-gray-200 bg-white pb-[env(safe-area-inset-bottom)]">
-      <div className="grid grid-cols-4">
+    <nav className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2">
+      <div className="flex items-center gap-2 rounded-full bg-neutral-900/90 px-3 py-2 ring-1 ring-white/10 backdrop-blur-md">
         {tabs.map((tab) => (
           <NavLink
             key={tab.to}
             to={tab.to}
+            aria-label={tab.label}
             className={({ isActive }) =>
-              `flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium ${
-                isActive ? 'text-brand-700' : 'text-gray-400'
-              }`
+              `rounded-full p-2.5 transition ${isActive ? 'text-white' : 'text-neutral-500'}`
             }
           >
             <svg
@@ -57,7 +57,6 @@ export default function BottomNav() {
             >
               {tab.icon}
             </svg>
-            {tab.label}
           </NavLink>
         ))}
       </div>
