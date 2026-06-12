@@ -6,6 +6,7 @@ const patterns: [RegExp, string][] = [
   [/rate limit|too many requests/i, 'Demasiados intentos. Esperá unos minutos y probá de nuevo.'],
   [/invalid format|unable to validate email|invalid email/i, 'Ese email no parece válido. Revisalo.'],
   [/invalid phone/i, 'Ese teléfono no parece válido. Usá el formato 351 555 0000.'],
+  [/invalid path/i, 'Hay un problema de configuración del servidor (URL de Supabase). Avisale al administrador.'],
   [/signups not allowed/i, 'El registro está deshabilitado por el momento.'],
   [/database error/i, 'No pudimos crear tu cuenta. Probá de nuevo en un momento.'],
   [/network|fetch/i, 'Problema de conexión. Revisá tu internet y probá de nuevo.'],
