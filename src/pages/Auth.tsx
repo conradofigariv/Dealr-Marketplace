@@ -46,7 +46,7 @@ export default function Auth() {
   }
 
   return (
-    <div className="relative flex min-h-dvh flex-col bg-black px-8">
+    <div className="relative mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-black px-8">
       <button
         onClick={() => navigate('/')}
         aria-label="Volver"
