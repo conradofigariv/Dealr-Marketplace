@@ -3,18 +3,30 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 
+function normalize(value: string) {
+  return value
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // quitar acentos
+    .replace(/[^a-z0-9_. ]/g, '')
+    .replace(/\s+/g, '')
+    .slice(0, 30)
+}
+
 // Primer ingreso: elegir nombre de usuario antes de usar la app.
 // Reemplaza el "usuario_a1b2c3" autogenerado en el registro.
 export default function Onboarding() {
   const navigate = useNavigate()
   const { session, refreshProfile } = useAuth()
-  const [username, setUsername] = useState('')
+  // Si vino por Google, sugerimos un nombre derivado del suyo en vez de
+  // arrancar de cero.
+  const [username, setUsername] = useState(() => {
+    const meta = session?.user.user_metadata as { full_name?: string; name?: string } | undefined
+    const suggestion = meta?.full_name ?? meta?.name
+    return suggestion ? normalize(suggestion) : ''
+  })
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
-
-  function normalize(value: string) {
-    return value.toLowerCase().replace(/\s+/g, '').slice(0, 30)
-  }
 
   const valid = /^[a-z0-9_.]{3,30}$/.test(username)
 
