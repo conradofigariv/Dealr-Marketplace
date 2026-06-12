@@ -20,6 +20,7 @@ export default function Auth() {
   const [linkSent, setLinkSent] = useState(false)
   const [resendIn, setResendIn] = useState(0)
   const [error, setError] = useState('')
+  const [rawError, setRawError] = useState('')
   const [busy, setBusy] = useState(false)
 
   // Si la sesión aparece (tocó el magic link), entrar automáticamente
@@ -43,6 +44,7 @@ export default function Auth() {
     e?.preventDefault()
     setBusy(true)
     setError('')
+    setRawError('')
     const { error: err } =
       channel === 'phone'
         ? await supabase.auth.signInWithOtp({ phone: normalizedPhone() })
@@ -53,6 +55,7 @@ export default function Auth() {
     setBusy(false)
     if (err) {
       setError(translateAuthError(err.message))
+      setRawError(err.message)
     } else {
       setLinkSent(true)
       setResendIn(RESEND_SECONDS)
@@ -63,14 +66,17 @@ export default function Auth() {
     e.preventDefault()
     setBusy(true)
     setError('')
+    setRawError('')
     const { error: err } = await supabase.auth.verifyOtp({
       phone: normalizedPhone(),
       token: code.trim(),
       type: 'sms',
     })
     setBusy(false)
-    if (err) setError(translateAuthError(err.message))
-    else navigate('/')
+    if (err) {
+      setError(translateAuthError(err.message))
+      setRawError(err.message)
+    } else navigate('/')
   }
 
   return (
@@ -140,6 +146,7 @@ export default function Auth() {
               onClick={() => {
                 setLinkSent(false)
                 setError('')
+                setRawError('')
               }}
               className="w-full text-center text-sm text-neutral-500"
             >
@@ -169,6 +176,7 @@ export default function Auth() {
                 setLinkSent(false)
                 setCode('')
                 setError('')
+                setRawError('')
               }}
               className="w-full text-center text-sm text-neutral-500"
             >
@@ -176,7 +184,12 @@ export default function Auth() {
             </button>
           </form>
         )}
-        {error && <p className="mt-6 text-center text-sm text-red-400">{error}</p>}
+        {error && (
+          <div className="mt-6 text-center">
+            <p className="text-sm text-red-400">{error}</p>
+            {rawError && <p className="mt-1 text-xs text-neutral-600">{rawError}</p>}
+          </div>
+        )}
       </div>
 
       <p className="pb-[max(2rem,env(safe-area-inset-bottom))] text-center text-sm text-neutral-500">
