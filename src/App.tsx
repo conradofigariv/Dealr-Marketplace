@@ -1,9 +1,50 @@
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, Component, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
+
+// Tras un deploy, el navegador puede tener cacheado un index.html que
+// referencia chunks que ya no existen: el import dinámico falla y sin
+// boundary la pantalla queda negra. Recargamos una vez para tomar la
+// versión nueva; si el error persiste, ofrecemos recargar a mano.
+class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: Error) {
+    const chunkError = /dynamically imported module|loading chunk|import/i.test(error.message)
+    if (chunkError && !sessionStorage.getItem('chunk-reload')) {
+      sessionStorage.setItem('chunk-reload', '1')
+      window.location.reload()
+    }
+  }
+
+  render() {
+    if (this.state.failed) {
+      return (
+        <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-10 text-center">
+          <h1 className="text-3xl font-bold tracking-tight text-white">Dealr</h1>
+          <p className="text-sm text-neutral-400">Algo salió mal al cargar esta pantalla.</p>
+          <button
+            onClick={() => {
+              sessionStorage.removeItem('chunk-reload')
+              window.location.reload()
+            }}
+            className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black"
+          >
+            Recargar
+          </button>
+        </div>
+      )
+    }
+    return this.props.children
+  }
+}
 
 // Code-splitting: el feed carga al instante, el resto bajo demanda
 const Auth = lazy(() => import('./pages/Auth'))
@@ -67,10 +108,15 @@ function SetupNotice() {
 }
 
 export default function App() {
+  // La app cargó bien: re-armar la recarga automática para el próximo deploy
+  useEffect(() => {
+    sessionStorage.removeItem('chunk-reload')
+  }, [])
   if (!supabaseConfigured || supabaseUrlInvalid) return <SetupNotice />
   return (
-    <AuthProvider>
-      <BrowserRouter>
+    <ErrorBoundary>
+      <AuthProvider>
+        <BrowserRouter>
         <Routes>
           <Route
             path="/auth"
@@ -99,7 +145,8 @@ export default function App() {
             <Route path="/u/:username" element={<PublicProfile />} />
           </Route>
         </Routes>
-      </BrowserRouter>
-    </AuthProvider>
+        </BrowserRouter>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }

@@ -111,7 +111,24 @@ export default function Profile() {
     navigate('/')
   }
 
-  if (!profile) return null
+  // Sesión sin perfil cargado: mostrar estado en vez de pantalla negra.
+  if (!profile) {
+    if (loading || !session) return <div className="min-h-dvh bg-black" />
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-10 text-center">
+        <p className="text-sm text-neutral-400">No pudimos cargar tu perfil.</p>
+        <button
+          onClick={() => refreshProfile()}
+          className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black"
+        >
+          Reintentar
+        </button>
+        <button onClick={logout} className="text-sm text-neutral-500">
+          Cerrar sesión
+        </button>
+      </div>
+    )
+  }
 
   return (
     <div className="pb-28">
