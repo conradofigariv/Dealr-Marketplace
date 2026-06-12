@@ -23,8 +23,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(supabaseConfigured)
 
   async function loadProfile(userId: string) {
-    const { data } = await supabase.from('profiles').select('*').eq('id', userId).single()
-    setProfile(data)
+    const { data } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
+    if (data) {
+      setProfile(data)
+      return
+    }
+    // Cuenta sin fila en profiles (creada antes del trigger handle_new_user):
+    // la creamos desde acá con el username provisorio, igual que el trigger.
+    const { data: created } = await supabase
+      .from('profiles')
+      .insert({ id: userId, username: `usuario_${userId.slice(0, 8)}` })
+      .select('*')
+      .single()
+    if (created) setProfile(created)
   }
 
   useEffect(() => {
