@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
-import { supabaseConfigured, supabaseUrlInvalid } from './lib/supabase'
+import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
 
@@ -38,14 +38,21 @@ function SetupNotice() {
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-10 text-center">
       <h1 className="text-5xl font-bold tracking-tight text-white">Dealr</h1>
       {supabaseUrlInvalid ? (
-        <p className="text-sm text-neutral-400">
-          La variable{' '}
-          <code className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-200">VITE_SUPABASE_URL</code>{' '}
-          no apunta a la API del proyecto. Tiene que ser la <strong className="text-white">Project URL</strong>{' '}
-          (Supabase → Settings → API), con la forma{' '}
-          <code className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-200">https://xxxx.supabase.co</code>{' '}
-          — no la URL del dashboard.
-        </p>
+        <>
+          <p className="text-sm text-neutral-400">
+            La variable{' '}
+            <code className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-200">VITE_SUPABASE_URL</code>{' '}
+            no apunta a la API del proyecto. Tiene que ser la <strong className="text-white">Project URL</strong>{' '}
+            (Supabase → Settings → API), con la forma{' '}
+            <code className="rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-200">https://xxxx.supabase.co</code>{' '}
+            — no la URL del dashboard.
+          </p>
+          <p className="text-xs text-neutral-500">
+            Valor actual en este build:
+            <br />
+            <code className="break-all rounded bg-neutral-900 px-1.5 py-0.5 text-neutral-300">{supabaseUrlConfigured}</code>
+          </p>
+        </>
       ) : (
         <p className="text-sm text-neutral-400">
           Faltan las variables de entorno de Supabase. Configurá{' '}

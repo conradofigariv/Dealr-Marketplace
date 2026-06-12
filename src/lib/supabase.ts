@@ -19,6 +19,10 @@ export const supabaseUrlInvalid = Boolean(
   rawUrl && !/^https:\/\/[a-z0-9-]+\.supabase\.(co|in)$/.test(rawUrl),
 )
 
+/** Valor crudo recibido en el build, para mostrarlo en la pantalla de setup.
+ * No es secreto: la URL del proyecto viaja en el bundle de todas formas. */
+export const supabaseUrlConfigured = (import.meta.env.VITE_SUPABASE_URL as string | undefined) ?? '(vacía)'
+
 export const supabase = createClient(
   rawUrl ?? 'https://placeholder.supabase.co',
   anonKey ?? 'placeholder-key',
