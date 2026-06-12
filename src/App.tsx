@@ -1,12 +1,13 @@
 import { lazy, Suspense } from 'react'
-import { BrowserRouter, Routes, Route, Outlet, useLocation } from 'react-router-dom'
-import { AuthProvider } from './hooks/useAuth'
+import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from 'react-router-dom'
+import { AuthProvider, useAuth } from './hooks/useAuth'
 import { supabaseConfigured } from './lib/supabase'
 import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
 
 // Code-splitting: el feed carga al instante, el resto bajo demanda
 const Auth = lazy(() => import('./pages/Auth'))
+const Onboarding = lazy(() => import('./pages/Onboarding'))
 const ListingDetail = lazy(() => import('./pages/ListingDetail'))
 const Publish = lazy(() => import('./pages/Publish'))
 const Chats = lazy(() => import('./pages/Chats'))
@@ -15,6 +16,11 @@ const Profile = lazy(() => import('./pages/Profile'))
 
 function Shell() {
   const location = useLocation()
+  const { profile } = useAuth()
+  // Recién registrado con username autogenerado: primero elige su nombre
+  if (profile && /^usuario_[0-9a-f]{8}$/.test(profile.username)) {
+    return <Navigate to="/onboarding" replace />
+  }
   // El hilo de chat y el detalle manejan sus propias acciones a pantalla completa
   const hideNav = /^\/(chats|p)\/.+/.test(location.pathname)
   return (
@@ -52,6 +58,14 @@ export default function App() {
             element={
               <Suspense fallback={<div className="min-h-dvh bg-black" />}>
                 <Auth />
+              </Suspense>
+            }
+          />
+          <Route
+            path="/onboarding"
+            element={
+              <Suspense fallback={<div className="min-h-dvh bg-black" />}>
+                <Onboarding />
               </Suspense>
             }
           />

@@ -1,8 +1,12 @@
 import { useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { translateAuthError } from '../lib/authErrors'
 
 type Channel = 'email' | 'phone'
+
+// El login por SMS queda oculto hasta configurar el proveedor (Twilio).
+const phoneEnabled = import.meta.env.VITE_ENABLE_PHONE_AUTH === 'true'
 
 export default function Auth() {
   const navigate = useNavigate()
@@ -28,7 +32,7 @@ export default function Auth() {
         ? await supabase.auth.signInWithOtp({ phone: normalizedPhone() })
         : await supabase.auth.signInWithOtp({ email: identifier.trim() })
     setBusy(false)
-    if (err) setError(err.message)
+    if (err) setError(translateAuthError(err.message))
     else setCodeSent(true)
   }
 
@@ -38,10 +42,10 @@ export default function Auth() {
     setError('')
     const { error: err } =
       channel === 'phone'
-        ? await supabase.auth.verifyOtp({ phone: normalizedPhone(), token: code, type: 'sms' })
-        : await supabase.auth.verifyOtp({ email: identifier.trim(), token: code, type: 'email' })
+        ? await supabase.auth.verifyOtp({ phone: normalizedPhone(), token: code.trim(), type: 'sms' })
+        : await supabase.auth.verifyOtp({ email: identifier.trim(), token: code.trim(), type: 'email' })
     setBusy(false)
-    if (err) setError(err.message)
+    if (err) setError(translateAuthError(err.message))
     else navigate('/')
   }
 
@@ -69,21 +73,25 @@ export default function Auth() {
               value={identifier}
               onChange={(e) => setIdentifier(e.target.value)}
               placeholder={channel === 'phone' ? 'Tu teléfono' : 'Tu email'}
+              autoCapitalize="none"
+              autoCorrect="off"
               className="input-line text-lg"
             />
             <button disabled={busy} className="btn-primary">
               {busy ? 'Enviando…' : 'Continuar'}
             </button>
-            <button
-              type="button"
-              onClick={() => {
-                setChannel(channel === 'email' ? 'phone' : 'email')
-                setError('')
-              }}
-              className="w-full text-center text-sm text-neutral-500"
-            >
-              {channel === 'email' ? 'Usar mi teléfono' : 'Usar mi email'}
-            </button>
+            {phoneEnabled && (
+              <button
+                type="button"
+                onClick={() => {
+                  setChannel(channel === 'email' ? 'phone' : 'email')
+                  setError('')
+                }}
+                className="w-full text-center text-sm text-neutral-500"
+              >
+                {channel === 'email' ? 'Usar mi teléfono' : 'Usar mi email'}
+              </button>
+            )}
           </form>
         ) : (
           <form onSubmit={verifyCode} className="space-y-8">
@@ -102,7 +110,15 @@ export default function Auth() {
             <button disabled={busy} className="btn-primary">
               {busy ? 'Verificando…' : 'Entrar'}
             </button>
-            <button type="button" onClick={() => setCodeSent(false)} className="w-full text-center text-sm text-neutral-500">
+            <button
+              type="button"
+              onClick={() => {
+                setCodeSent(false)
+                setCode('')
+                setError('')
+              }}
+              className="w-full text-center text-sm text-neutral-500"
+            >
               Volver
             </button>
           </form>
