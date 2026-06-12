@@ -1,9 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from 'react'
-import { useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { compressPhoto } from '../lib/images'
-import { conditionLabels } from '../lib/format'
+import { conditionLabels, formatPrice } from '../lib/format'
 import type { Category, FieldDef, ListingCondition, Currency } from '../lib/types'
 
 const MAX_PHOTOS = 6
@@ -28,8 +28,10 @@ export default function Publish() {
   const [condition, setCondition] = useState<ListingCondition>('buen_estado')
   const [fields, setFields] = useState<Record<string, unknown>>({})
   const [photos, setPhotos] = useState<PendingPhoto[]>([])
+  const [addingPhotos, setAddingPhotos] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
+  const [publishedId, setPublishedId] = useState<string | null>(null)
 
   const category = useMemo(
     () => categories.find((c) => c.id === categoryId),
@@ -66,18 +68,36 @@ export default function Publish() {
   }, [id])
 
   async function addPhotos(files: FileList | null) {
-    if (!files) return
+    if (!files || files.length === 0) return
     const remaining = MAX_PHOTOS - photos.length
     const selected = Array.from(files).slice(0, remaining)
-    const compressed = await Promise.all(selected.map(compressPhoto))
-    setPhotos((prev) => [
-      ...prev,
-      ...compressed.map((file) => ({ file, preview: URL.createObjectURL(file) })),
-    ])
+    setAddingPhotos(true)
+    try {
+      const compressed = await Promise.all(selected.map(compressPhoto))
+      setPhotos((prev) => [
+        ...prev,
+        ...compressed.map((file) => ({ file, preview: URL.createObjectURL(file) })),
+      ])
+    } catch {
+      setError('No pudimos procesar esa foto. Probá con otra.')
+    } finally {
+      setAddingPhotos(false)
+    }
   }
 
   function removePhoto(index: number) {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
+  }
+
+  // Mover una foto un lugar hacia adelante: tocando repetido se llega
+  // a portada. Más confiable que drag & drop en pantallas táctiles.
+  function movePhotoLeft(index: number) {
+    if (index === 0) return
+    setPhotos((prev) => {
+      const next = [...prev]
+      ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
+      return next
+    })
   }
 
   function validateFields(): string | null {
@@ -142,12 +162,30 @@ export default function Publish() {
           .select('id')
           .single()
         if (err) throw err
-        navigate(`/p/${data.id}`)
+        window.scrollTo(0, 0)
+        setPublishedId(data.id)
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Algo salió mal, probá de nuevo')
+      const message = err instanceof Error ? err.message : ''
+      setError(
+        /network|fetch/i.test(message)
+          ? 'Problema de conexión. Revisá tu internet y probá de nuevo — las fotos no se pierden.'
+          : 'No pudimos publicar. Probá de nuevo en un momento.',
+      )
     } finally {
       setBusy(false)
+    }
+  }
+
+  // Compartir la publicación recién creada: share nativo si existe
+  // (abre la hoja del sistema), si no directo a WhatsApp.
+  function share() {
+    const url = `${window.location.origin}/p/${publishedId}`
+    const text = `${title.trim()} — ${formatPrice(Number(price), currency)}\n${url}`
+    if (navigator.share) {
+      navigator.share({ text }).catch(() => {})
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
     }
   }
 
@@ -156,6 +194,49 @@ export default function Publish() {
   }
 
   const labelClass = 'mb-2 block text-xs font-medium uppercase tracking-wider text-neutral-500'
+
+  if (publishedId) {
+    return (
+      <div className="flex min-h-dvh flex-col justify-center px-8 pb-28 text-center">
+        <div className="mx-auto mb-6 flex h-16 w-16 items-center justify-center rounded-full bg-white text-black">
+          <svg viewBox="0 0 24 24" className="h-8 w-8" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M20 6 9 17l-5-5" />
+          </svg>
+        </div>
+        <h1 className="text-3xl font-bold tracking-tight text-white">¡Publicado!</h1>
+        <p className="mx-auto mt-2 max-w-xs text-sm text-neutral-400">
+          Tu publicación ya está visible para todos. Compartila para venderla más rápido.
+        </p>
+        <div className="mt-10 space-y-4">
+          <button onClick={share} className="btn-primary flex items-center justify-center gap-2">
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
+              <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.2 1.2-1.7 1.2-.4.1-1 .1-1.6-.1a14 14 0 0 1-1.5-.5c-2.6-1.1-4.3-3.7-4.4-3.9-.1-.2-1-1.4-1-2.6 0-1.2.6-1.8.9-2 .2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4l.9 2c.1.2.1.4 0 .6l-.4.6-.4.5c-.1.1-.3.3-.1.6.2.3.7 1.2 1.5 1.9 1 .9 1.9 1.2 2.2 1.4.3.1.4.1.6-.1l.7-.9c.2-.3.4-.2.7-.1l1.8.8c.3.2.5.2.5.4.1.1.1.6-.1 1.1z" />
+            </svg>
+            Compartir por WhatsApp
+          </button>
+          <Link to={`/p/${publishedId}`} className="btn-outline block py-3 text-center text-sm">
+            Ver mi publicación
+          </Link>
+          <button
+            onClick={() => {
+              setPublishedId(null)
+              setTitle('')
+              setDescription('')
+              setPrice('')
+              setCategoryId('')
+              setCondition('buen_estado')
+              setFields({})
+              setPhotos([])
+              setError('')
+            }}
+            className="w-full py-2 text-center text-sm text-neutral-500"
+          >
+            Publicar otra cosa
+          </button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <div className="pb-32">
@@ -169,7 +250,7 @@ export default function Publish() {
           <label className={labelClass}>Fotos ({photos.length}/{MAX_PHOTOS})</label>
           <div className="grid grid-cols-3 gap-1">
             {photos.map((photo, i) => (
-              <div key={i} className="relative aspect-square overflow-hidden bg-neutral-900">
+              <div key={photo.preview} className="relative aspect-square overflow-hidden bg-neutral-900">
                 <img src={photo.preview} alt="" className="h-full w-full object-cover" />
                 <button
                   type="button"
@@ -181,18 +262,40 @@ export default function Publish() {
                     <path d="M6 6l12 12M18 6 6 18" />
                   </svg>
                 </button>
+                {i === 0 ? (
+                  <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                    Portada
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => movePhotoLeft(i)}
+                    aria-label="Mover foto hacia adelante"
+                    className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
+                  >
+                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M19 12H5m7-7-7 7 7 7" />
+                    </svg>
+                  </button>
+                )}
               </div>
             ))}
             {photos.length < MAX_PHOTOS && (
               <label className="flex aspect-square cursor-pointer items-center justify-center bg-neutral-900 text-neutral-600 transition active:bg-neutral-800">
-                <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                  <path d="M12 5v14M5 12h14" />
-                </svg>
-                <input type="file" accept="image/*" multiple hidden onChange={(e) => addPhotos(e.target.files)} />
+                {addingPhotos ? (
+                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+                ) : (
+                  <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                    <path d="M12 5v14M5 12h14" />
+                  </svg>
+                )}
+                <input type="file" accept="image/*" multiple hidden disabled={addingPhotos} onChange={(e) => addPhotos(e.target.files)} />
               </label>
             )}
           </div>
-          <p className="mt-2 text-xs text-neutral-600">Se comprimen automáticamente. La primera es la portada.</p>
+          <p className="mt-2 text-xs text-neutral-600">
+            Se comprimen automáticamente. La primera es la portada — usá la flecha para reordenar.
+          </p>
         </div>
 
         <div>
