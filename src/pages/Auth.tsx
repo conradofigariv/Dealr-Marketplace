@@ -97,18 +97,32 @@ export default function Auth() {
   }
 
   return (
-    <div className="relative mx-auto flex min-h-dvh w-full max-w-lg flex-col bg-black px-8">
+    <div className="relative mx-auto flex min-h-dvh w-full max-w-lg flex-col overflow-hidden bg-black px-8">
+      {/* Video de fondo: public/login-bg.mp4. Si el archivo no existe,
+          queda el fondo negro de siempre. */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="auto"
+        aria-hidden
+        className="pointer-events-none absolute inset-0 h-full w-full object-cover"
+        src="/login-bg.mp4"
+      />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/85" />
+
       <button
         onClick={() => navigate('/')}
         aria-label="Volver"
-        className="absolute left-4 top-[max(1rem,env(safe-area-inset-top))] p-2 text-white"
+        className="absolute left-4 top-[max(1rem,env(safe-area-inset-top))] z-10 p-2 text-white"
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
           <path d="M15 18 9 12l6-6" />
         </svg>
       </button>
 
-      <div className="flex flex-1 flex-col justify-center">
+      <div className="z-10 flex flex-1 flex-col justify-center">
         <h1 className="mb-16 text-center text-6xl font-bold tracking-tight text-white">Dealr</h1>
 
         {!linkSent && !showEmailForm ? (
@@ -244,7 +258,7 @@ export default function Auth() {
         )}
       </div>
 
-      <p className="pb-[max(2rem,env(safe-area-inset-bottom))] text-center text-sm text-neutral-500">
+      <p className="z-10 pb-[max(2rem,env(safe-area-inset-bottom))] text-center text-sm text-neutral-500">
         Al continuar aceptás nuestros Términos y la Política de privacidad
       </p>
     </div>
