@@ -31,7 +31,7 @@ export default function Profile() {
   const avatarInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    if (!loading && !session) navigate('/auth')
+    if (!loading && !session) navigate('/auth', { state: { from: '/perfil' } })
   }, [loading, session, navigate])
 
   async function loadListings() {

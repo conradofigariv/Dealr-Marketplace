@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { timeAgo } from '../lib/format'
@@ -8,12 +8,13 @@ import type { Conversation } from '../lib/types'
 export default function Chats() {
   const { session, loading } = useAuth()
   const navigate = useNavigate()
+  const location = useLocation()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [fetched, setFetched] = useState(false)
 
   useEffect(() => {
-    if (!loading && !session) navigate('/auth')
-  }, [loading, session, navigate])
+    if (!loading && !session) navigate('/auth', { state: { from: location.pathname } })
+  }, [loading, session, location.pathname, navigate])
 
   useEffect(() => {
     if (!session) return

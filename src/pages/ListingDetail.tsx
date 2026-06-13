@@ -60,7 +60,7 @@ export default function ListingDetail() {
 
   async function askQuestion(e: FormEvent) {
     e.preventDefault()
-    if (!session) return navigate('/auth')
+    if (!session) return navigate('/auth', { state: { from: `/p/${id}` } })
     setBusy(true)
     const { error } = await supabase.from('questions').insert({
       listing_id: id,
@@ -84,7 +84,7 @@ export default function ListingDetail() {
   }
 
   async function reportQuestion(questionId: string) {
-    if (!session) return navigate('/auth')
+    if (!session) return navigate('/auth', { state: { from: `/p/${id}` } })
     await supabase.from('reports').insert({
       reporter_id: session.user.id,
       target_type: 'question',
@@ -96,7 +96,7 @@ export default function ListingDetail() {
 
   async function sendOffer(e: FormEvent) {
     e.preventDefault()
-    if (!session) return navigate('/auth')
+    if (!session) return navigate('/auth', { state: { from: `/p/${id}` } })
     setBusy(true)
     const { error } = await supabase.from('offers').insert({
       listing_id: id,
@@ -108,7 +108,7 @@ export default function ListingDetail() {
   }
 
   async function openChat() {
-    if (!session) return navigate('/auth')
+    if (!session) return navigate('/auth', { state: { from: `/p/${id}` } })
     if (!listing) return
     const { data: existing } = await supabase
       .from('conversations')

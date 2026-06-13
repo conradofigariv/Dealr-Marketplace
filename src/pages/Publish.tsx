@@ -40,8 +40,8 @@ export default function Publish() {
   const fieldDefs: FieldDef[] = category?.required_fields ?? []
 
   useEffect(() => {
-    if (!loading && !session) navigate('/auth')
-  }, [loading, session, navigate])
+    if (!loading && !session) navigate('/auth', { state: { from: id ? `/publicar/${id}` : '/publicar' } })
+  }, [loading, session, id, navigate])
 
   useEffect(() => {
     supabase.from('categories').select('*').order('name').then(({ data }) => setCategories(data ?? []))

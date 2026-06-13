@@ -36,8 +36,8 @@ export default function ChatThread() {
     messages.length >= 4 && new Set(messages.map((m) => m.sender_id)).size >= 2 && !alreadyRated
 
   useEffect(() => {
-    if (!loading && !session) navigate('/auth')
-  }, [loading, session, navigate])
+    if (!loading && !session) navigate('/auth', { state: { from: `/chats/${id}` } })
+  }, [loading, session, id, navigate])
 
   useEffect(() => {
     if (!session || !id) return

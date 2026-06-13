@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../lib/authErrors'
@@ -14,7 +14,11 @@ const RESEND_SECONDS = 60
 
 export default function Auth() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { session } = useAuth()
+  // De dónde llegó al login: volver y el post-login regresan ahí (la
+  // publicación que miraba, etc.). Por defecto, el feed.
+  const from = (location.state as { from?: string } | null)?.from ?? '/'
   const [channel, setChannel] = useState<Channel>('email')
   const [showEmailForm, setShowEmailForm] = useState(false)
   const [identifier, setIdentifier] = useState('')
@@ -30,10 +34,11 @@ export default function Auth() {
     markWelcomeSeen()
   }, [])
 
-  // Si la sesión aparece (tocó el magic link), entrar automáticamente
+  // Si la sesión aparece (tocó el magic link o login con Google), volver
+  // a donde estaba antes de tener que loguearse.
   useEffect(() => {
-    if (session) navigate('/', { replace: true })
-  }, [session, navigate])
+    if (session) navigate(from, { replace: true })
+  }, [session, from, navigate])
 
   useEffect(() => {
     if (resendIn <= 0) return
@@ -47,7 +52,7 @@ export default function Auth() {
     setRawError('')
     const { error: err } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: window.location.origin + (from === '/' ? '' : from) },
     })
     if (err) {
       setBusy(false)
@@ -99,7 +104,7 @@ export default function Auth() {
     if (err) {
       setError(translateAuthError(err.message))
       setRawError(err.message)
-    } else navigate('/')
+    } else navigate(from, { replace: true })
   }
 
   return (
@@ -119,7 +124,7 @@ export default function Auth() {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/85" />
 
       <button
-        onClick={() => navigate('/')}
+        onClick={() => navigate(from, { replace: true })}
         aria-label="Cerrar"
         className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 p-2 text-white/80"
       >
@@ -155,7 +160,7 @@ export default function Auth() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/', { replace: true })}
               className="w-full text-center text-sm text-white/70"
             >
               Ver artículos sin cuenta
