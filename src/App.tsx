@@ -67,7 +67,7 @@ function Shell() {
   // para evitar un parpadeo del feed (quien ya tiene sesión ya vio la
   // bienvenida, así que la bandera está puesta).
   if (!session && location.pathname === '/' && !hasSeenWelcome()) {
-    return <Navigate to="/auth" replace state={{ from: '/' }} />
+    return <Navigate to="/auth" replace state={{ from: '/', back: '/' }} />
   }
 
   // Recién registrado con username autogenerado: primero elige su nombre

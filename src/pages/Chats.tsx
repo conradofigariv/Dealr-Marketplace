@@ -13,7 +13,7 @@ export default function Chats() {
   const [fetched, setFetched] = useState(false)
 
   useEffect(() => {
-    if (!loading && !session) navigate('/auth', { state: { from: location.pathname } })
+    if (!loading && !session) navigate('/auth', { state: { from: location.pathname, back: '/' } })
   }, [loading, session, location.pathname, navigate])
 
   useEffect(() => {

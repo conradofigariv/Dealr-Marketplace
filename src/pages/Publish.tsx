@@ -40,7 +40,7 @@ export default function Publish() {
   const fieldDefs: FieldDef[] = category?.required_fields ?? []
 
   useEffect(() => {
-    if (!loading && !session) navigate('/auth', { state: { from: id ? `/publicar/${id}` : '/publicar' } })
+    if (!loading && !session) navigate('/auth', { state: { from: id ? `/publicar/${id}` : '/publicar', back: '/' } })
   }, [loading, session, id, navigate])
 
   useEffect(() => {
