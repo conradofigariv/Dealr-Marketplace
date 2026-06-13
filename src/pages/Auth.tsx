@@ -128,16 +128,6 @@ export default function Auth() {
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/85" />
 
-      <button
-        onClick={() => navigate(back, { replace: true })}
-        aria-label="Cerrar"
-        className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 p-2 text-white/80"
-      >
-        <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M18 6 6 18M6 6l12 12" />
-        </svg>
-      </button>
-
       <div className="z-10 flex flex-1 flex-col justify-center">
         <h1 className="mb-16 text-center text-6xl font-bold tracking-tight text-white">Dealr</h1>
 
@@ -165,10 +155,10 @@ export default function Auth() {
             </button>
             <button
               type="button"
-              onClick={() => navigate('/', { replace: true })}
+              onClick={() => navigate(back, { replace: true })}
               className="w-full text-center text-sm text-white/70"
             >
-              Ver artículos sin cuenta
+              Continuar sin cuenta
             </button>
           </div>
         ) : !linkSent ? (
