@@ -2,6 +2,7 @@ import { lazy, Suspense, Component, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
+import { hasSeenWelcome } from './lib/welcome'
 import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
 
@@ -58,7 +59,17 @@ const PublicProfile = lazy(() => import('./pages/PublicProfile'))
 
 function Shell() {
   const location = useLocation()
-  const { profile } = useAuth()
+  const { profile, session } = useAuth()
+
+  // Primera apertura de la app: la bienvenida/login es lo primero que se ve,
+  // pero no es obligatoria. Solo intercepta el feed ("/"); los deep links a
+  // una publicación compartida se abren sin fricción. No espera a `loading`
+  // para evitar un parpadeo del feed (quien ya tiene sesión ya vio la
+  // bienvenida, así que la bandera está puesta).
+  if (!session && location.pathname === '/' && !hasSeenWelcome()) {
+    return <Navigate to="/auth" replace />
+  }
+
   // Recién registrado con username autogenerado: primero elige su nombre
   if (profile && /^usuario_[0-9a-f]{8}$/.test(profile.username)) {
     return <Navigate to="/onboarding" replace />

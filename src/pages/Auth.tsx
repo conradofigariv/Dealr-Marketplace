@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../lib/authErrors'
+import { markWelcomeSeen } from '../lib/welcome'
 
 type Channel = 'email' | 'phone'
 
@@ -23,6 +24,11 @@ export default function Auth() {
   const [error, setError] = useState('')
   const [rawError, setRawError] = useState('')
   const [busy, setBusy] = useState(false)
+
+  // Mostrada al menos una vez: la próxima apertura va directo al feed.
+  useEffect(() => {
+    markWelcomeSeen()
+  }, [])
 
   // Si la sesión aparece (tocó el magic link), entrar automáticamente
   useEffect(() => {
@@ -114,11 +120,11 @@ export default function Auth() {
 
       <button
         onClick={() => navigate('/')}
-        aria-label="Volver"
-        className="absolute left-4 top-[max(1rem,env(safe-area-inset-top))] z-10 p-2 text-white"
+        aria-label="Cerrar"
+        className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] z-10 p-2 text-white/80"
       >
         <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M15 18 9 12l6-6" />
+          <path d="M18 6 6 18M6 6l12 12" />
         </svg>
       </button>
 
@@ -143,9 +149,16 @@ export default function Auth() {
                 setError('')
                 setRawError('')
               }}
-              className="w-full text-center text-sm text-neutral-500"
+              className="w-full text-center text-sm font-medium text-white drop-shadow"
             >
               Usar mi email
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="w-full text-center text-sm text-white/70"
+            >
+              Ver artículos sin cuenta
             </button>
           </div>
         ) : !linkSent ? (
