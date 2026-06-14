@@ -114,14 +114,16 @@ export default function Auth() {
 
   return (
     <div className="relative mx-auto flex min-h-dvh w-full max-w-lg flex-col overflow-hidden bg-black px-8">
-      {/* Video de fondo: public/login-bg.mp4. Si el archivo no existe,
-          queda el fondo negro de siempre. */}
+      {/* Video de fondo: public/login-bg.mp4 (comprimido + faststart para que
+          arranque mientras descarga). El poster es su primer cuadro y se ve al
+          instante; si el video no existe, queda el fondo negro de siempre. */}
       <video
         autoPlay
         muted
         loop
         playsInline
         preload="auto"
+        poster="/login-bg-poster.jpg"
         aria-hidden
         className="pointer-events-none absolute inset-0 h-full w-full object-cover"
         src="/login-bg.mp4"
