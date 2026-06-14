@@ -10,6 +10,7 @@ import Avatar from '../components/Avatar'
 import StarRating from '../components/StarRating'
 import SellerBadges from '../components/SellerBadges'
 import Modal from '../components/Modal'
+import SellFlowModal from '../components/SellFlowModal'
 
 export default function ListingDetail() {
   const { id } = useParams<{ id: string }>()
@@ -29,6 +30,7 @@ export default function ListingDetail() {
   const [busy, setBusy] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
+  const [sellOpen, setSellOpen] = useState(false)
 
   const isOwner = session?.user.id === listing?.seller_id
 
@@ -297,7 +299,7 @@ export default function ListingDetail() {
                   <button onClick={() => setStatus('active', true)} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
                     Renovar
                   </button>
-                  <button onClick={() => setStatus('sold')} className="rounded-full px-4 py-2 text-xs font-semibold text-neutral-300 ring-1 ring-neutral-700">
+                  <button onClick={() => setSellOpen(true)} className="rounded-full px-4 py-2 text-xs font-semibold text-neutral-300 ring-1 ring-neutral-700">
                     Ya lo vendí
                   </button>
                   <button onClick={() => setStatus('paused')} className="rounded-full px-4 py-2 text-xs font-semibold text-neutral-300 ring-1 ring-neutral-700">
@@ -430,6 +432,15 @@ export default function ListingDetail() {
             </form>
           )}
         </Modal>
+      )}
+
+      {sellOpen && (
+        <SellFlowModal
+          listingId={listing.id}
+          sellerId={listing.seller_id}
+          onClose={() => setSellOpen(false)}
+          onSold={load}
+        />
       )}
 
       {deleteOpen && (

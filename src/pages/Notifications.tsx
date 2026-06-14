@@ -14,6 +14,7 @@ const icons: Record<NotificationType, ReactElement> = {
     </>
   ),
   offer_accepted: <path d="M20 6 9 17l-5-5" />,
+  sale_confirmed: <path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8L12 2z" />,
   question_answered: (
     <>
       <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />

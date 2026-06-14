@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { formatPrice } from '../lib/format'
 import type { Conversation, Message } from '../lib/types'
 import Modal from '../components/Modal'
+import RatingForm from '../components/RatingForm'
 
 // Respuestas rápidas con intención real: evitan el "¿sigue disponible?" vacío
 const QUICK_REPLIES = [
@@ -23,17 +24,19 @@ export default function ChatThread() {
   const [draft, setDraft] = useState('')
   const [ratingOpen, setRatingOpen] = useState(false)
   const [alreadyRated, setAlreadyRated] = useState(false)
-  const [stars, setStars] = useState(0)
-  const [comment, setComment] = useState('')
-  const [ratingSent, setRatingSent] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
 
   const myId = session?.user.id
   const iAmBuyer = conversation?.buyer_id === myId
   const other = iAmBuyer ? conversation?.seller : conversation?.buyer
-  // 4+ mensajes de ambas partes habilitan calificar (regla también en DB)
+  // La venta confirmada (vendedor marcó "vendido" a este comprador) habilita
+  // calificar de una. Si no, hace falta una charla real: 4+ mensajes de ambas
+  // partes (misma regla en la DB).
+  const saleConfirmed =
+    conversation?.listing?.status === 'sold' && conversation?.listing?.sold_to === conversation?.buyer_id
   const canRate =
-    messages.length >= 4 && new Set(messages.map((m) => m.sender_id)).size >= 2 && !alreadyRated
+    !alreadyRated &&
+    (saleConfirmed || (messages.length >= 4 && new Set(messages.map((m) => m.sender_id)).size >= 2))
 
   useEffect(() => {
     if (!loading && !session) navigate('/auth', { state: { from: `/chats/${id}`, back: '/' } })
@@ -43,7 +46,7 @@ export default function ChatThread() {
     if (!session || !id) return
     supabase
       .from('conversations')
-      .select('*, listing:listings(id, title, price, currency, photos, status), buyer:profiles!conversations_buyer_id_fkey(*), seller:profiles!conversations_seller_id_fkey(*)')
+      .select('*, listing:listings(id, title, price, currency, photos, status, sold_to), buyer:profiles!conversations_buyer_id_fkey(*), seller:profiles!conversations_seller_id_fkey(*)')
       .eq('id', id)
       .maybeSingle()
       .then(({ data }) => setConversation(data as Conversation))
@@ -114,23 +117,6 @@ export default function ChatThread() {
   function onSubmit(e: FormEvent) {
     e.preventDefault()
     send(draft)
-  }
-
-  async function submitRating() {
-    if (!conversation || !myId || stars === 0) return
-    const ratedId = iAmBuyer ? conversation.seller_id : conversation.buyer_id
-    const { error } = await supabase.from('ratings').insert({
-      conversation_id: conversation.id,
-      rater_id: myId,
-      rated_id: ratedId,
-      role: iAmBuyer ? 'rated_as_seller' : 'rated_as_buyer',
-      stars,
-      comment: comment.trim() || null,
-    })
-    if (!error) {
-      setRatingSent(true)
-      setAlreadyRated(true)
-    }
   }
 
   if (!conversation) return <div className="p-5 text-sm text-neutral-600">Cargando…</div>
@@ -225,44 +211,16 @@ export default function ChatThread() {
         </button>
       </form>
 
-      {ratingOpen && (
+      {ratingOpen && myId && (
         <Modal title={`Calificar a ${other?.username}`} onClose={() => setRatingOpen(false)}>
-          {ratingSent ? (
-            <div className="py-6 text-center">
-              <p className="font-semibold text-white">¡Gracias por calificar!</p>
-              <p className="mt-1 text-sm text-neutral-400">
-                Tu calificación se publica cuando {other?.username} también califique, o a los 14 días.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-6">
-              <p className="text-sm text-neutral-400">
-                La calificación es ciega: {other?.username} no la ve hasta calificarte también.
-              </p>
-              <div className="flex justify-center gap-3">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button key={n} onClick={() => setStars(n)} aria-label={`${n} estrellas`}>
-                    <svg
-                      viewBox="0 0 24 24"
-                      className={`h-9 w-9 transition ${n <= stars ? 'fill-white' : 'fill-neutral-800'}`}
-                    >
-                      <path d="M12 2l2.9 6.3 6.9.8-5.1 4.7 1.4 6.8L12 17.2 5.9 20.6l1.4-6.8L2.2 9.1l6.9-.8L12 2z" />
-                    </svg>
-                  </button>
-                ))}
-              </div>
-              <textarea
-                rows={3}
-                value={comment}
-                onChange={(e) => setComment(e.target.value)}
-                placeholder="Comentario (opcional)"
-                className="input-line resize-none"
-              />
-              <button onClick={submitRating} disabled={stars === 0} className="btn-primary">
-                Enviar calificación
-              </button>
-            </div>
-          )}
+          <RatingForm
+            conversationId={conversation.id}
+            raterId={myId}
+            ratedId={iAmBuyer ? conversation.seller_id : conversation.buyer_id}
+            ratedName={other?.username}
+            role={iAmBuyer ? 'rated_as_seller' : 'rated_as_buyer'}
+            onDone={() => setAlreadyRated(true)}
+          />
         </Modal>
       )}
     </div>

@@ -9,6 +9,7 @@ import Avatar from '../components/Avatar'
 import SellerBadges from '../components/SellerBadges'
 import StarRating from '../components/StarRating'
 import Modal from '../components/Modal'
+import SellFlowModal from '../components/SellFlowModal'
 
 const statusLabels: Record<Listing['status'], string> = {
   active: 'Activa',
@@ -31,6 +32,7 @@ export default function Profile() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [sellTarget, setSellTarget] = useState<Listing | null>(null)
   const avatarInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -320,7 +322,7 @@ export default function Profile() {
                           <button onClick={() => setStatus(l.id, 'active', true)} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black">
                             Sigue disponible
                           </button>
-                          <button onClick={() => setStatus(l.id, 'sold')} className="rounded-full px-3 py-1 text-[11px] font-semibold text-neutral-400 ring-1 ring-neutral-700">
+                          <button onClick={() => setSellTarget(l)} className="rounded-full px-3 py-1 text-[11px] font-semibold text-neutral-400 ring-1 ring-neutral-700">
                             Ya lo vendí
                           </button>
                         </>
@@ -423,6 +425,15 @@ export default function Profile() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {sellTarget && (
+        <SellFlowModal
+          listingId={sellTarget.id}
+          sellerId={sellTarget.seller_id}
+          onClose={() => setSellTarget(null)}
+          onSold={loadListings}
+        />
       )}
 
       {settingsOpen && (

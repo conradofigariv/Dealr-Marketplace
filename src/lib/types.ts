@@ -46,6 +46,7 @@ export interface Listing {
   status: ListingStatus
   verified: boolean
   photos: string[]
+  sold_to: string | null
   created_at: string
   last_renewed_at: string
   seller?: Profile
@@ -103,7 +104,12 @@ export interface AppReview {
   author?: Profile
 }
 
-export type NotificationType = 'message' | 'offer' | 'offer_accepted' | 'question_answered'
+export type NotificationType =
+  | 'message'
+  | 'offer'
+  | 'offer_accepted'
+  | 'question_answered'
+  | 'sale_confirmed'
 
 export interface AppNotification {
   id: string
