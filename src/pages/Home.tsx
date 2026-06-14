@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useNotifications } from '../hooks/useNotifications'
@@ -69,32 +69,49 @@ export default function Home() {
       })
   }, [])
 
-  useEffect(() => {
-    const timer = setTimeout(async () => {
-      // !inner permite filtrar por columnas del vendedor (solo verificados)
-      let query = supabase
-        .from('listings')
-        .select(
-          `*, seller:profiles${onlyVerified ? '!inner' : ''}(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count)`,
-        )
-        .eq('status', 'active')
-        .limit(60)
-      // Ranking por defecto: lo recién renovado arriba. El usuario puede
-      // ordenar por precio desde el control de la barra de filtros.
-      if (order === 'price_asc') query = query.order('price', { ascending: true })
-      else if (order === 'price_desc') query = query.order('price', { ascending: false })
-      else query = query.order('last_renewed_at', { ascending: false })
-      if (search.trim()) query = query.ilike('title', `%${search.trim()}%`)
-      if (categoryId) query = query.eq('category_id', categoryId)
-      if (onlyVerified) query = query.eq('profiles.identity_verified', true)
-      const { data } = await query
-      const fresh = (data as Listing[]) ?? []
-      setListings(fresh)
-      setLoading(false)
-      feedCache = { listings: fresh, search, categoryId, onlyVerified, order, scrollY: feedCache?.scrollY ?? 0 }
-    }, 300)
-    return () => clearTimeout(timer)
+  const loadFeed = useCallback(async () => {
+    // !inner permite filtrar por columnas del vendedor (solo verificados)
+    let query = supabase
+      .from('listings')
+      .select(
+        `*, seller:profiles${onlyVerified ? '!inner' : ''}(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count)`,
+      )
+      .eq('status', 'active')
+      .limit(60)
+    // Ranking por defecto: lo recién renovado arriba. El usuario puede
+    // ordenar por precio desde el control de la barra de filtros.
+    if (order === 'price_asc') query = query.order('price', { ascending: true })
+    else if (order === 'price_desc') query = query.order('price', { ascending: false })
+    else query = query.order('last_renewed_at', { ascending: false })
+    if (search.trim()) query = query.ilike('title', `%${search.trim()}%`)
+    if (categoryId) query = query.eq('category_id', categoryId)
+    if (onlyVerified) query = query.eq('profiles.identity_verified', true)
+    const { data } = await query
+    const fresh = (data as Listing[]) ?? []
+    setListings(fresh)
+    setLoading(false)
+    feedCache = { listings: fresh, search, categoryId, onlyVerified, order, scrollY: feedCache?.scrollY ?? 0 }
   }, [search, categoryId, onlyVerified, order])
+
+  // Refetch con debounce ante cambios de filtros (y al montar).
+  useEffect(() => {
+    const timer = setTimeout(loadFeed, 300)
+    return () => clearTimeout(timer)
+  }, [loadFeed])
+
+  // El feed se cura solo: al volver a la pestaña/app (foreground) recarga,
+  // así un cambio de estado hecho en otra pantalla siempre se refleja.
+  useEffect(() => {
+    function refreshIfVisible() {
+      if (document.visibilityState === 'visible') loadFeed()
+    }
+    document.addEventListener('visibilitychange', refreshIfVisible)
+    window.addEventListener('focus', refreshIfVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfVisible)
+      window.removeEventListener('focus', refreshIfVisible)
+    }
+  }, [loadFeed])
 
   // Guardar la posición de scroll al salir del feed
   useEffect(() => {
