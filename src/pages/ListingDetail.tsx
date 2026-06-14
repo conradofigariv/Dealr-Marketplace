@@ -40,7 +40,8 @@ export default function ListingDetail() {
   async function load() {
     const { data } = await supabase
       .from('listings')
-      .select('*, seller:profiles(*)')
+      // FK explícita: listings referencia a profiles por seller_id y sold_to.
+      .select('*, seller:profiles!listings_seller_id_fkey(*)')
       .eq('id', id!)
       .maybeSingle()
     if (!data) {

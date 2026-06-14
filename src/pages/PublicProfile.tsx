@@ -31,7 +31,7 @@ export default function PublicProfile() {
         setProfile(data)
         supabase
           .from('listings')
-          .select('*, seller:profiles(*)')
+          .select('*, seller:profiles!listings_seller_id_fkey(*)')
           .eq('seller_id', data.id)
           .eq('status', 'active')
           .order('last_renewed_at', { ascending: false })

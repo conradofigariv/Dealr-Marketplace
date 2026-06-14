@@ -74,7 +74,9 @@ export default function Home() {
     let query = supabase
       .from('listings')
       .select(
-        `*, seller:profiles${onlyVerified ? '!inner' : ''}(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count)`,
+        // FK explícita: listings tiene dos referencias a profiles (seller_id y
+        // sold_to), así que el embed debe decir cuál usar o PostgREST falla.
+        `*, seller:profiles!listings_seller_id_fkey${onlyVerified ? '!inner' : ''}(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count)`,
       )
       .eq('status', 'active')
       .limit(60)

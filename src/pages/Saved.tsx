@@ -23,7 +23,7 @@ export default function Saved() {
     supabase
       .from('favorites')
       .select(
-        'created_at, listing:listings(*, seller:profiles(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count))',
+        'created_at, listing:listings(*, seller:profiles!listings_seller_id_fkey(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count))',
       )
       .order('created_at', { ascending: false })
       .then(({ data }) => {
