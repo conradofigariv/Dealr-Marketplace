@@ -1,4 +1,5 @@
 import { NavLink } from 'react-router-dom'
+import { useUnreadChats } from '../hooks/useUnreadChats'
 
 const tabs = [
   {
@@ -34,6 +35,7 @@ const tabs = [
 
 // Nav flotante tipo píldora, solo íconos (estilo Savee)
 export default function BottomNav() {
+  const { count } = useUnreadChats()
   return (
     <nav className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2">
       <div className="flex items-center gap-2 rounded-full bg-neutral-900/90 px-3 py-2 ring-1 ring-white/10 backdrop-blur-md">
@@ -43,7 +45,7 @@ export default function BottomNav() {
             to={tab.to}
             aria-label={tab.label}
             className={({ isActive }) =>
-              `rounded-full p-2.5 transition ${isActive ? 'text-white' : 'text-neutral-500'}`
+              `relative rounded-full p-2.5 transition ${isActive ? 'text-white' : 'text-neutral-500'}`
             }
           >
             <svg
@@ -57,6 +59,11 @@ export default function BottomNav() {
             >
               {tab.icon}
             </svg>
+            {tab.to === '/chats' && count > 0 && (
+              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-neutral-900">
+                {count > 9 ? '9+' : count}
+              </span>
+            )}
           </NavLink>
         ))}
       </div>

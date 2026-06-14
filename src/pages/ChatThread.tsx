@@ -80,6 +80,14 @@ export default function ChatThread() {
           )
         },
       )
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'messages', filter: `conversation_id=eq.${id}` },
+        (payload) => {
+          // Refleja el "leído" del otro en mis mensajes (doble tilde).
+          setMessages((prev) => prev.map((m) => (m.id === (payload.new as Message).id ? (payload.new as Message) : m)))
+        },
+      )
       .subscribe()
     return () => {
       supabase.removeChannel(channel)
@@ -173,19 +181,34 @@ export default function ChatThread() {
             ))}
           </div>
         )}
-        {messages.map((m) => (
-          <div key={m.id} className={`flex ${m.sender_id === myId ? 'justify-end' : 'justify-start'}`}>
-            <div
-              className={`max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] ${
-                m.sender_id === myId
-                  ? 'rounded-br-lg bg-white text-black'
-                  : 'rounded-bl-lg bg-neutral-900 text-neutral-100'
-              }`}
-            >
-              {m.body}
+        {messages.map((m) => {
+          const mine = m.sender_id === myId
+          return (
+            <div key={m.id} className={`flex items-end gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
+              <div
+                className={`max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] ${
+                  mine ? 'rounded-br-lg bg-white text-black' : 'rounded-bl-lg bg-neutral-900 text-neutral-100'
+                }`}
+              >
+                {m.body}
+              </div>
+              {mine && (
+                <svg
+                  viewBox="0 0 24 24"
+                  className={`mb-1 h-3.5 w-3.5 shrink-0 ${m.read_at ? 'text-sky-400' : 'text-neutral-600'}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  aria-label={m.read_at ? 'Leído' : 'Enviado'}
+                >
+                  {m.read_at ? <path d="M1 13l4 4L13 7M11 17l1.5 1.5L23 8" /> : <path d="M4 12l5 5L20 7" />}
+                </svg>
+              )}
             </div>
-          </div>
-        ))}
+          )
+        })}
         <div ref={bottomRef} />
       </div>
 

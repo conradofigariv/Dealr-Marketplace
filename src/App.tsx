@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from 'rea
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { FavoritesProvider } from './hooks/useFavorites'
 import { NotificationsProvider } from './hooks/useNotifications'
+import { UnreadChatsProvider } from './hooks/useUnreadChats'
 import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import { hasSeenWelcome } from './lib/welcome'
 import { capturePageview } from './lib/analytics'
@@ -144,6 +145,7 @@ export default function App() {
       <AuthProvider>
         <FavoritesProvider>
         <NotificationsProvider>
+        <UnreadChatsProvider>
         <BrowserRouter>
         <PageviewTracker />
         <Routes>
@@ -178,6 +180,7 @@ export default function App() {
           </Route>
         </Routes>
         </BrowserRouter>
+        </UnreadChatsProvider>
         </NotificationsProvider>
         </FavoritesProvider>
       </AuthProvider>
