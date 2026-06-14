@@ -5,6 +5,7 @@ import type { Profile } from '../lib/types'
 import Modal from './Modal'
 import Avatar from './Avatar'
 import RatingForm from './RatingForm'
+import { invalidateFeedCache } from '../pages/Home'
 
 interface BuyerConv {
   id: string // conversation id
@@ -51,6 +52,7 @@ export default function SellFlowModal({
       .eq('id', listingId)
     setBusy(false)
     if (error) return false
+    invalidateFeedCache()
     capture('listing_sold', { listing_id: listingId, in_app_buyer: Boolean(soldTo) })
     onSold()
     return true

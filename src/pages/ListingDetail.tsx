@@ -11,6 +11,7 @@ import StarRating from '../components/StarRating'
 import SellerBadges from '../components/SellerBadges'
 import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
+import { invalidateFeedCache } from './Home'
 
 export default function ListingDetail() {
   const { id } = useParams<{ id: string }>()
@@ -31,6 +32,7 @@ export default function ListingDetail() {
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
   const [sellOpen, setSellOpen] = useState(false)
+  const [statusError, setStatusError] = useState('')
 
   const isOwner = session?.user.id === listing?.seller_id
 
@@ -142,7 +144,15 @@ export default function ListingDetail() {
   async function setStatus(status: Listing['status'], renew = false) {
     const patch: Record<string, unknown> = { status }
     if (renew) patch.last_renewed_at = new Date().toISOString()
-    await supabase.from('listings').update(patch).eq('id', id!)
+    // Reactivar/renovar limpia la marca de venta: vuelve a estar disponible.
+    if (status === 'active') patch.sold_to = null
+    setStatusError('')
+    const { error } = await supabase.from('listings').update(patch).eq('id', id!)
+    if (error) {
+      setStatusError('No pudimos actualizar la publicación. Probá de nuevo.')
+      return
+    }
+    invalidateFeedCache()
     load()
   }
 
@@ -318,6 +328,7 @@ export default function ListingDetail() {
                 Eliminar
               </button>
             </div>
+            {statusError && <p className="mt-3 text-xs text-red-400">{statusError}</p>}
           </div>
         )}
 

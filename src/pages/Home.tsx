@@ -19,6 +19,13 @@ let feedCache: {
 } | null = null
 let categoriesCache: Category[] = []
 
+// Tras cambiar el estado de una publicación (vender, pausar, reactivar) la
+// caché del feed queda vieja. Esto la descarta para que el próximo render del
+// feed traiga datos frescos sin un parpadeo con la lista anterior.
+export function invalidateFeedCache() {
+  feedCache = null
+}
+
 const orderLabels: Record<FeedOrder, string> = {
   recent: 'Recientes',
   price_asc: 'Menor precio',

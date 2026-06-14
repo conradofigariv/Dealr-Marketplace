@@ -10,6 +10,7 @@ import SellerBadges from '../components/SellerBadges'
 import StarRating from '../components/StarRating'
 import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
+import { invalidateFeedCache } from './Home'
 
 const statusLabels: Record<Listing['status'], string> = {
   active: 'Activa',
@@ -107,7 +108,16 @@ export default function Profile() {
   async function setStatus(listingId: string, status: Listing['status'], renew = false) {
     const patch: Record<string, unknown> = { status }
     if (renew) patch.last_renewed_at = new Date().toISOString()
-    await supabase.from('listings').update(patch).eq('id', listingId)
+    // Volver a 'active' (reactivar/renovar) borra la marca de venta: la
+    // publicación vuelve a estar realmente disponible.
+    if (status === 'active') patch.sold_to = null
+    setNameError('')
+    const { error } = await supabase.from('listings').update(patch).eq('id', listingId)
+    if (error) {
+      setNameError('No pudimos actualizar la publicación. Probá de nuevo.')
+      return
+    }
+    invalidateFeedCache()
     loadListings()
   }
 
