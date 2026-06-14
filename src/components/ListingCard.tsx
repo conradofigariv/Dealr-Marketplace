@@ -41,9 +41,14 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           </svg>
         </div>
       )}
-      <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
-        {formatPrice(listing.price, listing.currency)}
-      </span>
+      {/* Barra inferior: precio + título, a lo ancho de la imagen. El título
+          se corta con elipsis donde termina la foto. */}
+      <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-2.5 pb-2 pt-7">
+        <span className="shrink-0 text-xs font-bold text-white">
+          {formatPrice(listing.price, listing.currency)}
+        </span>
+        <span className="truncate text-xs text-white/85">{listing.title}</span>
+      </div>
       <button
         onClick={onSave}
         aria-label={saved ? 'Quitar de guardados' : 'Guardar'}
