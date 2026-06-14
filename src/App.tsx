@@ -1,6 +1,8 @@
 import { lazy, Suspense, Component, useEffect, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
+import { FavoritesProvider } from './hooks/useFavorites'
+import { NotificationsProvider } from './hooks/useNotifications'
 import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import { hasSeenWelcome } from './lib/welcome'
 import { capturePageview } from './lib/analytics'
@@ -58,6 +60,8 @@ const ChatThread = lazy(() => import('./pages/ChatThread'))
 const Profile = lazy(() => import('./pages/Profile'))
 const PublicProfile = lazy(() => import('./pages/PublicProfile'))
 const Feedback = lazy(() => import('./pages/Feedback'))
+const Saved = lazy(() => import('./pages/Saved'))
+const Notifications = lazy(() => import('./pages/Notifications'))
 
 // Captura un $pageview en cada cambio de ruta (PostHog no lo hace solo en SPA).
 function PageviewTracker() {
@@ -138,6 +142,8 @@ export default function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
+        <FavoritesProvider>
+        <NotificationsProvider>
         <BrowserRouter>
         <PageviewTracker />
         <Routes>
@@ -167,9 +173,13 @@ export default function App() {
             <Route path="/perfil" element={<Profile />} />
             <Route path="/u/:username" element={<PublicProfile />} />
             <Route path="/opiniones" element={<Feedback />} />
+            <Route path="/guardados" element={<Saved />} />
+            <Route path="/notificaciones" element={<Notifications />} />
           </Route>
         </Routes>
         </BrowserRouter>
+        </NotificationsProvider>
+        </FavoritesProvider>
       </AuthProvider>
     </ErrorBoundary>
   )

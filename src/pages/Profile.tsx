@@ -340,15 +340,31 @@ export default function Profile() {
           )}
         </div>
 
-        <Link
-          to="/opiniones"
-          className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
-        >
-          <span className="text-sm font-medium text-white">Opiniones y mejoras</span>
-          <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m9 18 6-6-6-6" />
-          </svg>
-        </Link>
+        <div className="space-y-2">
+          <Link
+            to="/guardados"
+            className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
+          >
+            <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+              <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
+              </svg>
+              Guardados
+            </span>
+            <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </Link>
+          <Link
+            to="/opiniones"
+            className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
+          >
+            <span className="text-sm font-medium text-white">Opiniones y mejoras</span>
+            <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </Link>
+        </div>
 
         <button onClick={logout} className="w-full py-3 text-center text-sm text-neutral-500">
           Cerrar sesión

@@ -1,11 +1,29 @@
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import type { MouseEvent } from 'react'
 import type { Listing } from '../lib/types'
 import { photoUrl } from '../lib/supabase'
 import { formatPrice } from '../lib/format'
+import { useAuth } from '../hooks/useAuth'
+import { useFavorites } from '../hooks/useFavorites'
 
 // Card estilo Savee: la foto es todo. Solo un precio discreto encima.
 export default function ListingCard({ listing }: { listing: Listing }) {
   const photo = listing.photos[0]
+  const navigate = useNavigate()
+  const { session } = useAuth()
+  const { isFavorite, toggle } = useFavorites()
+  const saved = isFavorite(listing.id)
+
+  function onSave(e: MouseEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!session) {
+      navigate('/auth', { state: { from: '/', back: '/' } })
+      return
+    }
+    toggle(listing.id)
+  }
+
   return (
     <Link
       to={`/p/${listing.id}`}
@@ -26,8 +44,24 @@ export default function ListingCard({ listing }: { listing: Listing }) {
       <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2.5 py-1 text-xs font-semibold text-white backdrop-blur-sm">
         {formatPrice(listing.price, listing.currency)}
       </span>
+      <button
+        onClick={onSave}
+        aria-label={saved ? 'Quitar de guardados' : 'Guardar'}
+        aria-pressed={saved}
+        className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm transition active:scale-90"
+      >
+        <svg
+          viewBox="0 0 24 24"
+          className={`h-4 w-4 ${saved ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-white'}`}
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
+        </svg>
+      </button>
       {listing.seller?.identity_verified && (
-        <span className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm" title="Vendedor verificado">
+        <span className="absolute left-2 top-2 rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm" title="Vendedor verificado">
           <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
             <path d="M20 6 9 17l-5-5" />
           </svg>

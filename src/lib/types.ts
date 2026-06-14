@@ -103,6 +103,19 @@ export interface AppReview {
   author?: Profile
 }
 
+export type NotificationType = 'message' | 'offer' | 'offer_accepted' | 'question_answered'
+
+export interface AppNotification {
+  id: string
+  user_id: string
+  type: NotificationType
+  title: string
+  body: string | null
+  link: string | null
+  read_at: string | null
+  created_at: string
+}
+
 export type SuggestionStatus = 'open' | 'planned' | 'in_progress' | 'done' | 'declined'
 
 export interface FeatureSuggestion {

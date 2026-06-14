@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import type { FieldDef, Listing, Question } from '../lib/types'
 import { formatPrice, conditionLabels, timeAgo } from '../lib/format'
 import { capture } from '../lib/analytics'
+import { useFavorites } from '../hooks/useFavorites'
 import Avatar from '../components/Avatar'
 import StarRating from '../components/StarRating'
 import SellerBadges from '../components/SellerBadges'
@@ -14,6 +15,7 @@ export default function ListingDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { session } = useAuth()
+  const { isFavorite, toggle } = useFavorites()
 
   const [listing, setListing] = useState<Listing | null>(null)
   const [fieldDefs, setFieldDefs] = useState<FieldDef[]>([])
@@ -190,6 +192,27 @@ export default function ListingDetail() {
             <path d="M15 18 9 12l6-6" />
           </svg>
         </button>
+        {!isOwner && (
+          <button
+            onClick={() => {
+              if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
+              toggle(listing.id)
+            }}
+            aria-label={isFavorite(listing.id) ? 'Quitar de guardados' : 'Guardar'}
+            aria-pressed={isFavorite(listing.id)}
+            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition active:scale-90"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className={`h-5 w-5 ${isFavorite(listing.id) ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-white'}`}
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
+            </svg>
+          </button>
+        )}
         <div className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto bg-neutral-900">
           {(listing.photos.length ? listing.photos : [null]).map((p, i) => (
             <div key={i} className="aspect-square w-full shrink-0 snap-center">
