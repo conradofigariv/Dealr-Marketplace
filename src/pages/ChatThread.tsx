@@ -22,6 +22,7 @@ export default function ChatThread() {
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
   const [draft, setDraft] = useState('')
+  const [sendError, setSendError] = useState('')
   const [ratingOpen, setRatingOpen] = useState(false)
   const [alreadyRated, setAlreadyRated] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -112,14 +113,19 @@ export default function ChatThread() {
     const text = body.trim()
     if (!text || !myId || !id) return
     setDraft('')
-    const { data } = await supabase
+    setSendError('')
+    const { data, error } = await supabase
       .from('messages')
       .insert({ conversation_id: id, sender_id: myId, body: text })
       .select('*')
       .single()
-    if (data) {
-      setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]))
+    if (error || !data) {
+      // Devolvemos el texto al input para que se pueda reintentar sin reescribir.
+      setDraft((d) => d || text)
+      setSendError('No se pudo enviar. Probá de nuevo.')
+      return
     }
+    setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]))
   }
 
   function onSubmit(e: FormEvent) {
@@ -213,6 +219,9 @@ export default function ChatThread() {
       </div>
 
       {/* Input */}
+      {sendError && (
+        <p className="px-4 pb-1 text-center text-xs text-red-400">{sendError}</p>
+      )}
       <form
         onSubmit={onSubmit}
         className="flex items-center gap-3 border-t border-neutral-900 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"

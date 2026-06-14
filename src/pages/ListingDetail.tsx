@@ -28,6 +28,7 @@ export default function ListingDetail() {
   const [offerOpen, setOfferOpen] = useState(false)
   const [offerAmount, setOfferAmount] = useState('')
   const [offerSent, setOfferSent] = useState(false)
+  const [offerError, setOfferError] = useState('')
   const [busy, setBusy] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
   const [deleting, setDeleting] = useState(false)
@@ -88,36 +89,47 @@ export default function ListingDetail() {
     const answer = answerDrafts[questionId]?.trim()
     if (!answer) return
     // El trigger de la DB marca answered_at y la hace pública
-    await supabase.from('questions').update({ answer_body: answer }).eq('id', questionId)
+    const { error } = await supabase.from('questions').update({ answer_body: answer }).eq('id', questionId)
+    if (error) {
+      alert('No pudimos publicar la respuesta. Probá de nuevo.')
+      return
+    }
     setAnswerDrafts((d) => ({ ...d, [questionId]: '' }))
     load()
   }
 
   async function reportQuestion(questionId: string) {
     if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
-    await supabase.from('reports').insert({
+    const { error } = await supabase.from('reports').insert({
       reporter_id: session.user.id,
       target_type: 'question',
       target_id: questionId,
       reason: 'Contenido inapropiado en pregunta pública',
     })
-    alert('Reporte enviado. Gracias por ayudar a mantener Dealr.')
+    alert(
+      error
+        ? 'No pudimos enviar el reporte. Probá de nuevo.'
+        : 'Reporte enviado. Gracias por ayudar a mantener Dealr.',
+    )
   }
 
   async function sendOffer(e: FormEvent) {
     e.preventDefault()
     if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
     setBusy(true)
+    setOfferError('')
     const { error } = await supabase.from('offers').insert({
       listing_id: id,
       buyer_id: session.user.id,
       amount: Number(offerAmount),
     })
     setBusy(false)
-    if (!error) {
-      capture('offer_sent', { listing_id: id, amount: Number(offerAmount) })
-      setOfferSent(true)
+    if (error) {
+      setOfferError('No pudimos enviar la oferta. Probá de nuevo.')
+      return
     }
+    capture('offer_sent', { listing_id: id, amount: Number(offerAmount) })
+    setOfferSent(true)
   }
 
   async function openChat() {
@@ -135,10 +147,12 @@ export default function ListingDetail() {
       .insert({ listing_id: listing.id, buyer_id: session.user.id, seller_id: listing.seller_id })
       .select('id')
       .single()
-    if (!error && created) {
-      capture('chat_opened', { listing_id: listing.id })
-      navigate(`/chats/${created.id}`)
+    if (error || !created) {
+      alert('No pudimos abrir el chat. Probá de nuevo.')
+      return
     }
+    capture('chat_opened', { listing_id: listing.id })
+    navigate(`/chats/${created.id}`)
   }
 
   async function setStatus(status: Listing['status'], renew = false) {
@@ -413,7 +427,7 @@ export default function ListingDetail() {
       )}
 
       {offerOpen && (
-        <Modal title="Hacer una oferta" onClose={() => { setOfferOpen(false); setOfferSent(false) }}>
+        <Modal title="Hacer una oferta" onClose={() => { setOfferOpen(false); setOfferSent(false); setOfferError('') }}>
           {offerSent ? (
             <div className="py-6 text-center">
               <p className="font-semibold text-white">Oferta enviada</p>
@@ -437,6 +451,7 @@ export default function ListingDetail() {
                   className="input-line text-xl font-semibold"
                 />
               </div>
+              {offerError && <p className="text-xs text-red-400">{offerError}</p>}
               <button disabled={busy} className="btn-primary">
                 Enviar oferta
               </button>
@@ -506,7 +521,11 @@ function OwnerOffers({ listingId, currency }: { listingId: string; currency: Lis
   }, [listingId])
 
   async function respond(offerId: string, status: 'accepted' | 'rejected') {
-    await supabase.from('offers').update({ status }).eq('id', offerId)
+    const { error } = await supabase.from('offers').update({ status }).eq('id', offerId)
+    if (error) {
+      alert('No pudimos actualizar la oferta. Probá de nuevo.')
+      return
+    }
     load()
   }
 
