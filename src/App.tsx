@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from 'rea
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import { hasSeenWelcome } from './lib/welcome'
+import { capturePageview } from './lib/analytics'
 import BottomNav from './components/BottomNav'
 import Home from './pages/Home'
 
@@ -56,6 +57,16 @@ const Chats = lazy(() => import('./pages/Chats'))
 const ChatThread = lazy(() => import('./pages/ChatThread'))
 const Profile = lazy(() => import('./pages/Profile'))
 const PublicProfile = lazy(() => import('./pages/PublicProfile'))
+const Feedback = lazy(() => import('./pages/Feedback'))
+
+// Captura un $pageview en cada cambio de ruta (PostHog no lo hace solo en SPA).
+function PageviewTracker() {
+  const location = useLocation()
+  useEffect(() => {
+    capturePageview(location.pathname)
+  }, [location.pathname])
+  return null
+}
 
 function Shell() {
   const location = useLocation()
@@ -128,6 +139,7 @@ export default function App() {
     <ErrorBoundary>
       <AuthProvider>
         <BrowserRouter>
+        <PageviewTracker />
         <Routes>
           <Route
             path="/auth"
@@ -154,6 +166,7 @@ export default function App() {
             <Route path="/chats/:id" element={<ChatThread />} />
             <Route path="/perfil" element={<Profile />} />
             <Route path="/u/:username" element={<PublicProfile />} />
+            <Route path="/opiniones" element={<Feedback />} />
           </Route>
         </Routes>
         </BrowserRouter>

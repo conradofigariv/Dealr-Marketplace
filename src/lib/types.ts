@@ -92,3 +92,26 @@ export interface Offer {
   created_at: string
   buyer?: Profile
 }
+
+export interface AppReview {
+  id: string
+  user_id: string
+  rating: number
+  body: string | null
+  created_at: string
+  updated_at: string
+  author?: Profile
+}
+
+export type SuggestionStatus = 'open' | 'planned' | 'in_progress' | 'done' | 'declined'
+
+export interface FeatureSuggestion {
+  id: string
+  user_id: string
+  title: string
+  body: string | null
+  status: SuggestionStatus
+  vote_count: number
+  created_at: string
+  author?: Profile
+}

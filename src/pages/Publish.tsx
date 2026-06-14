@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { compressPhoto } from '../lib/images'
+import { capture } from '../lib/analytics'
 import { conditionLabels, formatPrice } from '../lib/format'
 import type { Category, FieldDef, ListingCondition, Currency } from '../lib/types'
 
@@ -162,6 +163,7 @@ export default function Publish() {
           .select('id')
           .single()
         if (err) throw err
+        capture('listing_published', { category_id: categoryId, currency })
         window.scrollTo(0, 0)
         setPublishedId(data.id)
       }

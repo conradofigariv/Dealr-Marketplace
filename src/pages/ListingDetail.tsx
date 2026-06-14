@@ -4,6 +4,7 @@ import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { FieldDef, Listing, Question } from '../lib/types'
 import { formatPrice, conditionLabels, timeAgo } from '../lib/format'
+import { capture } from '../lib/analytics'
 import Avatar from '../components/Avatar'
 import StarRating from '../components/StarRating'
 import SellerBadges from '../components/SellerBadges'
@@ -69,6 +70,7 @@ export default function ListingDetail() {
     })
     setBusy(false)
     if (!error) {
+      capture('question_asked', { listing_id: id })
       setQuestionBody('')
       load()
     }
@@ -104,7 +106,10 @@ export default function ListingDetail() {
       amount: Number(offerAmount),
     })
     setBusy(false)
-    if (!error) setOfferSent(true)
+    if (!error) {
+      capture('offer_sent', { listing_id: id, amount: Number(offerAmount) })
+      setOfferSent(true)
+    }
   }
 
   async function openChat() {
@@ -122,7 +127,10 @@ export default function ListingDetail() {
       .insert({ listing_id: listing.id, buyer_id: session.user.id, seller_id: listing.seller_id })
       .select('id')
       .single()
-    if (!error && created) navigate(`/chats/${created.id}`)
+    if (!error && created) {
+      capture('chat_opened', { listing_id: listing.id })
+      navigate(`/chats/${created.id}`)
+    }
   }
 
   async function setStatus(status: Listing['status'], renew = false) {

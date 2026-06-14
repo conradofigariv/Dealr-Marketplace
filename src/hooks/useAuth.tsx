@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase, supabaseConfigured } from '../lib/supabase'
+import { capture, identifyUser, resetAnalytics } from '../lib/analytics'
 import type { Profile } from '../lib/types'
 
 interface AuthState {
@@ -30,6 +31,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const { data, error } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle()
     if (data) {
       setProfile(data)
+      identifyUser(data.id, { username: data.username })
       return
     }
     // Cuenta sin fila en profiles (creada antes del trigger handle_new_user):
@@ -57,10 +59,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false)
     })
 
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, newSession) => {
+    const { data: sub } = supabase.auth.onAuthStateChange((event, newSession) => {
       setSession(newSession)
-      if (newSession) loadProfile(newSession.user.id)
-      else setProfile(null)
+      if (newSession) {
+        loadProfile(newSession.user.id)
+        if (event === 'SIGNED_IN') capture('logged_in')
+      } else {
+        setProfile(null)
+        if (event === 'SIGNED_OUT') resetAnalytics()
+      }
     })
     return () => sub.subscription.unsubscribe()
   }, [])
