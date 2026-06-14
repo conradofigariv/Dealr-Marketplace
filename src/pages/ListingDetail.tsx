@@ -25,6 +25,8 @@ export default function ListingDetail() {
   const [offerAmount, setOfferAmount] = useState('')
   const [offerSent, setOfferSent] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
+  const [deleting, setDeleting] = useState(false)
 
   const isOwner = session?.user.id === listing?.seller_id
 
@@ -138,6 +140,19 @@ export default function ListingDetail() {
     if (renew) patch.last_renewed_at = new Date().toISOString()
     await supabase.from('listings').update(patch).eq('id', id!)
     load()
+  }
+
+  async function deleteListing() {
+    if (!listing) return
+    setDeleting(true)
+    // Las fotos van por separado; preguntas/ofertas/chats caen por el cascade del FK.
+    if (listing.photos.length) {
+      await supabase.storage.from('listing-photos').remove(listing.photos)
+    }
+    const { error } = await supabase.from('listings').delete().eq('id', listing.id)
+    setDeleting(false)
+    if (error) return
+    navigate('/perfil')
   }
 
   if (notFound) {
@@ -274,6 +289,9 @@ export default function ListingDetail() {
               <Link to={`/publicar/${listing.id}`} className="rounded-full px-4 py-2 text-xs font-semibold text-neutral-300 ring-1 ring-neutral-700">
                 Editar
               </Link>
+              <button onClick={() => setDeleteOpen(true)} className="rounded-full px-4 py-2 text-xs font-semibold text-red-400/90 ring-1 ring-red-500/30">
+                Eliminar
+              </button>
             </div>
           </div>
         )}
@@ -388,6 +406,37 @@ export default function ListingDetail() {
               </button>
             </form>
           )}
+        </Modal>
+      )}
+
+      {deleteOpen && (
+        <Modal title="Eliminar publicación" onClose={() => !deleting && setDeleteOpen(false)}>
+          <div className="space-y-5 text-sm text-neutral-400">
+            <p>
+              Vas a eliminar <strong className="text-white">{listing.title}</strong> de forma
+              permanente. También se borran sus preguntas, ofertas y chats. Esta acción no se puede
+              deshacer.
+            </p>
+            <p className="text-xs text-neutral-600">
+              Si solo querés que deje de aparecer, mejor usá <strong className="text-neutral-400">Pausar</strong> o <strong className="text-neutral-400">Ya lo vendí</strong>.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteOpen(false)}
+                disabled={deleting}
+                className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={deleteListing}
+                disabled={deleting}
+                className="flex-1 rounded-full bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {deleting ? 'Eliminando…' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
         </Modal>
       )}
     </div>

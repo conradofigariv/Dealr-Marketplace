@@ -28,6 +28,9 @@ export default function Profile() {
   const [zoneDraft, setZoneDraft] = useState('')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [verifyOpen, setVerifyOpen] = useState(false)
+  const [settingsOpen, setSettingsOpen] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
+  const [deleting, setDeleting] = useState(false)
   const avatarInput = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -106,6 +109,23 @@ export default function Profile() {
     loadListings()
   }
 
+  async function deleteListing(listing: Listing) {
+    setDeleting(true)
+    // Borramos primero las fotos del storage (best-effort); las filas
+    // relacionadas (preguntas, ofertas, chats) caen por el cascade del FK.
+    if (listing.photos.length) {
+      await supabase.storage.from('listing-photos').remove(listing.photos)
+    }
+    const { error } = await supabase.from('listings').delete().eq('id', listing.id)
+    setDeleting(false)
+    if (error) {
+      setNameError('No pudimos eliminar la publicación. Probá de nuevo.')
+      return
+    }
+    setDeleteTarget(null)
+    setListings((prev) => prev.filter((l) => l.id !== listing.id))
+  }
+
   async function logout() {
     await supabase.auth.signOut()
     navigate('/')
@@ -133,7 +153,17 @@ export default function Profile() {
 
   return (
     <div className="pb-28">
-      <header className="px-5 pb-6 pt-[max(2rem,env(safe-area-inset-top))] text-center">
+      <header className="relative px-5 pb-6 pt-[max(2rem,env(safe-area-inset-top))] text-center">
+        <button
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Configuración"
+          className="absolute right-4 top-[max(1.5rem,calc(env(safe-area-inset-top)+0.5rem))] rounded-full p-2 text-neutral-400 transition hover:text-white"
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="3" />
+            <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+          </svg>
+        </button>
         <button
           onClick={() => avatarInput.current?.click()}
           disabled={uploadingAvatar}
@@ -284,7 +314,7 @@ export default function Profile() {
                       <span className={l.status === 'active' ? 'text-white' : ''}>{statusLabels[l.status]}</span>
                       {l.status === 'active' && ` · renovada ${timeAgo(l.last_renewed_at)}`}
                     </p>
-                    <div className="mt-1.5 flex gap-2">
+                    <div className="mt-1.5 flex flex-wrap gap-2">
                       {l.status === 'active' ? (
                         <>
                           <button onClick={() => setStatus(l.id, 'active', true)} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black">
@@ -299,6 +329,9 @@ export default function Profile() {
                           Reactivar
                         </button>
                       )}
+                      <button onClick={() => setDeleteTarget(l)} className="rounded-full px-3 py-1 text-[11px] font-semibold text-red-400/90 ring-1 ring-red-500/30">
+                        Eliminar
+                      </button>
                     </div>
                   </div>
                 </li>
@@ -340,6 +373,65 @@ export default function Profile() {
             </p>
             <button onClick={() => setVerifyOpen(false)} className="btn-primary">
               Entendido
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {deleteTarget && (
+        <Modal title="Eliminar publicación" onClose={() => !deleting && setDeleteTarget(null)}>
+          <div className="space-y-5 text-sm text-neutral-400">
+            <p>
+              Vas a eliminar <strong className="text-white">{deleteTarget.title}</strong> de forma
+              permanente. También se borran sus preguntas, ofertas y chats. Esta acción no se puede
+              deshacer.
+            </p>
+            <p className="text-xs text-neutral-600">
+              Si solo querés que deje de aparecer, mejor usá <strong className="text-neutral-400">Pausar</strong> o <strong className="text-neutral-400">Ya lo vendí</strong>.
+            </p>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setDeleteTarget(null)}
+                disabled={deleting}
+                className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => deleteListing(deleteTarget)}
+                disabled={deleting}
+                className="flex-1 rounded-full bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-50"
+              >
+                {deleting ? 'Eliminando…' : 'Eliminar'}
+              </button>
+            </div>
+          </div>
+        </Modal>
+      )}
+
+      {settingsOpen && (
+        <Modal title="Configuración" onClose={() => setSettingsOpen(false)}>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800">
+              <span className="text-neutral-300">Notificaciones</span>
+              <span className="text-xs text-neutral-600">Próximamente</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800">
+              <span className="text-neutral-300">Privacidad y datos</span>
+              <span className="text-xs text-neutral-600">Próximamente</span>
+            </div>
+            <div className="flex items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800">
+              <span className="text-neutral-300">Ayuda y soporte</span>
+              <span className="text-xs text-neutral-600">Próximamente</span>
+            </div>
+            <button
+              onClick={() => {
+                setSettingsOpen(false)
+                logout()
+              }}
+              className="mt-2 w-full rounded-xl px-4 py-3.5 text-left text-sm font-medium text-red-400/90 ring-1 ring-neutral-800 transition hover:ring-neutral-700"
+            >
+              Cerrar sesión
             </button>
           </div>
         </Modal>
