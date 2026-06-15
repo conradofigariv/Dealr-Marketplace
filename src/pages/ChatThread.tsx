@@ -6,6 +6,7 @@ import { formatPrice } from '../lib/format'
 import type { Conversation, Message } from '../lib/types'
 import Modal from '../components/Modal'
 import RatingForm from '../components/RatingForm'
+import Avatar from '../components/Avatar'
 
 // Respuestas rápidas con intención real: evitan el "¿sigue disponible?" vacío
 const QUICK_REPLIES = [
@@ -139,27 +140,22 @@ export default function ChatThread() {
 
   return (
     <div className="flex h-dvh flex-col bg-black">
-      {/* Encabezado con contexto de la publicación */}
-      <header className="border-b border-neutral-900 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
-        <div className="flex items-center gap-2">
-          <button onClick={() => navigate('/chats')} aria-label="Volver" className="p-1.5 text-white">
+      {/* Encabezado: con quién hablás (tappable a su perfil) + la publicación */}
+      <header className="border-b border-neutral-900 px-2 pb-2.5 pt-[max(0.75rem,env(safe-area-inset-top))]">
+        <div className="flex items-center gap-1.5">
+          <button onClick={() => navigate('/chats')} aria-label="Volver" className="shrink-0 p-1.5 text-white">
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 18 9 12l6-6" />
             </svg>
           </button>
-          <Link to={`/p/${listing.id}`} className="flex min-w-0 flex-1 items-center gap-3">
-            <div className="h-10 w-10 shrink-0 overflow-hidden rounded-lg bg-neutral-900">
-              {listing.photos?.[0] && (
-                <img src={photoUrl(listing.photos[0])} alt="" className="h-full w-full object-cover" />
-              )}
-            </div>
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-white">{listing.title}</p>
-              <p className="text-xs text-neutral-500">
-                {formatPrice(listing.price, listing.currency)} · con {other?.username}
-              </p>
-            </div>
-          </Link>
+          {other ? (
+            <Link to={`/u/${other.username}`} className="flex min-w-0 flex-1 items-center gap-2.5">
+              <Avatar profile={other} size="sm" />
+              <p className="truncate text-base font-semibold text-white">{other.username}</p>
+            </Link>
+          ) : (
+            <div className="flex-1" />
+          )}
           {canRate && (
             <button
               onClick={() => setRatingOpen(true)}
@@ -169,6 +165,24 @@ export default function ChatThread() {
             </button>
           )}
         </div>
+        {/* Contexto: de qué publicación hablan (tappable a la publicación) */}
+        <Link to={`/p/${listing.id}`} className="mt-2 flex items-center gap-2.5 rounded-xl bg-neutral-900/70 px-2 py-1.5 transition active:bg-neutral-800">
+          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-neutral-800">
+            {listing.photos?.[0] && (
+              <img src={photoUrl(listing.photos[0])} alt="" className="h-full w-full object-cover" />
+            )}
+          </div>
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-xs font-medium text-neutral-200">{listing.title}</p>
+            <p className="text-[11px] text-neutral-500">
+              {formatPrice(listing.price, listing.currency)}
+              {listing.status === 'sold' && ' · vendido'}
+            </p>
+          </div>
+          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="m9 18 6-6-6-6" />
+          </svg>
+        </Link>
       </header>
 
       {/* Mensajes */}
