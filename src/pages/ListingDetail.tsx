@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { FieldDef, Listing, Question } from '../lib/types'
-import { formatPrice, conditionLabels, timeAgo } from '../lib/format'
+import { formatPrice, conditionLabels, timeAgo, priceDropPct } from '../lib/format'
 import { capture } from '../lib/analytics'
 import { useFavorites } from '../hooks/useFavorites'
 import Avatar from '../components/Avatar'
@@ -233,6 +233,7 @@ export default function ListingDetail() {
     )
 
   const seller = listing.seller!
+  const dropPct = priceDropPct(listing)
   const buyerLoc = getCachedBuyerLocation()
   const distanceKm =
     listing.lat != null && listing.lng != null && buyerLoc
@@ -296,10 +297,22 @@ export default function ListingDetail() {
 
       <div className="space-y-6 px-5 py-6">
         <div>
-          <p className="text-3xl font-bold text-white">{formatPrice(listing.price, listing.currency)}</p>
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+            <p className="text-3xl font-bold text-white">{formatPrice(listing.price, listing.currency)}</p>
+            {dropPct != null && (
+              <>
+                <span className="text-base text-neutral-500 line-through">
+                  {formatPrice(listing.previous_price!, listing.currency)}
+                </span>
+                <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-bold text-black">Bajó {dropPct}%</span>
+              </>
+            )}
+          </div>
           <h1 className="mt-1.5 text-lg leading-snug text-neutral-200">{listing.title}</h1>
           <p className="mt-2 text-sm text-neutral-500">
             {conditionLabels[listing.condition]} · publicado {timeAgo(listing.created_at)}
+            {listing.favorites_count > 0 &&
+              ` · ${listing.favorites_count} ${listing.favorites_count === 1 ? 'persona lo guardó' : 'personas lo guardaron'}`}
           </p>
         </div>
 

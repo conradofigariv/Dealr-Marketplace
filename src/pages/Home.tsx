@@ -91,7 +91,10 @@ export default function Home() {
     if (order === 'price_asc') query = query.order('price', { ascending: true })
     else if (order === 'price_desc') query = query.order('price', { ascending: false })
     else query = query.order('last_renewed_at', { ascending: false })
-    if (search.trim()) query = query.ilike('title', `%${search.trim()}%`)
+    // Busca en título y descripción. Sacamos comas/paréntesis del término
+    // porque rompen la sintaxis de .or() de PostgREST.
+    const term = search.trim().replace(/[,()]/g, ' ').trim()
+    if (term) query = query.or(`title.ilike.%${term}%,description.ilike.%${term}%`)
     if (categoryId) query = query.eq('category_id', categoryId)
     if (onlyVerified) query = query.eq('profiles.identity_verified', true)
     // Filtros del panel (precio/moneda/condición se resuelven en la DB; la

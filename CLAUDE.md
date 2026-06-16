@@ -40,6 +40,7 @@ No hay suite de tests ni linter configurado. Verificación = `npm run build`.
 - `00007` `listings.sold_to` + flujo "vendido → califica" (policy de ratings + trigger de notificación al comprador).
 - `00008` talle opcional en "ropa-accesorios" (baja `required` del campo en `categories.required_fields`).
 - `00009` ubicación: `listings.lat/lng/location_label` + `profiles.lat/lng` (mapa estilo FB Marketplace).
+- `00010` prueba social + precio: `listings.favorites_count` (trigger sobre `favorites` + backfill), `listings.previous_price/price_dropped_at` (trigger que registra bajas) y notificación `price_drop` a quienes la guardaron (+ tipo nuevo en el CHECK).
 
 ## Arquitectura
 
@@ -62,7 +63,8 @@ supabase/migrations/, supabase/functions/didit-webhook/ (verificación de identi
 
 - **Service worker (`autoUpdate`):** tras un deploy, el navegador sigue corriendo el JS viejo hasta cerrar **todas** las pestañas/instancias y reabrir. Un F5 no alcanza. Es la causa #1 de "deployé y no veo cambios".
 - **Caché del feed en memoria:** `Home.tsx` tiene un `feedCache` a nivel de módulo (preserva listado + scroll al volver de un detalle). Al cambiar el estado de una publicación (vender/pausar/reactivar) hay que llamar `invalidateFeedCache()` (exportada de `Home.tsx`) — ya lo hacen `Profile`, `ListingDetail` y `SellFlowModal`.
-- **Feed = solo `status = 'active'`** (`Home.tsx`), ordenado por `last_renewed_at desc`. Reactivar setea `status='active' + last_renewed_at=now + sold_to=null`.
+- **Feed = solo `status = 'active'`** (`Home.tsx`), ordenado por `last_renewed_at desc`. Reactivar setea `status='active' + last_renewed_at=now + sold_to=null`. Búsqueda con `.or(title.ilike,description.ilike)` (se sanitizan comas/paréntesis del término). Panel `FeedFilters` (bottom sheet): precio/moneda/condición van a la query; el radio de distancia filtra y ordena client-side.
+- **Insignias de listing (`format.ts`):** `isRecentlyPosted` (<24h → "Nuevo") y `priceDropPct` (bajó en ≤30 días → "Bajó N%", emerald). En card (stack arriba-izq) y detalle (precio anterior tachado). Requieren `00010`.
 - **Ubicación (estilo FB Marketplace):** la publicación guarda `lat/lng` exactas pero la UI **nunca** muestra el punto exacto — `LocationMap` dibuja un círculo (`APPROX_RADIUS_M`) con centro corrido de forma determinística por id (`approxCenter` en `geo.ts`). Al publicar, `LocationPicker` (pin arrastrable + "usar mi ubicación") geocodifica con Nominatim (OSM, gratis; el Referer del navegador alcanza a bajo volumen). El default del publicar sale de `profiles.lat/lng` (se siembra en la 1ª publicación). El feed tiene "Cerca": pide geolocalización (cacheada en `localStorage`), ordena por distancia y muestra chip "a X km" — **todo client-side** (Haversine sobre los 60 del feed; ranking server-side queda como mejora futura). Mapas: Leaflet + tiles oscuros de CARTO (combinan con el tema negro); el chunk de Leaflet (~156KB) carga solo en Publicar/Detalle.
 - **Estados de listing:** `active | paused | sold | expired`. `sold_to` = comprador al que se vendió (null = venta por fuera). Reactivar limpia `sold_to`.
 - **Mutaciones a `listings` deben chequear `error`** y mostrarlo; antes fallaban en silencio (UI/DB desincronizadas).

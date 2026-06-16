@@ -52,6 +52,9 @@ export interface Listing {
   lat: number | null
   lng: number | null
   location_label: string | null
+  favorites_count: number
+  previous_price: number | null
+  price_dropped_at: string | null
   created_at: string
   last_renewed_at: string
   seller?: Profile
@@ -115,6 +118,7 @@ export type NotificationType =
   | 'offer_accepted'
   | 'question_answered'
   | 'sale_confirmed'
+  | 'price_drop'
 
 export interface AppNotification {
   id: string

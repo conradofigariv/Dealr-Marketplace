@@ -1,4 +1,6 @@
-import type { Currency, ListingCondition } from './types'
+import type { Currency, ListingCondition, Listing } from './types'
+
+const DAY_MS = 24 * 60 * 60 * 1000
 
 export function formatPrice(price: number, currency: Currency): string {
   const formatted = new Intl.NumberFormat('es-AR', { maximumFractionDigits: 0 }).format(price)
@@ -10,6 +12,21 @@ export const conditionLabels: Record<ListingCondition, string> = {
   como_nuevo: 'Como nuevo',
   buen_estado: 'Buen estado',
   con_detalles: 'Con detalles',
+}
+
+/** Insignia "Recién publicado": menos de 24 h. */
+export function isRecentlyPosted(iso: string): boolean {
+  return Date.now() - new Date(iso).getTime() < DAY_MS
+}
+
+/** % de baja si la publicación bajó de precio en los últimos 30 días (si no, null). */
+export function priceDropPct(
+  listing: Pick<Listing, 'price' | 'previous_price' | 'price_dropped_at'>,
+): number | null {
+  const prev = listing.previous_price
+  if (prev == null || listing.price >= prev || !listing.price_dropped_at) return null
+  if (Date.now() - new Date(listing.price_dropped_at).getTime() > 30 * DAY_MS) return null
+  return Math.round((1 - listing.price / prev) * 100)
 }
 
 export function timeAgo(iso: string): string {

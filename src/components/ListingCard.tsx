@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { MouseEvent } from 'react'
 import type { Listing } from '../lib/types'
 import { photoUrl } from '../lib/supabase'
-import { formatPrice } from '../lib/format'
+import { formatPrice, priceDropPct, isRecentlyPosted } from '../lib/format'
 import { formatDistance } from '../lib/geo'
 import { useAuth } from '../hooks/useAuth'
 import { useFavorites } from '../hooks/useFavorites'
@@ -10,6 +10,8 @@ import { useFavorites } from '../hooks/useFavorites'
 // Card estilo Savee: la foto es todo. Solo un precio discreto encima.
 export default function ListingCard({ listing, distanceKm }: { listing: Listing; distanceKm?: number }) {
   const photo = listing.photos[0]
+  const dropPct = priceDropPct(listing)
+  const recent = isRecentlyPosted(listing.created_at)
   const navigate = useNavigate()
   const { session } = useAuth()
   const { isFavorite, toggle } = useFavorites()
@@ -69,13 +71,20 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
           <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
         </svg>
       </button>
-      {listing.seller?.identity_verified && (
-        <span className="absolute left-2 top-2 rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm" title="Vendedor verificado">
-          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M20 6 9 17l-5-5" />
-          </svg>
-        </span>
-      )}
+      <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
+        {listing.seller?.identity_verified && (
+          <span className="rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm" title="Vendedor verificado">
+            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M20 6 9 17l-5-5" />
+            </svg>
+          </span>
+        )}
+        {dropPct != null ? (
+          <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-[10px] font-bold text-black">↓ {dropPct}%</span>
+        ) : recent ? (
+          <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-black">Nuevo</span>
+        ) : null}
+      </div>
     </Link>
   )
 }
