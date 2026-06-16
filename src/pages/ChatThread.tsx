@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase, photoUrl } from '../lib/supabase'
@@ -39,7 +39,8 @@ export default function ChatThread() {
   const [offerSent, setOfferSent] = useState(false)
   const [offerError, setOfferError] = useState('')
   const [offerBusy, setOfferBusy] = useState(false)
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const scrollerRef = useRef<HTMLDivElement>(null)
+  const didInitialScroll = useRef(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
   const typingTimer = useRef<ReturnType<typeof setTimeout>>()
@@ -122,8 +123,16 @@ export default function ChatThread() {
     }
   }, [session, id])
 
+  // Posicionar al final: instantáneo la primera vez (no se ve "bajar"),
+  // suave para los mensajes nuevos. useLayoutEffect = antes del paint.
+  useLayoutEffect(() => {
+    const el = scrollerRef.current
+    if (!el) return
+    el.scrollTo({ top: el.scrollHeight, behavior: didInitialScroll.current ? 'smooth' : 'auto' })
+    didInitialScroll.current = true
+  }, [messages, othersTyping])
+
   useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
     if (id && myId && messages.some((m) => m.sender_id !== myId && !m.read_at)) {
       supabase
         .from('messages')
@@ -287,7 +296,7 @@ export default function ChatThread() {
       </header>
 
       {/* Mensajes */}
-      <div className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
+      <div ref={scrollerRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && iAmBuyer && (
           <div className="space-y-2 py-4">
             <p className="pb-2 text-center text-xs text-neutral-600">Empezá con una pregunta concreta:</p>
@@ -348,7 +357,6 @@ export default function ChatThread() {
             </div>
           </div>
         )}
-        <div ref={bottomRef} />
       </div>
 
       {/* Input */}
