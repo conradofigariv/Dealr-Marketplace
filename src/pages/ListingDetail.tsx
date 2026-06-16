@@ -12,6 +12,7 @@ import SellerBadges from '../components/SellerBadges'
 import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
 import LocationMap from '../components/LocationMap'
+import ListingRail from '../components/ListingRail'
 import { getCachedBuyerLocation, haversineKm, formatDistance } from '../lib/geo'
 import { invalidateFeedCache } from './Home'
 
@@ -36,6 +37,8 @@ export default function ListingDetail() {
   const [deleting, setDeleting] = useState(false)
   const [sellOpen, setSellOpen] = useState(false)
   const [statusError, setStatusError] = useState('')
+  const [sellerItems, setSellerItems] = useState<Listing[]>([])
+  const [similar, setSimilar] = useState<Listing[]>([])
 
   const isOwner = session?.user.id === listing?.seller_id
 
@@ -70,6 +73,32 @@ export default function ListingDetail() {
     load()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
+
+  // Rieles del detalle: otras publicaciones del vendedor y similares (misma
+  // categoría, otros vendedores). Sin embed de profiles -> sin ambigüedad de FK.
+  useEffect(() => {
+    if (!listing) return
+    supabase
+      .from('listings')
+      .select('id, title, price, currency, photos')
+      .eq('seller_id', listing.seller_id)
+      .eq('status', 'active')
+      .neq('id', listing.id)
+      .order('last_renewed_at', { ascending: false })
+      .limit(10)
+      .then(({ data }) => setSellerItems((data as Listing[]) ?? []))
+    supabase
+      .from('listings')
+      .select('id, title, price, currency, photos')
+      .eq('category_id', listing.category_id)
+      .eq('status', 'active')
+      .neq('id', listing.id)
+      .neq('seller_id', listing.seller_id)
+      .order('last_renewed_at', { ascending: false })
+      .limit(12)
+      .then(({ data }) => setSimilar((data as Listing[]) ?? []))
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing?.id])
 
   async function askQuestion(e: FormEvent) {
     e.preventDefault()
@@ -341,6 +370,8 @@ export default function ListingDetail() {
           </div>
         </Link>
 
+        {!isOwner && <ListingRail title="Más de este vendedor" listings={sellerItems} />}
+
         {/* Acciones del dueño */}
         {isOwner && (
           <div className="surface p-4">
@@ -437,6 +468,9 @@ export default function ListingDetail() {
 
         {/* Ofertas recibidas (solo dueño) */}
         {isOwner && <OwnerOffers listingId={listing.id} currency={listing.currency} />}
+
+        {/* Productos similares (misma categoría, otros vendedores) */}
+        <ListingRail title="Productos similares" listings={similar} />
       </div>
 
       {/* Barra de acciones del comprador */}
