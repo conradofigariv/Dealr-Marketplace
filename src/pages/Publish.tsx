@@ -198,11 +198,13 @@ export default function Publish() {
         setPublishedId(data.id)
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : ''
+      const message = err instanceof Error ? err.message : String(err)
       setError(
         /network|fetch/i.test(message)
           ? 'Problema de conexión. Revisá tu internet y probá de nuevo — las fotos no se pierden.'
-          : 'No pudimos publicar. Probá de nuevo en un momento.',
+          : /column|schema cache|does not exist|could not find/i.test(message)
+            ? `Falta aplicar una migración en Supabase (una columna no existe): ${message}`
+            : `No pudimos publicar: ${message || 'probá de nuevo en un momento.'}`,
       )
     } finally {
       setBusy(false)
