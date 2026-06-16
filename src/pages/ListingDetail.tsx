@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -13,6 +13,7 @@ import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
 import LocationMap from '../components/LocationMap'
 import ListingRail from '../components/ListingRail'
+import PhotoViewer from '../components/PhotoViewer'
 import { getCachedBuyerLocation, haversineKm, formatDistance, pushRecentlyViewed } from '../lib/geo'
 import { invalidateFeedCache } from './Home'
 
@@ -39,6 +40,8 @@ export default function ListingDetail() {
   const [statusError, setStatusError] = useState('')
   const [sellerItems, setSellerItems] = useState<Listing[]>([])
   const [similar, setSimilar] = useState<Listing[]>([])
+  const [viewerAt, setViewerAt] = useState<number | null>(null)
+  const countedView = useRef(false)
 
   const isOwner = session?.user.id === listing?.seller_id
 
@@ -79,6 +82,11 @@ export default function ListingDetail() {
   // categoría, otros vendedores). Sin embed de profiles -> sin ambigüedad de FK.
   useEffect(() => {
     if (!listing) return
+    // Vista: una sola vez por apertura y sin contar al dueño.
+    if (!countedView.current && session?.user.id !== listing.seller_id) {
+      countedView.current = true
+      supabase.rpc('increment_listing_views', { listing_id: listing.id })
+    }
     supabase
       .from('listings')
       .select('id, title, price, currency, photos')
@@ -203,6 +211,32 @@ export default function ListingDetail() {
     load()
   }
 
+  function share() {
+    if (!listing) return
+    const url = `${window.location.origin}/p/${listing.id}`
+    const text = `${listing.title} — ${formatPrice(listing.price, listing.currency)}\n${url}`
+    if (navigator.share) {
+      navigator.share({ title: listing.title, text, url }).catch(() => {})
+    } else {
+      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+    }
+  }
+
+  async function reportListing() {
+    if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: session.user.id,
+      target_type: 'listing',
+      target_id: id,
+      reason: 'Publicación reportada',
+    })
+    alert(
+      error
+        ? 'No pudimos enviar el reporte. Probá de nuevo.'
+        : 'Reporte enviado. Gracias por ayudar a mantener Dealr.',
+    )
+  }
+
   async function deleteListing() {
     if (!listing) return
     setDeleting(true)
@@ -257,32 +291,49 @@ export default function ListingDetail() {
             <path d="M15 18 9 12l6-6" />
           </svg>
         </button>
-        {!isOwner && (
+        <div className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex gap-2">
           <button
-            onClick={() => {
-              if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
-              toggle(listing.id)
-            }}
-            aria-label={isFavorite(listing.id) ? 'Quitar de guardados' : 'Guardar'}
-            aria-pressed={isFavorite(listing.id)}
-            className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition active:scale-90"
+            onClick={share}
+            aria-label="Compartir"
+            className="rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition active:scale-90"
           >
-            <svg
-              viewBox="0 0 24 24"
-              className={`h-5 w-5 ${isFavorite(listing.id) ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-white'}`}
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 12v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8" />
+              <path d="M16 6l-4-4-4 4M12 2v14" />
             </svg>
           </button>
-        )}
+          {!isOwner && (
+            <button
+              onClick={() => {
+                if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
+                toggle(listing.id)
+              }}
+              aria-label={isFavorite(listing.id) ? 'Quitar de guardados' : 'Guardar'}
+              aria-pressed={isFavorite(listing.id)}
+              className="rounded-full bg-black/50 p-2 text-white backdrop-blur-sm transition active:scale-90"
+            >
+              <svg
+                viewBox="0 0 24 24"
+                className={`h-5 w-5 ${isFavorite(listing.id) ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-white'}`}
+                strokeWidth="2"
+                strokeLinecap="round"
+                strokeLinejoin="round"
+              >
+                <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
+              </svg>
+            </button>
+          )}
+        </div>
         <div className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto bg-neutral-900">
           {(listing.photos.length ? listing.photos : [null]).map((p, i) => (
             <div key={i} className="aspect-square w-full shrink-0 snap-center">
               {p ? (
-                <img src={photoUrl(p)} alt={`${listing.title} foto ${i + 1}`} className="h-full w-full object-cover" />
+                <img
+                  src={photoUrl(p)}
+                  alt={`${listing.title} foto ${i + 1}`}
+                  onClick={() => setViewerAt(i)}
+                  className="h-full w-full cursor-zoom-in object-cover"
+                />
               ) : (
                 <div className="flex h-full items-center justify-center text-neutral-700">Sin fotos</div>
               )}
@@ -291,7 +342,7 @@ export default function ListingDetail() {
         </div>
         {listing.status !== 'active' && (
           <div className="absolute inset-x-0 bottom-0 bg-black/80 py-2 text-center text-sm font-bold uppercase tracking-wide text-white backdrop-blur-sm">
-            {listing.status === 'sold' ? 'Vendido' : 'Pausado'}
+            {listing.status === 'sold' ? 'Vendido' : listing.status === 'reserved' ? 'Reservado' : 'Pausado'}
           </div>
         )}
       </div>
@@ -389,7 +440,24 @@ export default function ListingDetail() {
         {/* Acciones del dueño */}
         {isOwner && (
           <div className="surface p-4">
-            <h2 className="mb-3 text-sm font-semibold text-white">Tu publicación</h2>
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-white">Tu publicación</h2>
+              <p className="flex items-center gap-2.5 text-xs text-neutral-500">
+                <span className="flex items-center gap-1">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2">
+                    <path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7-10-7-10-7Z" />
+                    <circle cx="12" cy="12" r="3" />
+                  </svg>
+                  {listing.views_count}
+                </span>
+                <span className="flex items-center gap-1">
+                  <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 fill-current" stroke="none">
+                    <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
+                  </svg>
+                  {listing.favorites_count}
+                </span>
+              </p>
+            </div>
             <div className="flex flex-wrap gap-2">
               {listing.status === 'active' ? (
                 <>
@@ -399,13 +467,16 @@ export default function ListingDetail() {
                   <button onClick={() => setSellOpen(true)} className="rounded-full px-4 py-2 text-xs font-semibold text-neutral-300 ring-1 ring-neutral-700">
                     Ya lo vendí
                   </button>
+                  <button onClick={() => setStatus('reserved')} className="rounded-full px-4 py-2 text-xs font-semibold text-neutral-300 ring-1 ring-neutral-700">
+                    Reservar
+                  </button>
                   <button onClick={() => setStatus('paused')} className="rounded-full px-4 py-2 text-xs font-semibold text-neutral-300 ring-1 ring-neutral-700">
                     Pausar
                   </button>
                 </>
               ) : (
                 <button onClick={() => setStatus('active', true)} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
-                  Reactivar
+                  {listing.status === 'reserved' ? 'Quitar reserva' : 'Reactivar'}
                 </button>
               )}
               <Link to={`/publicar/${listing.id}`} className="rounded-full px-4 py-2 text-xs font-semibold text-neutral-300 ring-1 ring-neutral-700">
@@ -485,6 +556,15 @@ export default function ListingDetail() {
 
         {/* Productos similares (misma categoría, otros vendedores) */}
         <ListingRail title="Productos similares" listings={similar} />
+
+        {!isOwner && (
+          <button onClick={reportListing} className="flex w-full items-center justify-center gap-1.5 py-2 text-xs text-neutral-600 transition active:text-red-400">
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M4 22V4a1 1 0 0 1 1-1h13l-2 5 2 5H5" />
+            </svg>
+            Reportar publicación
+          </button>
+        )}
       </div>
 
       {/* Barra de acciones del comprador */}
@@ -534,6 +614,10 @@ export default function ListingDetail() {
             </form>
           )}
         </Modal>
+      )}
+
+      {viewerAt !== null && listing.photos.length > 0 && (
+        <PhotoViewer photos={listing.photos} index={viewerAt} onClose={() => setViewerAt(null)} />
       )}
 
       {sellOpen && (

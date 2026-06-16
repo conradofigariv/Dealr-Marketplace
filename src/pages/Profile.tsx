@@ -17,6 +17,7 @@ const statusLabels: Record<Listing['status'], string> = {
   paused: 'Pausada',
   sold: 'Vendida',
   expired: 'Vencida',
+  reserved: 'Reservada',
 }
 
 export default function Profile() {

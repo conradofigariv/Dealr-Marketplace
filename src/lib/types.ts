@@ -1,5 +1,5 @@
 export type ListingCondition = 'nuevo' | 'como_nuevo' | 'buen_estado' | 'con_detalles'
-export type ListingStatus = 'active' | 'paused' | 'sold' | 'expired'
+export type ListingStatus = 'active' | 'paused' | 'sold' | 'expired' | 'reserved'
 export type Currency = 'ARS' | 'USD'
 export type OfferStatus = 'pending' | 'accepted' | 'rejected' | 'expired'
 
@@ -53,6 +53,7 @@ export interface Listing {
   lng: number | null
   location_label: string | null
   favorites_count: number
+  views_count: number
   previous_price: number | null
   price_dropped_at: string | null
   created_at: string
