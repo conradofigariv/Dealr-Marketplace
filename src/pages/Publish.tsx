@@ -198,13 +198,17 @@ export default function Publish() {
         setPublishedId(data.id)
       }
     } catch (err) {
-      const message = err instanceof Error ? err.message : String(err)
+      // Los errores de Supabase son objetos {message, details, hint, code},
+      // no instancias de Error: hay que leer sus campos a mano.
+      const e = err as { message?: string; details?: string; hint?: string; code?: string } | null
+      const message = e?.message ?? (err instanceof Error ? err.message : '')
+      const full = [e?.message, e?.details, e?.hint, e?.code].filter(Boolean).join(' · ') || JSON.stringify(err)
       setError(
         /network|fetch/i.test(message)
           ? 'Problema de conexión. Revisá tu internet y probá de nuevo — las fotos no se pierden.'
           : /column|schema cache|does not exist|could not find/i.test(message)
-            ? `Falta aplicar una migración en Supabase (una columna no existe): ${message}`
-            : `No pudimos publicar: ${message || 'probá de nuevo en un momento.'}`,
+            ? `Falta aplicar una migración en Supabase (una columna no existe): ${full}`
+            : `No pudimos publicar: ${full}`,
       )
     } finally {
       setBusy(false)
