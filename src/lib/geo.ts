@@ -127,3 +127,46 @@ export function requestBuyerLocation(): Promise<LatLng | null> {
     )
   })
 }
+
+// Etiqueta legible de la zona del comprador (para el pill del header).
+const BUYER_LABEL_KEY = 'dealr_buyer_label'
+
+export function getCachedBuyerLabel(): string | null {
+  try {
+    return localStorage.getItem(BUYER_LABEL_KEY)
+  } catch {
+    return null
+  }
+}
+
+export function cacheBuyerLabel(label: string) {
+  try {
+    localStorage.setItem(BUYER_LABEL_KEY, label)
+  } catch {
+    /* ignorar */
+  }
+}
+
+// ---------- Vistos recientemente ----------
+const RECENT_KEY = 'dealr_recent_views'
+const RECENT_MAX = 12
+
+export function getRecentlyViewed(): string[] {
+  try {
+    const raw = localStorage.getItem(RECENT_KEY)
+    const list = raw ? JSON.parse(raw) : []
+    return Array.isArray(list) ? list : []
+  } catch {
+    return []
+  }
+}
+
+export function pushRecentlyViewed(id: string) {
+  try {
+    const list = getRecentlyViewed().filter((x) => x !== id)
+    list.unshift(id)
+    localStorage.setItem(RECENT_KEY, JSON.stringify(list.slice(0, RECENT_MAX)))
+  } catch {
+    /* ignorar */
+  }
+}

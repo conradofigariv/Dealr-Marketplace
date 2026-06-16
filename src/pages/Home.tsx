@@ -5,15 +5,29 @@ import { useAuth } from '../hooks/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
 import type { Category, Listing } from '../lib/types'
 import ListingCard from '../components/ListingCard'
+import ListingRail from '../components/ListingRail'
 import FeedFilters, { EMPTY_FILTERS, countActiveFilters, type FeedFilterValues } from '../components/FeedFilters'
-import { getCachedBuyerLocation, requestBuyerLocation, haversineKm, type LatLng } from '../lib/geo'
+import {
+  getCachedBuyerLocation,
+  requestBuyerLocation,
+  haversineKm,
+  reverseGeocode,
+  getCachedBuyerLabel,
+  cacheBuyerLabel,
+  getRecentlyViewed,
+  type LatLng,
+} from '../lib/geo'
 
 type FeedOrder = 'recent' | 'price_asc' | 'price_desc'
+
+const PAGE_SIZE = 24
 
 // Cache en memoria del feed: al volver desde un producto no se recarga
 // ni se pierde la posición de scroll. Se siente nativo.
 let feedCache: {
   listings: Listing[]
+  page: number
+  hasMore: boolean
   search: string
   categoryId: number | null
   onlyVerified: boolean
@@ -54,6 +68,9 @@ const orderCycle: Record<FeedOrder, FeedOrder> = {
   price_desc: 'recent',
 }
 
+const SELECT =
+  '*, seller:profiles!listings_seller_id_fkey'
+
 export default function Home() {
   const { unreadCount } = useNotifications()
   const { session } = useAuth()
@@ -72,9 +89,16 @@ export default function Home() {
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [savedSearch, setSavedSearch] = useState(false)
   const [buyerLoc, setBuyerLoc] = useState<LatLng | null>(getCachedBuyerLocation())
+  const [buyerLabel, setBuyerLabel] = useState<string | null>(getCachedBuyerLabel())
   const [order, setOrder] = useState<FeedOrder>(feedCache?.order ?? 'recent')
   const [loading, setLoading] = useState(pending ? true : !feedCache)
+  const [loadingMore, setLoadingMore] = useState(false)
+  const [hasMore, setHasMore] = useState(feedCache?.hasMore ?? true)
+  const [recentItems, setRecentItems] = useState<Listing[]>([])
+  const pageRef = useRef(feedCache?.page ?? 0)
   const restoredScroll = useRef(false)
+  const firstLoad = useRef(true)
+  const sentinelRef = useRef<HTMLDivElement>(null)
 
   // Restaurar scroll una sola vez, antes del primer paint
   useLayoutEffect(() => {
@@ -96,52 +120,120 @@ export default function Home() {
       })
   }, [])
 
-  const loadFeed = useCallback(async () => {
-    // !inner permite filtrar por columnas del vendedor (solo verificados)
+  // Vistos recientemente (localStorage): solo en la vista por defecto.
+  const defaultView = !search.trim() && !categoryId && !onlyVerified && countActiveFilters(filters) === 0
+  useEffect(() => {
+    const ids = getRecentlyViewed()
+    if (ids.length === 0) {
+      setRecentItems([])
+      return
+    }
+    supabase
+      .from('listings')
+      .select('id, title, price, currency, photos')
+      .in('id', ids)
+      .eq('status', 'active')
+      .then(({ data }) => {
+        const byId = new Map((data ?? []).map((l) => [l.id, l as Listing]))
+        setRecentItems(ids.map((id) => byId.get(id)).filter((l): l is Listing => Boolean(l)))
+      })
+  }, [])
+
+  // Construye la query del feed con los filtros actuales (sin paginar).
+  const buildQuery = useCallback(() => {
     let query = supabase
       .from('listings')
-      .select(
-        // FK explícita: listings tiene dos referencias a profiles (seller_id y
-        // sold_to), así que el embed debe decir cuál usar o PostgREST falla.
-        `*, seller:profiles!listings_seller_id_fkey${onlyVerified ? '!inner' : ''}(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count)`,
-      )
+      // FK explícita: listings tiene dos referencias a profiles (seller_id y
+      // sold_to), así que el embed debe decir cuál usar o PostgREST falla.
+      .select(`${SELECT}${onlyVerified ? '!inner' : ''}(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count)`)
       .eq('status', 'active')
-      .limit(60)
-    // Ranking por defecto: lo recién renovado arriba. El usuario puede
-    // ordenar por precio desde el control de la barra de filtros.
     if (order === 'price_asc') query = query.order('price', { ascending: true })
     else if (order === 'price_desc') query = query.order('price', { ascending: false })
     else query = query.order('last_renewed_at', { ascending: false })
-    // Busca en título y descripción. Sacamos comas/paréntesis del término
-    // porque rompen la sintaxis de .or() de PostgREST.
     const term = search.trim().replace(/[,()]/g, ' ').trim()
     if (term) query = query.or(`title.ilike.%${term}%,description.ilike.%${term}%`)
     if (categoryId) query = query.eq('category_id', categoryId)
     if (onlyVerified) query = query.eq('profiles.identity_verified', true)
-    // Filtros del panel (precio/moneda/condición se resuelven en la DB; la
-    // distancia es client-side porque depende de la ubicación del comprador).
     if (filters.currency !== 'all') query = query.eq('currency', filters.currency)
     if (filters.priceMin && !Number.isNaN(Number(filters.priceMin))) query = query.gte('price', Number(filters.priceMin))
     if (filters.priceMax && !Number.isNaN(Number(filters.priceMax))) query = query.lte('price', Number(filters.priceMax))
     if (filters.conditions.length) query = query.in('condition', filters.conditions)
-    const { data } = await query
-    const fresh = (data as Listing[]) ?? []
-    setListings(fresh)
-    setLoading(false)
-    feedCache = { listings: fresh, search, categoryId, onlyVerified, filters, order, scrollY: feedCache?.scrollY ?? 0 }
+    return query
   }, [search, categoryId, onlyVerified, filters, order])
 
-  // Refetch con debounce ante cambios de filtros (y al montar).
-  useEffect(() => {
-    const timer = setTimeout(loadFeed, 300)
-    return () => clearTimeout(timer)
-  }, [loadFeed])
+  // Primera página (reset): reemplaza la lista.
+  const loadFirst = useCallback(async () => {
+    const { data } = await buildQuery().range(0, PAGE_SIZE - 1)
+    const batch = (data as Listing[]) ?? []
+    pageRef.current = 0
+    setListings(batch)
+    setHasMore(batch.length === PAGE_SIZE)
+    setLoading(false)
+    feedCache = {
+      listings: batch,
+      page: 0,
+      hasMore: batch.length === PAGE_SIZE,
+      search,
+      categoryId,
+      onlyVerified,
+      filters,
+      order,
+      scrollY: feedCache?.scrollY ?? 0,
+    }
+  }, [buildQuery, search, categoryId, onlyVerified, filters, order])
 
-  // El feed se cura solo: al volver a la pestaña/app (foreground) recarga,
-  // así un cambio de estado hecho en otra pantalla siempre se refleja.
+  // Página siguiente (scroll infinito): agrega al final.
+  const loadMore = useCallback(async () => {
+    if (loadingMore || !hasMore || loading) return
+    setLoadingMore(true)
+    const next = pageRef.current + 1
+    const { data } = await buildQuery().range(next * PAGE_SIZE, next * PAGE_SIZE + PAGE_SIZE - 1)
+    const batch = (data as Listing[]) ?? []
+    pageRef.current = next
+    setListings((prev) => {
+      const merged = [...prev, ...batch]
+      if (feedCache) {
+        feedCache.listings = merged
+        feedCache.page = next
+        feedCache.hasMore = batch.length === PAGE_SIZE
+      }
+      return merged
+    })
+    setHasMore(batch.length === PAGE_SIZE)
+    setLoadingMore(false)
+  }, [buildQuery, loadingMore, hasMore, loading])
+
+  // Carga inicial / refetch con debounce ante cambios de filtros. En el primer
+  // render con caché (volvimos de un detalle) no recargamos: preservamos las
+  // páginas ya cargadas y el scroll.
+  useEffect(() => {
+    if (firstLoad.current) {
+      firstLoad.current = false
+      if (feedCache && !pending && listings.length) return
+    }
+    const timer = setTimeout(loadFirst, 300)
+    return () => clearTimeout(timer)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadFirst])
+
+  // Scroll infinito: observer sobre el centinela al final del feed.
+  useEffect(() => {
+    const el = sentinelRef.current
+    if (!el) return
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) loadMore()
+      },
+      { rootMargin: '600px' },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [loadMore])
+
+  // El feed se cura solo: al volver a la pestaña/app (foreground) recarga.
   useEffect(() => {
     function refreshIfVisible() {
-      if (document.visibilityState === 'visible') loadFeed()
+      if (document.visibilityState === 'visible') loadFirst()
     }
     document.addEventListener('visibilitychange', refreshIfVisible)
     window.addEventListener('focus', refreshIfVisible)
@@ -149,7 +241,7 @@ export default function Home() {
       document.removeEventListener('visibilitychange', refreshIfVisible)
       window.removeEventListener('focus', refreshIfVisible)
     }
-  }, [loadFeed])
+  }, [loadFirst])
 
   // Guardar la posición de scroll al salir del feed
   useEffect(() => {
@@ -158,8 +250,7 @@ export default function Home() {
     }
   }, [])
 
-  // Asegura la ubicación del comprador (la pide si hace falta). La usa el
-  // filtro de distancia del panel.
+  // Asegura la ubicación del comprador (la pide si hace falta).
   async function ensureLocation(): Promise<boolean> {
     if (buyerLoc) return true
     const loc = await requestBuyerLocation()
@@ -168,9 +259,20 @@ export default function Home() {
     return true
   }
 
+  // Pill de ubicación: pide geolocalización y geocodifica para mostrar la zona.
+  async function pickLocation() {
+    const loc = await requestBuyerLocation()
+    if (!loc) return
+    setBuyerLoc(loc)
+    const label = await reverseGeocode(loc)
+    if (label) {
+      setBuyerLabel(label)
+      cacheBuyerLabel(label)
+    }
+  }
+
   // Distancia por publicación (para el chip). Si hay radio activo, filtra por
-  // cercanía y ordena por distancia. Todo en el cliente: alcanza para una
-  // sola ciudad (ranking server-side queda como mejora futura).
+  // cercanía y ordena por distancia. Todo en el cliente.
   const withDistance = useMemo(() => {
     let arr = listings.map((listing) => ({
       listing,
@@ -190,13 +292,10 @@ export default function Home() {
   const activeFilters = countActiveFilters(filters)
   const canSaveSearch = Boolean(search.trim()) || activeFilters > 0 || categoryId !== null
 
-  // Si cambia la búsqueda/filtros, vuelve a habilitarse "guardar".
   useEffect(() => {
     setSavedSearch(false)
   }, [search, categoryId, filters])
 
-  // Guarda la búsqueda actual (término + filtros) para recibir alertas de
-  // publicaciones nuevas que matcheen (el matcheo y el aviso son triggers DB).
   async function saveSearch() {
     if (!session) return navigate('/auth', { state: { from: '/', back: '/' } })
     const { error } = await supabase.from('saved_searches').insert({
@@ -256,6 +355,14 @@ export default function Home() {
             </Link>
           </div>
         </div>
+        {/* Pill de ubicación: define la zona de referencia para la cercanía */}
+        <button onClick={pickLocation} className="mt-1 flex items-center gap-1 text-xs font-medium text-neutral-400 transition active:text-white">
+          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          {buyerLabel ?? 'Definí tu zona'}
+        </button>
         {searchOpen && (
           <input
             autoFocus
@@ -336,6 +443,13 @@ export default function Home() {
         </div>
       )}
 
+      {/* Vistos recientemente: solo en la vista por defecto */}
+      {defaultView && recentItems.length > 0 && (
+        <div className="px-4 pb-3 pt-1">
+          <ListingRail title="Vistos recientemente" listings={recentItems} />
+        </div>
+      )}
+
       {showSkeleton ? (
         <div className="columns-2 gap-0.5 px-0">
           {[280, 200, 240, 320, 180, 260].map((h, i) => (
@@ -353,6 +467,13 @@ export default function Home() {
           {withDistance.map(({ listing, distanceKm }) => (
             <ListingCard key={listing.id} listing={listing} distanceKm={distanceKm} />
           ))}
+        </div>
+      )}
+
+      {/* Centinela del scroll infinito + spinner */}
+      {!showSkeleton && hasMore && !filters.radiusKm && (
+        <div ref={sentinelRef} className="flex justify-center py-8">
+          {loadingMore && <span className="h-2 w-2 animate-pulse rounded-full bg-white" />}
         </div>
       )}
 

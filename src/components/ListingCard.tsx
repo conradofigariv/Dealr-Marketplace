@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { MouseEvent } from 'react'
 import type { Listing } from '../lib/types'
 import { photoUrl } from '../lib/supabase'
-import { formatPrice, priceDropPct, isRecentlyPosted } from '../lib/format'
+import { formatPrice, priceDropPct, isRecentlyPosted, timeAgo } from '../lib/format'
 import { formatDistance } from '../lib/geo'
 import { useAuth } from '../hooks/useAuth'
 import { useFavorites } from '../hooks/useFavorites'
@@ -46,14 +46,20 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
       )}
       {/* Barra inferior: precio + título, a lo ancho de la imagen. El título
           se corta con elipsis donde termina la foto. */}
-      <div className="absolute inset-x-0 bottom-0 flex items-center gap-1.5 bg-gradient-to-t from-black/85 via-black/45 to-transparent px-2.5 pb-2 pt-7">
-        <span className="shrink-0 text-xs font-bold text-white">
-          {formatPrice(listing.price, listing.currency)}
-        </span>
-        <span className="truncate text-xs text-white/85">{listing.title}</span>
-        {distanceKm != null && (
-          <span className="ml-auto shrink-0 text-[10px] font-medium text-white/70">{formatDistance(distanceKm)}</span>
-        )}
+      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/45 to-transparent px-2.5 pb-2 pt-7">
+        <div className="flex items-center gap-1.5">
+          <span className="shrink-0 text-xs font-bold text-white">
+            {formatPrice(listing.price, listing.currency)}
+          </span>
+          <span className="truncate text-xs text-white/85">{listing.title}</span>
+          {distanceKm != null && (
+            <span className="ml-auto shrink-0 text-[10px] font-medium text-white/70">{formatDistance(distanceKm)}</span>
+          )}
+        </div>
+        <p className="mt-0.5 truncate text-[10px] text-white/55">
+          {listing.location_label ? `${listing.location_label} · ` : ''}
+          {timeAgo(listing.created_at)}
+        </p>
       </div>
       <button
         onClick={onSave}

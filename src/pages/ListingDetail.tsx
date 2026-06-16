@@ -13,7 +13,7 @@ import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
 import LocationMap from '../components/LocationMap'
 import ListingRail from '../components/ListingRail'
-import { getCachedBuyerLocation, haversineKm, formatDistance } from '../lib/geo'
+import { getCachedBuyerLocation, haversineKm, formatDistance, pushRecentlyViewed } from '../lib/geo'
 import { invalidateFeedCache } from './Home'
 
 export default function ListingDetail() {
@@ -71,6 +71,7 @@ export default function ListingDetail() {
 
   useEffect(() => {
     load()
+    if (id) pushRecentlyViewed(id)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id])
 
