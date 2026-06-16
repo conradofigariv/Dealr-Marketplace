@@ -48,10 +48,12 @@ begin
   where s.user_id <> new.seller_id
     and (s.category_id is null or s.category_id = new.category_id)
     and (s.query is null or new.title ilike '%' || s.query || '%' or new.description ilike '%' || s.query || '%')
-    and (s.currency is null or new.currency = s.currency)
+    -- currency y condition son enums: hay que castear a text para comparar
+    -- contra las columnas de texto de saved_searches.
+    and (s.currency is null or new.currency::text = s.currency)
     and (s.min_price is null or new.price >= s.min_price)
     and (s.max_price is null or new.price <= s.max_price)
-    and (s.conditions is null or array_length(s.conditions, 1) is null or new.condition = any (s.conditions));
+    and (s.conditions is null or array_length(s.conditions, 1) is null or new.condition::text = any (s.conditions));
   return null;
 end;
 $$;

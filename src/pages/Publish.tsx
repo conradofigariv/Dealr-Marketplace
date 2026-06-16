@@ -206,7 +206,7 @@ export default function Publish() {
       setError(
         /network|fetch/i.test(message)
           ? 'Problema de conexión. Revisá tu internet y probá de nuevo — las fotos no se pierden.'
-          : /column|schema cache|does not exist|could not find/i.test(message)
+          : /could not find|schema cache|column .* does not exist/i.test(message)
             ? `Falta aplicar una migración en Supabase (una columna no existe): ${full}`
             : `No pudimos publicar: ${full}`,
       )
