@@ -1,5 +1,5 @@
 import { lazy, Suspense, Component, useEffect, type ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Outlet, useLocation, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, useLocation, useNavigationType, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { FavoritesProvider } from './hooks/useFavorites'
 import { NotificationsProvider } from './hooks/useNotifications'
@@ -77,6 +77,7 @@ function PageviewTracker() {
 
 function Shell() {
   const location = useLocation()
+  const navType = useNavigationType()
   const { profile, session } = useAuth()
 
   // Primera apertura de la app: la bienvenida/login es lo primero que se ve,
@@ -94,10 +95,12 @@ function Shell() {
   }
   // El hilo de chat y el detalle manejan sus propias acciones a pantalla completa
   const hideNav = /^\/(chats|p)\/.+/.test(location.pathname)
+  // Volver (POP) entra desde la izquierda; avanzar, desde la derecha (iOS).
+  const pageAnim = navType === 'POP' ? 'page-pop' : 'page-push'
   return (
-    <div className="mx-auto min-h-dvh max-w-lg bg-black">
+    <div className="mx-auto min-h-dvh max-w-lg overflow-x-hidden bg-black">
       <Suspense fallback={<div className="min-h-dvh bg-black" />}>
-        <div key={location.pathname} className="page-enter">
+        <div key={location.pathname} className={pageAnim}>
           <Outlet />
         </div>
       </Suspense>

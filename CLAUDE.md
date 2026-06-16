@@ -62,9 +62,9 @@ supabase/migrations/, supabase/functions/didit-webhook/ (verificación de identi
 
 ## Animaciones
 
-- **Transición de pantalla:** `Shell` (App.tsx) envuelve el `<Outlet/>` en un div con `key={pathname}` + clase `.page-enter` (fade + subida). El key fuerza remontar la página al navegar (replica la animación y, de paso, dispara el consumo de `openFeed`). Las clases viven en `index.css`.
+- **Transición de pantalla (estilo iOS):** `Shell` (App.tsx) envuelve el `<Outlet/>` en un div con `key={pathname}` + clase según `useNavigationType()`: `.page-push` (avanzar → entra desde la derecha) o `.page-pop` (volver → desde la izquierda con parallax). El key fuerza remontar la página al navegar (replica la animación y, de paso, dispara el consumo de `openFeed`). El contenedor del Shell tiene `overflow-x-hidden` para recortar el slide. Clases en `index.css`.
 - **Modal:** entra con `.overlay-in` (backdrop) + `.sheet-in` (hoja sube).
-- **`InfoFlipCard`:** tarjeta con flip 3D (perspective + rotateX, misma curva del pedido). En mobile abre por **tap** (no hover) y hace auto-flip de entrada. En `ListingDetail`, tocar el **precio** o la **descripción** abre un Modal con esta tarjeta. Todo respeta `prefers-reduced-motion`.
+- Todo respeta `prefers-reduced-motion`.
 
 ## Convenciones y gotchas (lo que ya costó debuggear)
 

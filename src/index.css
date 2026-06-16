@@ -78,19 +78,32 @@ textarea {
 
 /* ---------- Animaciones ---------- */
 
-/* Transición de pantalla: cada ruta entra con un fade + leve subida. */
-@keyframes pageEnter {
+/* Transición de pantalla estilo iOS: al navegar hacia adelante la pantalla
+   nueva entra deslizándose desde la derecha; al volver (POP) la anterior
+   entra desde la izquierda con un leve parallax. La curva es la de iOS. */
+@keyframes pagePush {
   from {
-    opacity: 0;
-    transform: translateY(10px);
+    transform: translateX(100%);
   }
   to {
-    opacity: 1;
-    transform: translateY(0);
+    transform: translateX(0);
   }
 }
-.page-enter {
-  animation: pageEnter 0.24s cubic-bezier(0.22, 0.61, 0.36, 1);
+@keyframes pagePop {
+  from {
+    transform: translateX(-28%);
+    opacity: 0.5;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.page-push {
+  animation: pagePush 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.page-pop {
+  animation: pagePop 0.34s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* Entrada del Modal: backdrop que aparece + hoja que sube. */
@@ -119,48 +132,12 @@ textarea {
   animation: sheetIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
 }
 
-/* Tarjeta flip (mismo efecto del pedido: perspective + rotateX). En mobile
-   se abre por tap (clase .is-open), no por hover. */
-.flip-card {
-  perspective: 1000px;
-}
-.flip-card__icon,
-.flip-card__content {
-  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275),
-    opacity 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-}
-/* El contenido va en flujo normal (define la altura, no recorta textos
-   largos); el ícono se superpone mientras está cerrada. */
-.flip-card__icon {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.flip-card__content {
-  transform: rotateX(-90deg);
-  transform-origin: bottom;
-  opacity: 0;
-}
-.flip-card.is-open .flip-card__content {
-  transform: rotateX(0deg);
-  opacity: 1;
-}
-.flip-card.is-open .flip-card__icon {
-  transform: scale(0);
-  opacity: 0;
-}
-
 @media (prefers-reduced-motion: reduce) {
-  .page-enter,
+  .page-push,
+  .page-pop,
   .overlay-in,
   .sheet-in {
     animation: none;
-  }
-  .flip-card__icon,
-  .flip-card__content {
-    transition: none;
   }
 }
 
