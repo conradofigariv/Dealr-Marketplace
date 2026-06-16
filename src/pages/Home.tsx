@@ -1,9 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useNotifications } from '../hooks/useNotifications'
 import type { Category, Listing } from '../lib/types'
 import ListingCard from '../components/ListingCard'
+import { getCachedBuyerLocation, requestBuyerLocation, haversineKm, type LatLng } from '../lib/geo'
 
 type FeedOrder = 'recent' | 'price_asc' | 'price_desc'
 
@@ -14,6 +15,7 @@ let feedCache: {
   search: string
   categoryId: number | null
   onlyVerified: boolean
+  near: boolean
   order: FeedOrder
   scrollY: number
 } | null = null
@@ -45,6 +47,8 @@ export default function Home() {
   const [searchOpen, setSearchOpen] = useState(Boolean(feedCache?.search))
   const [categoryId, setCategoryId] = useState<number | null>(feedCache?.categoryId ?? null)
   const [onlyVerified, setOnlyVerified] = useState(feedCache?.onlyVerified ?? false)
+  const [near, setNear] = useState(feedCache?.near ?? false)
+  const [buyerLoc, setBuyerLoc] = useState<LatLng | null>(getCachedBuyerLocation())
   const [order, setOrder] = useState<FeedOrder>(feedCache?.order ?? 'recent')
   const [loading, setLoading] = useState(!feedCache)
   const restoredScroll = useRef(false)
@@ -92,8 +96,8 @@ export default function Home() {
     const fresh = (data as Listing[]) ?? []
     setListings(fresh)
     setLoading(false)
-    feedCache = { listings: fresh, search, categoryId, onlyVerified, order, scrollY: feedCache?.scrollY ?? 0 }
-  }, [search, categoryId, onlyVerified, order])
+    feedCache = { listings: fresh, search, categoryId, onlyVerified, near, order, scrollY: feedCache?.scrollY ?? 0 }
+  }, [search, categoryId, onlyVerified, near, order])
 
   // Refetch con debounce ante cambios de filtros (y al montar).
   useEffect(() => {
@@ -121,6 +125,33 @@ export default function Home() {
       if (feedCache) feedCache.scrollY = window.scrollY
     }
   }, [])
+
+  // Activar "Cerca": pide la ubicación al navegador la primera vez. Si la
+  // deniega, no activamos el filtro (no hay con qué ordenar).
+  async function toggleNear() {
+    if (near) return setNear(false)
+    let loc = buyerLoc
+    if (!loc) loc = await requestBuyerLocation()
+    if (!loc) return
+    setBuyerLoc(loc)
+    setNear(true)
+  }
+
+  // Distancia por publicación (para el chip) y, si "Cerca" está activo,
+  // orden por cercanía. Todo en el cliente: alcanza para una sola ciudad.
+  const withDistance = useMemo(() => {
+    const arr = listings.map((listing) => ({
+      listing,
+      distanceKm:
+        buyerLoc && listing.lat != null && listing.lng != null
+          ? haversineKm(buyerLoc, { lat: listing.lat, lng: listing.lng })
+          : undefined,
+    }))
+    if (near && buyerLoc) {
+      arr.sort((a, b) => (a.distanceKm ?? Infinity) - (b.distanceKm ?? Infinity))
+    }
+    return arr
+  }, [listings, buyerLoc, near])
 
   const showSkeleton = loading && listings.length === 0
 
@@ -206,6 +237,16 @@ export default function Home() {
           ✓ Verificados
         </button>
         <button
+          onClick={toggleNear}
+          className={`flex shrink-0 items-center gap-1 text-sm font-medium transition ${near ? 'text-white' : 'text-neutral-500'}`}
+        >
+          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
+            <circle cx="12" cy="10" r="3" />
+          </svg>
+          Cerca
+        </button>
+        <button
           onClick={() => setOrder(orderCycle[order])}
           className={`flex shrink-0 items-center gap-1 text-sm font-medium transition ${order !== 'recent' ? 'text-white' : 'text-neutral-500'}`}
         >
@@ -230,8 +271,8 @@ export default function Home() {
       ) : (
         /* Masonry edge-to-edge con separación mínima, estilo Savee */
         <div className="columns-2 gap-0.5">
-          {listings.map((listing) => (
-            <ListingCard key={listing.id} listing={listing} />
+          {withDistance.map(({ listing, distanceKm }) => (
+            <ListingCard key={listing.id} listing={listing} distanceKm={distanceKm} />
           ))}
         </div>
       )}

@@ -11,6 +11,8 @@ import StarRating from '../components/StarRating'
 import SellerBadges from '../components/SellerBadges'
 import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
+import LocationMap from '../components/LocationMap'
+import { getCachedBuyerLocation, haversineKm, formatDistance } from '../lib/geo'
 import { invalidateFeedCache } from './Home'
 
 export default function ListingDetail() {
@@ -202,6 +204,11 @@ export default function ListingDetail() {
     )
 
   const seller = listing.seller!
+  const buyerLoc = getCachedBuyerLocation()
+  const distanceKm =
+    listing.lat != null && listing.lng != null && buyerLoc
+      ? haversineKm(buyerLoc, { lat: listing.lat, lng: listing.lng })
+      : null
   const structuredEntries = fieldDefs
     .map((def) => ({ def, value: listing.structured_fields[def.key] }))
     .filter(({ value }) => value !== undefined && value !== null && value !== '')
@@ -284,6 +291,26 @@ export default function ListingDetail() {
                 </div>
               ))}
             </dl>
+          </div>
+        )}
+
+        {/* Ubicación: área aproximada, nunca el punto exacto */}
+        {listing.lat != null && listing.lng != null && (
+          <div>
+            <div className="mb-3 flex items-baseline justify-between gap-2">
+              <h2 className="text-sm font-semibold text-white">Ubicación</h2>
+              {distanceKm != null && (
+                <span className="text-xs font-medium text-neutral-400">{formatDistance(distanceKm)} de vos</span>
+              )}
+            </div>
+            <LocationMap point={{ lat: listing.lat, lng: listing.lng }} seed={listing.id} />
+            <p className="mt-2 flex items-center gap-1.5 text-xs text-neutral-500">
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              {listing.location_label ? `Aproximadamente en ${listing.location_label}` : 'Área aproximada'}
+            </p>
           </div>
         )}
 

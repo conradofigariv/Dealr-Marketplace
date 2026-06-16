@@ -3,11 +3,12 @@ import type { MouseEvent } from 'react'
 import type { Listing } from '../lib/types'
 import { photoUrl } from '../lib/supabase'
 import { formatPrice } from '../lib/format'
+import { formatDistance } from '../lib/geo'
 import { useAuth } from '../hooks/useAuth'
 import { useFavorites } from '../hooks/useFavorites'
 
 // Card estilo Savee: la foto es todo. Solo un precio discreto encima.
-export default function ListingCard({ listing }: { listing: Listing }) {
+export default function ListingCard({ listing, distanceKm }: { listing: Listing; distanceKm?: number }) {
   const photo = listing.photos[0]
   const navigate = useNavigate()
   const { session } = useAuth()
@@ -48,6 +49,9 @@ export default function ListingCard({ listing }: { listing: Listing }) {
           {formatPrice(listing.price, listing.currency)}
         </span>
         <span className="truncate text-xs text-white/85">{listing.title}</span>
+        {distanceKm != null && (
+          <span className="ml-auto shrink-0 text-[10px] font-medium text-white/70">{formatDistance(distanceKm)}</span>
+        )}
       </div>
       <button
         onClick={onSave}

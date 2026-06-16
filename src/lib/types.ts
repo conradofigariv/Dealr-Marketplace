@@ -14,6 +14,8 @@ export interface Profile {
   buyer_score: number | null
   seller_ratings_count: number
   buyer_ratings_count: number
+  lat: number | null
+  lng: number | null
   created_at: string
 }
 
@@ -47,6 +49,9 @@ export interface Listing {
   verified: boolean
   photos: string[]
   sold_to: string | null
+  lat: number | null
+  lng: number | null
+  location_label: string | null
   created_at: string
   last_renewed_at: string
   seller?: Profile

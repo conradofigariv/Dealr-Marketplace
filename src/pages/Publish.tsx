@@ -6,6 +6,8 @@ import { compressPhoto } from '../lib/images'
 import { capture } from '../lib/analytics'
 import { conditionLabels, formatPrice } from '../lib/format'
 import type { Category, FieldDef, ListingCondition, Currency } from '../lib/types'
+import type { LatLng } from '../lib/geo'
+import LocationPicker from '../components/LocationPicker'
 
 const MAX_PHOTOS = 6
 
@@ -18,7 +20,7 @@ interface PendingPhoto {
 export default function Publish() {
   const { id } = useParams<{ id?: string }>() // presente => editar
   const navigate = useNavigate()
-  const { session, loading } = useAuth()
+  const { session, profile, loading } = useAuth()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [title, setTitle] = useState('')
@@ -30,6 +32,8 @@ export default function Publish() {
   const [fields, setFields] = useState<Record<string, unknown>>({})
   const [photos, setPhotos] = useState<PendingPhoto[]>([])
   const [addingPhotos, setAddingPhotos] = useState(false)
+  const [location, setLocation] = useState<LatLng | null>(null)
+  const [locationLabel, setLocationLabel] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [publishedId, setPublishedId] = useState<string | null>(null)
@@ -65,8 +69,22 @@ export default function Publish() {
         setCondition(data.condition)
         setFields(data.structured_fields ?? {})
         setPhotos(data.photos.map((p: string) => ({ path: p, preview: photoUrl(p) })))
+        if (data.lat != null && data.lng != null) {
+          setLocation({ lat: data.lat, lng: data.lng })
+          setLocationLabel(data.location_label ?? '')
+        }
       })
   }, [id])
+
+  // Publicación nueva: precargar la ubicación por defecto del perfil (la que
+  // quedó guardada la última vez), para que publicar sea de un toque.
+  useEffect(() => {
+    if (id || location || !profile) return
+    if (profile.lat != null && profile.lng != null) {
+      setLocation({ lat: profile.lat, lng: profile.lng })
+      setLocationLabel(profile.zone ?? '')
+    }
+  }, [id, profile, location])
 
   async function addPhotos(files: FileList | null) {
     if (!files || files.length === 0) return
@@ -150,6 +168,18 @@ export default function Publish() {
         condition,
         structured_fields: fields,
         photos: paths,
+        lat: location?.lat ?? null,
+        lng: location?.lng ?? null,
+        location_label: locationLabel.trim() || null,
+      }
+
+      // Guardar la ubicación elegida como default del perfil si todavía no
+      // tiene una, así la próxima publicación arranca precargada.
+      if (location && profile && profile.lat == null) {
+        await supabase
+          .from('profiles')
+          .update({ lat: location.lat, lng: location.lng, zone: profile.zone ?? (locationLabel.trim() || null) })
+          .eq('id', session.user.id)
       }
 
       if (id) {
@@ -229,6 +259,8 @@ export default function Publish() {
               setCondition('buen_estado')
               setFields({})
               setPhotos([])
+              setLocation(null)
+              setLocationLabel('')
               setError('')
             }}
             className="w-full py-2 text-center text-sm text-neutral-500"
@@ -361,6 +393,27 @@ export default function Publish() {
               </button>
             ))}
           </div>
+        </div>
+
+        {/* Ubicación: se muestra como área aproximada en la publicación */}
+        <div>
+          <label className={labelClass}>Ubicación</label>
+          <LocationPicker
+            value={location}
+            onChange={(loc, label) => {
+              setLocation(loc)
+              if (label !== undefined) setLocationLabel(label)
+            }}
+          />
+          <p className="mt-2 text-xs text-neutral-600">
+            {locationLabel ? (
+              <>
+                <span className="text-neutral-400">{locationLabel}</span> · solo se muestra el área aproximada, nunca el punto exacto.
+              </>
+            ) : (
+              'Solo se muestra el área aproximada, nunca el punto exacto.'
+            )}
+          </p>
         </div>
 
         {/* Campos estructurados obligatorios por categoría */}
