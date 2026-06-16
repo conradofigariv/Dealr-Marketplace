@@ -10,9 +10,9 @@ export default function Modal({
   children: ReactNode
 }) {
   return (
-    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center" onClick={onClose}>
+    <div className="overlay-in fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center" onClick={onClose}>
       <div
-        className="w-full max-w-lg rounded-t-3xl bg-[#141414] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] ring-1 ring-neutral-800 sm:rounded-3xl"
+        className="sheet-in w-full max-w-lg rounded-t-3xl bg-[#141414] p-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] ring-1 ring-neutral-800 sm:rounded-3xl"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mb-5 flex items-center justify-between">

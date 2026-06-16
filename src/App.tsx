@@ -97,7 +97,9 @@ function Shell() {
   return (
     <div className="mx-auto min-h-dvh max-w-lg bg-black">
       <Suspense fallback={<div className="min-h-dvh bg-black" />}>
-        <Outlet />
+        <div key={location.pathname} className="page-enter">
+          <Outlet />
+        </div>
       </Suspense>
       {!hideNav && <BottomNav />}
     </div>

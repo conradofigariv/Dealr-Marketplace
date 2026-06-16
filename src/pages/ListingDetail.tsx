@@ -13,6 +13,7 @@ import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
 import LocationMap from '../components/LocationMap'
 import ListingRail from '../components/ListingRail'
+import InfoFlipCard from '../components/InfoFlipCard'
 import { getCachedBuyerLocation, haversineKm, formatDistance } from '../lib/geo'
 import { invalidateFeedCache } from './Home'
 
@@ -39,6 +40,7 @@ export default function ListingDetail() {
   const [statusError, setStatusError] = useState('')
   const [sellerItems, setSellerItems] = useState<Listing[]>([])
   const [similar, setSimilar] = useState<Listing[]>([])
+  const [infoCard, setInfoCard] = useState<'price' | 'description' | null>(null)
 
   const isOwner = session?.user.id === listing?.seller_id
 
@@ -298,7 +300,12 @@ export default function ListingDetail() {
       <div className="space-y-6 px-5 py-6">
         <div>
           <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="text-3xl font-bold text-white">{formatPrice(listing.price, listing.currency)}</p>
+            <button
+              onClick={() => setInfoCard('price')}
+              className="text-3xl font-bold text-white underline-offset-4 transition active:opacity-70"
+            >
+              {formatPrice(listing.price, listing.currency)}
+            </button>
             {dropPct != null && (
               <>
                 <span className="text-base text-neutral-500 line-through">
@@ -317,7 +324,12 @@ export default function ListingDetail() {
         </div>
 
         {listing.description && (
-          <p className="whitespace-pre-wrap text-[15px] leading-relaxed text-neutral-300">{listing.description}</p>
+          <button
+            onClick={() => setInfoCard('description')}
+            className="block w-full whitespace-pre-wrap text-left text-[15px] leading-relaxed text-neutral-300 transition active:opacity-70"
+          >
+            {listing.description}
+          </button>
         )}
 
         {structuredEntries.length > 0 && (
@@ -532,6 +544,46 @@ export default function ListingDetail() {
               </button>
             </form>
           )}
+        </Modal>
+      )}
+
+      {infoCard === 'price' && (
+        <Modal title="Precio" onClose={() => setInfoCard(null)}>
+          <InfoFlipCard
+            title={formatPrice(listing.price, listing.currency)}
+            icon={
+              <svg viewBox="0 0 24 24" className="h-12 w-12 fill-current">
+                <path d="M12 1l3.5 3.5L20 5l.5 4.5L24 12l-3.5 3.5L20 20l-4.5.5L12 24l-3.5-3.5L4 20l-.5-4.5L0 12l3.5-3.5L4 5l4.5-.5z" opacity="0" />
+                <path d="M12 2a10 10 0 1 0 0 20 10 10 0 0 0 0-20Zm.9 15.4v1.1h-1.6v-1c-1.5-.2-2.7-1-2.8-2.6h1.7c.1.8.7 1.2 1.8 1.2 1 0 1.6-.4 1.6-1.1 0-.6-.4-.9-1.7-1.2-1.9-.4-3.1-1-3.1-2.6 0-1.3 1-2.1 2.5-2.3V7.5h1.6v1c1.4.2 2.4 1 2.5 2.4h-1.7c-.1-.7-.6-1.1-1.5-1.1-.9 0-1.5.4-1.5 1 0 .6.5.8 1.8 1.1 2 .4 3 1.1 3 2.7 0 1.3-1 2.2-2.6 2.4Z" />
+              </svg>
+            }
+            description={
+              <>
+                {conditionLabels[listing.condition]} · publicado {timeAgo(listing.created_at)}
+                {dropPct != null && (
+                  <>
+                    <br />
+                    Bajó {dropPct}% — antes {formatPrice(listing.previous_price!, listing.currency)}
+                  </>
+                )}
+                {listing.favorites_count > 0 && (
+                  <>
+                    <br />
+                    {listing.favorites_count}{' '}
+                    {listing.favorites_count === 1 ? 'persona lo guardó' : 'personas lo guardaron'}
+                  </>
+                )}
+                <br />
+                El pago se coordina por fuera de Dealr (WhatsApp o en persona).
+              </>
+            }
+          />
+        </Modal>
+      )}
+
+      {infoCard === 'description' && (
+        <Modal title="Descripción" onClose={() => setInfoCard(null)}>
+          <InfoFlipCard title={listing.title} description={listing.description} />
         </Modal>
       )}
 

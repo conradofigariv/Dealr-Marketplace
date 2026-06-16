@@ -75,3 +75,92 @@ textarea {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
+/* ---------- Animaciones ---------- */
+
+/* Transición de pantalla: cada ruta entra con un fade + leve subida. */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.page-enter {
+  animation: pageEnter 0.24s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Entrada del Modal: backdrop que aparece + hoja que sube. */
+@keyframes overlayIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes sheetIn {
+  from {
+    opacity: 0;
+    transform: translateY(28px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.overlay-in {
+  animation: overlayIn 0.2s ease-out;
+}
+.sheet-in {
+  animation: sheetIn 0.3s cubic-bezier(0.22, 0.61, 0.36, 1);
+}
+
+/* Tarjeta flip (mismo efecto del pedido: perspective + rotateX). En mobile
+   se abre por tap (clase .is-open), no por hover. */
+.flip-card {
+  perspective: 1000px;
+}
+.flip-card__icon,
+.flip-card__content {
+  transition: transform 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    opacity 0.6s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+/* El contenido va en flujo normal (define la altura, no recorta textos
+   largos); el ícono se superpone mientras está cerrada. */
+.flip-card__icon {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.flip-card__content {
+  transform: rotateX(-90deg);
+  transform-origin: bottom;
+  opacity: 0;
+}
+.flip-card.is-open .flip-card__content {
+  transform: rotateX(0deg);
+  opacity: 1;
+}
+.flip-card.is-open .flip-card__icon {
+  transform: scale(0);
+  opacity: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .page-enter,
+  .overlay-in,
+  .sheet-in {
+    animation: none;
+  }
+  .flip-card__icon,
+  .flip-card__content {
+    transition: none;
+  }
+}
+
