@@ -119,6 +119,7 @@ export type NotificationType =
   | 'question_answered'
   | 'sale_confirmed'
   | 'price_drop'
+  | 'saved_search'
 
 export interface AppNotification {
   id: string
@@ -128,6 +129,18 @@ export interface AppNotification {
   body: string | null
   link: string | null
   read_at: string | null
+  created_at: string
+}
+
+export interface SavedSearch {
+  id: string
+  user_id: string
+  query: string | null
+  category_id: number | null
+  min_price: number | null
+  max_price: number | null
+  currency: Currency | null
+  conditions: ListingCondition[] | null
   created_at: string
 }
 

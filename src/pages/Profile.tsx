@@ -368,6 +368,21 @@ export default function Profile() {
             </svg>
           </Link>
           <Link
+            to="/busquedas"
+            className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
+          >
+            <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+              <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m20 20-3.5-3.5" />
+              </svg>
+              Búsquedas guardadas
+            </span>
+            <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </Link>
+          <Link
             to="/opiniones"
             className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
           >

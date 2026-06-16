@@ -21,6 +21,12 @@ const icons: Record<NotificationType, ReactElement> = {
       <polyline points="17 18 23 18 23 12" />
     </>
   ),
+  saved_search: (
+    <>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.5-3.5" />
+    </>
+  ),
   question_answered: (
     <>
       <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />

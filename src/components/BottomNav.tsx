@@ -10,6 +10,18 @@ const tabs = [
     ),
   },
   {
+    to: '/explorar',
+    label: 'Explorar',
+    icon: (
+      <>
+        <rect x="3" y="3" width="7" height="7" rx="1.5" />
+        <rect x="14" y="3" width="7" height="7" rx="1.5" />
+        <rect x="3" y="14" width="7" height="7" rx="1.5" />
+        <rect x="14" y="14" width="7" height="7" rx="1.5" />
+      </>
+    ),
+  },
+  {
     to: '/publicar',
     label: 'Vender',
     icon: <path d="M12 5v14M5 12h14" strokeWidth="2.2" />,
@@ -43,6 +55,7 @@ export default function BottomNav() {
           <NavLink
             key={tab.to}
             to={tab.to}
+            end={tab.to === '/'}
             aria-label={tab.label}
             className={({ isActive }) =>
               `relative rounded-full p-2.5 transition ${isActive ? 'text-white' : 'text-neutral-500'}`

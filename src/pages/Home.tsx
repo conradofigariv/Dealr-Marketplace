@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
 import type { Category, Listing } from '../lib/types'
 import ListingCard from '../components/ListingCard'
@@ -29,6 +30,19 @@ export function invalidateFeedCache() {
   feedCache = null
 }
 
+// Abrir el feed con un estado prearmado (desde Explorar o Búsquedas guardadas).
+// Home lo consume al montar, pisando la caché.
+export interface FeedQuery {
+  search?: string
+  categoryId?: number | null
+  filters?: FeedFilterValues
+}
+let pendingFeedState: FeedQuery | null = null
+export function openFeed(state: FeedQuery) {
+  pendingFeedState = state
+  feedCache = null
+}
+
 const orderLabels: Record<FeedOrder, string> = {
   recent: 'Recientes',
   price_asc: 'Menor precio',
@@ -42,17 +56,24 @@ const orderCycle: Record<FeedOrder, FeedOrder> = {
 
 export default function Home() {
   const { unreadCount } = useNotifications()
-  const [listings, setListings] = useState<Listing[]>(feedCache?.listings ?? [])
+  const { session } = useAuth()
+  const navigate = useNavigate()
+  // Estado prearmado (Explorar / Búsquedas guardadas): tiene prioridad sobre
+  // la caché y se consume una sola vez.
+  const pending = pendingFeedState
+  pendingFeedState = null
+  const [listings, setListings] = useState<Listing[]>(pending ? [] : feedCache?.listings ?? [])
   const [categories, setCategories] = useState<Category[]>(categoriesCache)
-  const [search, setSearch] = useState(feedCache?.search ?? '')
-  const [searchOpen, setSearchOpen] = useState(Boolean(feedCache?.search))
-  const [categoryId, setCategoryId] = useState<number | null>(feedCache?.categoryId ?? null)
+  const [search, setSearch] = useState(pending?.search ?? feedCache?.search ?? '')
+  const [searchOpen, setSearchOpen] = useState(Boolean(pending?.search ?? feedCache?.search))
+  const [categoryId, setCategoryId] = useState<number | null>(pending?.categoryId ?? feedCache?.categoryId ?? null)
   const [onlyVerified, setOnlyVerified] = useState(feedCache?.onlyVerified ?? false)
-  const [filters, setFilters] = useState<FeedFilterValues>(feedCache?.filters ?? EMPTY_FILTERS)
+  const [filters, setFilters] = useState<FeedFilterValues>(pending?.filters ?? feedCache?.filters ?? EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
+  const [savedSearch, setSavedSearch] = useState(false)
   const [buyerLoc, setBuyerLoc] = useState<LatLng | null>(getCachedBuyerLocation())
   const [order, setOrder] = useState<FeedOrder>(feedCache?.order ?? 'recent')
-  const [loading, setLoading] = useState(!feedCache)
+  const [loading, setLoading] = useState(pending ? true : !feedCache)
   const restoredScroll = useRef(false)
 
   // Restaurar scroll una sola vez, antes del primer paint
@@ -167,6 +188,29 @@ export default function Home() {
   }, [listings, buyerLoc, filters.radiusKm])
 
   const activeFilters = countActiveFilters(filters)
+  const canSaveSearch = Boolean(search.trim()) || activeFilters > 0 || categoryId !== null
+
+  // Si cambia la búsqueda/filtros, vuelve a habilitarse "guardar".
+  useEffect(() => {
+    setSavedSearch(false)
+  }, [search, categoryId, filters])
+
+  // Guarda la búsqueda actual (término + filtros) para recibir alertas de
+  // publicaciones nuevas que matcheen (el matcheo y el aviso son triggers DB).
+  async function saveSearch() {
+    if (!session) return navigate('/auth', { state: { from: '/', back: '/' } })
+    const { error } = await supabase.from('saved_searches').insert({
+      user_id: session.user.id,
+      query: search.trim() || null,
+      category_id: categoryId,
+      min_price: filters.priceMin ? Number(filters.priceMin) : null,
+      max_price: filters.priceMax ? Number(filters.priceMax) : null,
+      currency: filters.currency === 'all' ? null : filters.currency,
+      conditions: filters.conditions.length ? filters.conditions : null,
+    })
+    if (!error) setSavedSearch(true)
+  }
+
   const showSkeleton = loading && listings.length === 0
 
   return (
@@ -274,6 +318,23 @@ export default function Home() {
           {orderLabels[order]}
         </button>
       </div>
+
+      {canSaveSearch && (
+        <div className="px-4 pb-2">
+          <button
+            onClick={saveSearch}
+            disabled={savedSearch}
+            className={`flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-xs font-semibold transition ${
+              savedSearch ? 'bg-neutral-900 text-neutral-400' : 'bg-neutral-900 text-white ring-1 ring-neutral-800 active:bg-neutral-800'
+            }`}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              {savedSearch ? <path d="M20 6 9 17l-5-5" /> : <><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>}
+            </svg>
+            {savedSearch ? 'Búsqueda guardada · te avisamos' : 'Guardar búsqueda con alerta'}
+          </button>
+        </div>
+      )}
 
       {showSkeleton ? (
         <div className="columns-2 gap-0.5 px-0">
