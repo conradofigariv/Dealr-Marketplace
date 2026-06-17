@@ -8,6 +8,7 @@ import { conditionLabels, formatPrice } from '../lib/format'
 import type { Category, FieldDef, ListingCondition, Currency } from '../lib/types'
 import type { LatLng } from '../lib/geo'
 import LocationPicker from '../components/LocationPicker'
+import { invalidateFeedCache } from './Home'
 
 const MAX_PHOTOS = 6
 
@@ -185,6 +186,7 @@ export default function Publish() {
       if (id) {
         const { error: err } = await supabase.from('listings').update(payload).eq('id', id)
         if (err) throw err
+        invalidateFeedCache()
         navigate(`/p/${id}`)
       } else {
         const { data, error: err } = await supabase
@@ -193,6 +195,7 @@ export default function Publish() {
           .select('id')
           .single()
         if (err) throw err
+        invalidateFeedCache()
         capture('listing_published', { category_id: categoryId, currency })
         window.scrollTo(0, 0)
         setPublishedId(data.id)

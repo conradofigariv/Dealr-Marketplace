@@ -11,6 +11,15 @@ interface ConvMeta {
   unread: number
 }
 
+interface PreviewRow {
+  conversation_id: string
+  last_body: string | null
+  last_image: boolean
+  last_sender: string | null
+  last_at: string | null
+  unread: number
+}
+
 export default function Chats() {
   const { session, loading } = useAuth()
   const navigate = useNavigate()
@@ -25,7 +34,6 @@ export default function Chats() {
 
   useEffect(() => {
     if (!session) return
-    const myId = session.user.id
     supabase
       .from('conversations')
       .select('*, listing:listings(title, photos, status), buyer:profiles!conversations_buyer_id_fkey(username), seller:profiles!conversations_seller_id_fkey(username)')
@@ -35,19 +43,17 @@ export default function Chats() {
         setConversations(convs)
         setFetched(true)
         if (convs.length === 0) return
-        // Último mensaje + no leídos por conversación, en una sola consulta.
-        const { data: msgs } = await supabase
-          .from('messages')
-          .select('conversation_id, body, sender_id, read_at, created_at')
-          .in('conversation_id', convs.map((c) => c.id))
-          .order('created_at', { ascending: false })
-          .limit(1000)
+        // Último mensaje + no leídos por conversación en un solo RPC (en vez de
+        // traer todos los mensajes y agruparlos en el cliente).
+        const { data: previews } = await supabase.rpc('conversation_previews')
         const next: Record<string, ConvMeta> = {}
-        for (const m of msgs ?? []) {
-          const cid = m.conversation_id as string
-          // body puede ser null (mensaje de solo foto): mostramos "Foto".
-          if (!next[cid]) next[cid] = { body: (m.body as string | null) ?? '📷 Foto', senderId: m.sender_id as string, unread: 0 }
-          if (m.sender_id !== myId && !m.read_at) next[cid].unread += 1
+        for (const p of (previews ?? []) as PreviewRow[]) {
+          if (!p.last_sender) continue // conversación sin mensajes todavía
+          next[p.conversation_id] = {
+            body: p.last_body ?? (p.last_image ? '📷 Foto' : ''),
+            senderId: p.last_sender,
+            unread: p.unread,
+          }
         }
         setMeta(next)
       })
