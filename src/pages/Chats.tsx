@@ -45,7 +45,8 @@ export default function Chats() {
         const next: Record<string, ConvMeta> = {}
         for (const m of msgs ?? []) {
           const cid = m.conversation_id as string
-          if (!next[cid]) next[cid] = { body: m.body as string, senderId: m.sender_id as string, unread: 0 }
+          // body puede ser null (mensaje de solo foto): mostramos "Foto".
+          if (!next[cid]) next[cid] = { body: (m.body as string | null) ?? '📷 Foto', senderId: m.sender_id as string, unread: 0 }
           if (m.sender_id !== myId && !m.read_at) next[cid].unread += 1
         }
         setMeta(next)
