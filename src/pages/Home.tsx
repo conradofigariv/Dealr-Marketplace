@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -310,10 +310,47 @@ export default function Home() {
     if (!error) setSavedSearch(true)
   }
 
+  // Pull-to-refresh: si arrancás el gesto con el feed arriba de todo y tirás
+  // hacia abajo más allá del umbral, recarga. No usa preventDefault (no
+  // interfiere con scroll/taps).
+  const [pull, setPull] = useState(0)
+  const [refreshing, setRefreshing] = useState(false)
+  const pullStart = useRef<number | null>(null)
+
+  function onTouchStart(e: ReactTouchEvent) {
+    pullStart.current = window.scrollY <= 0 && !refreshing ? e.touches[0].clientY : null
+  }
+  function onTouchMove(e: ReactTouchEvent) {
+    if (pullStart.current === null) return
+    const delta = e.touches[0].clientY - pullStart.current
+    setPull(delta > 0 && window.scrollY <= 0 ? Math.min(delta * 0.5, 90) : 0)
+  }
+  async function onTouchEnd() {
+    if (pullStart.current === null) return
+    pullStart.current = null
+    if (pull >= 60) {
+      setRefreshing(true)
+      await loadFirst()
+      setRefreshing(false)
+    }
+    setPull(0)
+  }
+
   const showSkeleton = loading && listings.length === 0
 
   return (
-    <div className="pb-28">
+    <div className="relative pb-28" onTouchStart={onTouchStart} onTouchMove={onTouchMove} onTouchEnd={onTouchEnd}>
+      {(pull > 0 || refreshing) && (
+        <div
+          className="pointer-events-none absolute inset-x-0 top-[max(0.5rem,env(safe-area-inset-top))] z-30 flex justify-center"
+          style={{ opacity: refreshing ? 1 : Math.min(pull / 60, 1) }}
+        >
+          <span
+            className={`h-6 w-6 rounded-full border-2 border-neutral-600 border-t-white ${refreshing ? 'animate-spin' : ''}`}
+            style={refreshing ? undefined : { transform: `rotate(${pull * 4}deg)` }}
+          />
+        </div>
+      )}
       <header className="px-4 pb-1 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight text-white">Dealr</h1>

@@ -29,6 +29,7 @@ export default function ChatThread() {
   const [draft, setDraft] = useState('')
   const [sendError, setSendError] = useState('')
   const [sending, setSending] = useState(false)
+  const [uploadingPreview, setUploadingPreview] = useState<string | null>(null)
   const [ratingOpen, setRatingOpen] = useState(false)
   const [alreadyRated, setAlreadyRated] = useState(false)
   const [othersTyping, setOthersTyping] = useState(false)
@@ -130,7 +131,7 @@ export default function ChatThread() {
     if (!el) return
     el.scrollTo({ top: el.scrollHeight, behavior: didInitialScroll.current ? 'smooth' : 'auto' })
     didInitialScroll.current = true
-  }, [messages, othersTyping])
+  }, [messages, othersTyping, uploadingPreview])
 
   useEffect(() => {
     if (id && myId && messages.some((m) => m.sender_id !== myId && !m.read_at)) {
@@ -174,6 +175,8 @@ export default function ChatThread() {
 
   async function sendImage(file: File) {
     if (!myId || !id) return
+    const preview = URL.createObjectURL(file)
+    setUploadingPreview(preview)
     setSending(true)
     setSendError('')
     try {
@@ -194,6 +197,8 @@ export default function ChatThread() {
       setSendError('No se pudo enviar la foto. Probá de nuevo.')
     } finally {
       setSending(false)
+      setUploadingPreview(null)
+      URL.revokeObjectURL(preview)
     }
   }
 
@@ -348,6 +353,16 @@ export default function ChatThread() {
             </div>
           )
         })}
+        {uploadingPreview && (
+          <div className="flex justify-end">
+            <div className="relative max-w-[70%] overflow-hidden rounded-2xl">
+              <img src={uploadingPreview} alt="Enviando" className="max-h-72 object-cover opacity-50" />
+              <span className="absolute inset-0 flex items-center justify-center">
+                <span className="h-6 w-6 animate-spin rounded-full border-2 border-white border-t-transparent" />
+              </span>
+            </div>
+          </div>
+        )}
         {othersTyping && (
           <div className="flex justify-start">
             <div className="flex gap-1 rounded-3xl rounded-bl-lg bg-neutral-900 px-4 py-3.5">

@@ -50,12 +50,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setProfileError((insertError ?? error)?.message ?? 'Error desconocido al cargar el perfil')
   }
 
+  // "Activo hace…": marca la última actividad al entrar (RLS de update propio).
+  function touchLastSeen(userId: string) {
+    supabase.from('profiles').update({ last_seen_at: new Date().toISOString() }).eq('id', userId).then(() => {})
+  }
+
   useEffect(() => {
     if (!supabaseConfigured) return
 
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session)
-      if (data.session) loadProfile(data.session.user.id)
+      if (data.session) {
+        loadProfile(data.session.user.id)
+        touchLastSeen(data.session.user.id)
+      }
       setLoading(false)
     })
 
@@ -63,7 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(newSession)
       if (newSession) {
         loadProfile(newSession.user.id)
-        if (event === 'SIGNED_IN') capture('logged_in')
+        if (event === 'SIGNED_IN') {
+          capture('logged_in')
+          touchLastSeen(newSession.user.id)
+        }
       } else {
         setProfile(null)
         if (event === 'SIGNED_OUT') resetAnalytics()

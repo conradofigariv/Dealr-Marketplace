@@ -8,6 +8,7 @@ import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from '.
 import { hasSeenWelcome } from './lib/welcome'
 import { capturePageview } from './lib/analytics'
 import BottomNav from './components/BottomNav'
+import UpdatePrompt from './components/UpdatePrompt'
 import Home from './pages/Home'
 
 // Tras un deploy, el navegador puede tener cacheado un index.html que
@@ -155,6 +156,7 @@ export default function App() {
         <UnreadChatsProvider>
         <BrowserRouter>
         <PageviewTracker />
+        <UpdatePrompt />
         <Routes>
           <Route
             path="/auth"

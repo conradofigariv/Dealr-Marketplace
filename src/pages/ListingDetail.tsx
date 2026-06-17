@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { FieldDef, Listing, Question } from '../lib/types'
-import { formatPrice, conditionLabels, timeAgo, priceDropPct } from '../lib/format'
+import { formatPrice, conditionLabels, timeAgo, priceDropPct, lastSeenLabel } from '../lib/format'
 import { capture } from '../lib/analytics'
 import { useFavorites } from '../hooks/useFavorites'
 import Avatar from '../components/Avatar'
@@ -423,6 +423,12 @@ export default function ListingDetail() {
                 <p className="text-xs text-neutral-500">
                   Usuario nuevo · en Dealr desde{' '}
                   {new Date(seller.created_at).toLocaleDateString('es-AR', { month: 'short', year: 'numeric' })}
+                </p>
+              )}
+              {lastSeenLabel(seller.last_seen_at) && (
+                <p className="mt-0.5 flex items-center gap-1 text-[11px] text-emerald-400">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  {lastSeenLabel(seller.last_seen_at)}
                 </p>
               )}
             </div>

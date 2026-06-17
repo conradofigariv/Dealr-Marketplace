@@ -16,6 +16,7 @@ export interface Profile {
   buyer_ratings_count: number
   lat: number | null
   lng: number | null
+  last_seen_at: string | null
   created_at: string
 }
 

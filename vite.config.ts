@@ -8,7 +8,10 @@ export default defineConfig({
     react(),
     tailwindcss(),
     VitePWA({
-      registerType: 'autoUpdate',
+      // 'prompt': el SW nuevo espera a que el usuario toque "Actualizar"
+      // (UpdatePrompt). Antes con 'autoUpdate' el build viejo seguía hasta
+      // cerrar todas las pestañas — la causa #1 de "deployé y no veo cambios".
+      registerType: 'prompt',
       includeAssets: ['favicon.svg'],
       manifest: {
         name: 'Dealr — Marketplace de usados',

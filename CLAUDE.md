@@ -45,6 +45,9 @@ No hay suite de tests ni linter configurado. Verificación = `npm run build`.
 - `00012` reservado + vistas: valor enum `reserved` en `listing_status` (correr el `ALTER TYPE` solo), `listings.views_count` + RPC `increment_listing_views`.
 - `00013` fotos en el chat: `messages.image_path` + `body` nullable (CHECK: texto o foto) y `notify_new_message` muestra "Foto".
 - `00014` RPC `conversation_previews()` (último mensaje + no leídos por chat, 1 round trip) + `listing_views` (vistas únicas por usuario; `increment_listing_views` solo cuenta logueados, 1 vez c/u).
+- `00015` `profiles.last_seen_at` ("Activo hace…"; lo actualiza el cliente al entrar).
+
+> **Atajo:** `supabase/apply_all.sql` es un script único e idempotente con 00008→00015. Pegarlo entero en el SQL Editor evita trackear migración por migración (se puede re-correr sin romper).
 
 ## Arquitectura
 
@@ -71,7 +74,7 @@ supabase/migrations/, supabase/functions/didit-webhook/ (verificación de identi
 
 ## Convenciones y gotchas (lo que ya costó debuggear)
 
-- **Service worker (`autoUpdate`):** tras un deploy, el navegador sigue corriendo el JS viejo hasta cerrar **todas** las pestañas/instancias y reabrir. Un F5 no alcanza. Es la causa #1 de "deployé y no veo cambios".
+- **Service worker (`prompt`):** `vite.config` usa `registerType: 'prompt'`. `UpdatePrompt` (con `useRegisterSW`) muestra un aviso "Hay una versión nueva → Actualizar" cuando detecta un deploy, y chequea updates cada 60s + al volver al foreground. Tocar "Actualizar" llama `updateServiceWorker(true)` (activa el SW nuevo y recarga). Antes era `autoUpdate`, que dejaba el JS viejo hasta cerrar todas las pestañas — la causa #1 de "deployé y no veo cambios".
 - **Caché del feed en memoria:** `Home.tsx` tiene un `feedCache` a nivel de módulo (preserva listado + scroll al volver de un detalle). Cualquier mutación de una publicación (vender/pausar/reservar/reactivar/**editar/crear**) debe llamar `invalidateFeedCache()` (exportada de `Home.tsx`) — lo hacen `Profile`, `ListingDetail`, `SellFlowModal` y `Publish`.
 - **Feed = solo `status = 'active'`** (`Home.tsx`), ordenado por `last_renewed_at desc`. Reactivar setea `status='active' + last_renewed_at=now + sold_to=null`. Búsqueda con `.or(title.ilike,description.ilike)` (se sanitizan comas/paréntesis del término). Panel `FeedFilters` (bottom sheet): precio/moneda/condición van a la query; el radio de distancia filtra y ordena client-side.
 - **Scroll infinito (`Home.tsx`):** pagina de a `PAGE_SIZE` (24) con `.range()`; un `IntersectionObserver` sobre un centinela carga la siguiente página (`loadMore`). La `feedCache` guarda `page`+`hasMore`+listings para no recargar al volver de un detalle. Con `radiusKm` activo el infinito se desactiva (el filtro de distancia es client-side). Vistos recientemente = ids en `localStorage` (`geo.ts`), se registran desde el detalle; riel solo en la vista por defecto.

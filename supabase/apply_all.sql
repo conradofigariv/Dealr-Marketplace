@@ -20,14 +20,15 @@ set required_fields = (
 )
 where slug = 'ropa-accesorios';
 
--- ---------- 00009: ubicación ----------
+-- ---------- 00009 + 00015: ubicación y última actividad ----------
 alter table public.listings
   add column if not exists lat double precision,
   add column if not exists lng double precision,
   add column if not exists location_label text;
 alter table public.profiles
   add column if not exists lat double precision,
-  add column if not exists lng double precision;
+  add column if not exists lng double precision,
+  add column if not exists last_seen_at timestamptz;
 
 -- ---------- 00012 (enum): estado "reservado" ----------
 -- ADD VALUE IF NOT EXISTS es seguro de re-correr. En PG 12+ puede ir dentro

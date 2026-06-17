@@ -13,6 +13,7 @@ export default function PhotoViewer({
   onClose: () => void
 }) {
   const [zoomed, setZoomed] = useState<number | null>(null)
+  const [current, setCurrent] = useState(index)
   const lastTap = useRef(0)
   const scrollerRef = useRef<HTMLDivElement>(null)
 
@@ -47,8 +48,18 @@ export default function PhotoViewer({
         </svg>
       </button>
 
+      {photos.length > 1 && (
+        <span className="absolute left-1/2 top-[max(0.85rem,env(safe-area-inset-top))] z-10 -translate-x-1/2 rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white backdrop-blur-sm">
+          {current + 1}/{photos.length}
+        </span>
+      )}
+
       <div
         ref={scrollerRef}
+        onScroll={(e) => {
+          const el = e.currentTarget
+          setCurrent(Math.round(el.scrollLeft / el.clientWidth))
+        }}
         className={`no-scrollbar flex h-full ${zoomed === null ? 'snap-x snap-mandatory overflow-x-auto' : 'overflow-hidden'}`}
       >
         {photos.map((p, i) => (

@@ -29,6 +29,13 @@ export function priceDropPct(
   return Math.round((1 - listing.price / prev) * 100)
 }
 
+/** "Activo hace…" si estuvo activo en los últimos ~45 días (si no, null). */
+export function lastSeenLabel(iso: string | null): string | null {
+  if (!iso) return null
+  if (Date.now() - new Date(iso).getTime() > 45 * DAY_MS) return null
+  return `Activo ${timeAgo(iso)}`
+}
+
 export function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
   if (seconds < 60) return 'recién'

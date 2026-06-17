@@ -6,6 +6,7 @@ import Avatar from '../components/Avatar'
 import SellerBadges from '../components/SellerBadges'
 import StarRating from '../components/StarRating'
 import ListingCard from '../components/ListingCard'
+import { lastSeenLabel } from '../lib/format'
 
 // Lo que ve un comprador antes de decidir: reputación, antigüedad,
 // insignias y qué más vende. Visible sin cuenta.
@@ -72,6 +73,12 @@ export default function PublicProfile() {
           {profile.zone && <span className="text-neutral-300">{profile.zone} · </span>}
           En Dealr desde {new Date(profile.created_at).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
         </p>
+        {lastSeenLabel(profile.last_seen_at) && (
+          <p className="mt-1 flex items-center justify-center gap-1.5 text-xs text-emerald-400">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+            {lastSeenLabel(profile.last_seen_at)}
+          </p>
+        )}
         <div className="mt-4 flex justify-center">
           <SellerBadges profile={profile} />
         </div>
