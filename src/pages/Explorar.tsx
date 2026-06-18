@@ -4,24 +4,59 @@ import { supabase } from '../lib/supabase'
 import type { Category } from '../lib/types'
 import { openFeed } from './Home'
 
-// Ícono por categoría (emoji: simple, con color, sin librerías). Las que no
-// estén mapeadas caen en el genérico.
-const ICONS: Record<string, string> = {
-  celulares: '📱',
-  computacion: '💻',
-  electronica: '🎧',
-  'consolas-videojuegos': '🎮',
-  'hogar-muebles': '🛋️',
-  electrodomesticos: '🧺',
-  'ropa-accesorios': '👕',
-  'deportes-fitness': '🏋️',
-  bicicletas: '🚲',
-  'vehiculos-accesorios': '🚗',
-  'bebes-ninos': '🧸',
-  herramientas: '🔧',
-  instrumentos: '🎸',
-  'libros-musica': '📚',
-  otros: '📦',
+// Por categoría: emoji (fallback) + keyword para la foto temática.
+// Las fotos salen de loremflickr (gratis, sin key). Para producción se pueden
+// reemplazar por imágenes curadas en /public/categories/<slug>.jpg cambiando
+// imageFor().
+const CATS: Record<string, { emoji: string; kw: string }> = {
+  celulares: { emoji: '📱', kw: 'smartphone' },
+  computacion: { emoji: '💻', kw: 'laptop' },
+  electronica: { emoji: '🎧', kw: 'headphones' },
+  'consolas-videojuegos': { emoji: '🎮', kw: 'gaming' },
+  'hogar-muebles': { emoji: '🛋️', kw: 'furniture' },
+  electrodomesticos: { emoji: '🧺', kw: 'appliance' },
+  'ropa-accesorios': { emoji: '👕', kw: 'clothes' },
+  'deportes-fitness': { emoji: '🏋️', kw: 'fitness' },
+  bicicletas: { emoji: '🚲', kw: 'bicycle' },
+  'vehiculos-accesorios': { emoji: '🚗', kw: 'car' },
+  'bebes-ninos': { emoji: '🧸', kw: 'baby' },
+  herramientas: { emoji: '🔧', kw: 'tools' },
+  instrumentos: { emoji: '🎸', kw: 'guitar' },
+  'libros-musica': { emoji: '📚', kw: 'books' },
+  otros: { emoji: '📦', kw: 'boxes' },
+}
+
+function imageFor(slug: string, id: number): string {
+  const kw = CATS[slug]?.kw ?? 'product'
+  // lock fija la imagen para que no cambie en cada carga.
+  return `https://loremflickr.com/320/240/${kw}?lock=${id}`
+}
+
+function CategoryTile({ category, onOpen }: { category: Category; onOpen: (c: Category) => void }) {
+  const [failed, setFailed] = useState(false)
+  const meta = CATS[category.slug]
+  return (
+    <button
+      onClick={() => onOpen(category)}
+      className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-neutral-800 transition active:opacity-80"
+    >
+      {!failed ? (
+        <img
+          src={imageFor(category.slug, category.id)}
+          alt=""
+          loading="lazy"
+          onError={() => setFailed(true)}
+          className="h-full w-full object-cover"
+        />
+      ) : (
+        <span className="flex h-full w-full items-center justify-center text-4xl">{meta?.emoji ?? '🏷️'}</span>
+      )}
+      <span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
+      <span className="absolute inset-x-0 bottom-0 px-3 pb-2.5 text-left text-sm font-semibold leading-tight text-white">
+        {category.name}
+      </span>
+    </button>
+  )
 }
 
 export default function Explorar() {
@@ -48,16 +83,9 @@ export default function Explorar() {
         <p className="mt-0.5 text-sm text-neutral-500">Mirá por categoría</p>
       </header>
 
-      <div className="grid grid-cols-2 gap-3 px-5">
+      <div className="grid grid-cols-2 gap-2.5 px-5">
         {categories.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => open(c)}
-            className="flex items-center gap-3 rounded-2xl bg-neutral-900 px-4 py-4 text-left ring-1 ring-neutral-800 transition active:bg-neutral-800"
-          >
-            <span className="text-2xl">{ICONS[c.slug] ?? '🏷️'}</span>
-            <span className="text-sm font-semibold leading-tight text-white">{c.name}</span>
-          </button>
+          <CategoryTile key={c.id} category={c} onOpen={open} />
         ))}
       </div>
     </div>
