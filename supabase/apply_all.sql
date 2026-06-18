@@ -20,6 +20,14 @@ set required_fields = (
 )
 where slug = 'ropa-accesorios';
 
+-- ---------- 00016: sacar campos que sobran (zona, motivo_venta) ----------
+update public.categories
+set required_fields = (
+  select coalesce(jsonb_agg(elem), '[]'::jsonb)
+  from jsonb_array_elements(required_fields) elem
+  where elem->>'key' not in ('zona', 'motivo_venta')
+);
+
 -- ---------- 00009 + 00015: ubicación y última actividad ----------
 alter table public.listings
   add column if not exists lat double precision,

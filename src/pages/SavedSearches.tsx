@@ -64,6 +64,7 @@ export default function SavedSearches() {
         currency: s.currency ?? 'all',
         conditions: s.conditions ?? [],
         radiusKm: null,
+        fields: {},
       },
     })
     navigate('/')

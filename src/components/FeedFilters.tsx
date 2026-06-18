@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import Modal from './Modal'
 import { conditionLabels } from '../lib/format'
-import type { ListingCondition } from '../lib/types'
+import type { FieldDef, ListingCondition } from '../lib/types'
 
 export interface FeedFilterValues {
   priceMin: string
@@ -9,6 +9,9 @@ export interface FeedFilterValues {
   currency: 'all' | 'ARS' | 'USD'
   conditions: ListingCondition[]
   radiusKm: number | null
+  // Filtros por campo de categoría (select/boolean). key -> valor elegido
+  // ('true' para boolean, la opción para select). Vacío = sin filtro.
+  fields: Record<string, string>
 }
 
 export const EMPTY_FILTERS: FeedFilterValues = {
@@ -17,6 +20,7 @@ export const EMPTY_FILTERS: FeedFilterValues = {
   currency: 'all',
   conditions: [],
   radiusKm: null,
+  fields: {},
 }
 
 export function countActiveFilters(f: FeedFilterValues): number {
@@ -25,8 +29,14 @@ export function countActiveFilters(f: FeedFilterValues): number {
     (f.priceMax ? 1 : 0) +
     (f.currency !== 'all' ? 1 : 0) +
     (f.conditions.length ? 1 : 0) +
-    (f.radiusKm ? 1 : 0)
+    (f.radiusKm ? 1 : 0) +
+    Object.keys(f.fields).length
   )
+}
+
+// Solo son buenos filtros los campos de opciones cerradas (no texto libre).
+export function filterableFields(fields: FieldDef[] | undefined): FieldDef[] {
+  return (fields ?? []).filter((f) => f.type === 'select' || f.type === 'boolean')
 }
 
 const RADII = [2, 5, 10, 25] as const
@@ -37,10 +47,12 @@ interface Props {
   // Garantiza la ubicación del comprador (la pide si hace falta). Devuelve
   // true si quedó disponible. Sin ella no se puede filtrar por distancia.
   ensureLocation: () => Promise<boolean>
+  // Campos filtrables de la categoría elegida (select/boolean).
+  categoryFields?: FieldDef[]
   onClose: () => void
 }
 
-export default function FeedFilters({ value, onApply, ensureLocation, onClose }: Props) {
+export default function FeedFilters({ value, onApply, ensureLocation, categoryFields, onClose }: Props) {
   const [draft, setDraft] = useState<FeedFilterValues>(value)
   const [locationDenied, setLocationDenied] = useState(false)
 
@@ -49,6 +61,16 @@ export default function FeedFilters({ value, onApply, ensureLocation, onClose }:
       ...d,
       conditions: d.conditions.includes(c) ? d.conditions.filter((x) => x !== c) : [...d.conditions, c],
     }))
+  }
+
+  // Setea (o limpia con value=null) un filtro de campo de categoría.
+  function setFieldFilter(key: string, value: string | null) {
+    setDraft((d) => {
+      const fields = { ...d.fields }
+      if (value === null) delete fields[key]
+      else fields[key] = value
+      return { ...d, fields }
+    })
   }
 
   async function pickRadius(km: number | null) {
@@ -137,6 +159,41 @@ export default function FeedFilters({ value, onApply, ensureLocation, onClose }:
             <p className="mt-2 text-xs text-neutral-500">Necesitamos tu ubicación para filtrar por distancia.</p>
           )}
         </div>
+
+        {/* Filtros propios de la categoría elegida (select / boolean) */}
+        {(categoryFields ?? []).map((f) => (
+          <div key={f.key}>
+            <p className="mb-2 text-xs font-medium uppercase tracking-wider text-neutral-500">{f.label}</p>
+            {f.type === 'boolean' ? (
+              <div className="flex gap-1.5">
+                <button onClick={() => setFieldFilter(f.key, null)} className={chip(draft.fields[f.key] === undefined)}>
+                  Cualquiera
+                </button>
+                <button onClick={() => setFieldFilter(f.key, 'true')} className={chip(draft.fields[f.key] === 'true')}>
+                  Sí
+                </button>
+                <button onClick={() => setFieldFilter(f.key, 'false')} className={chip(draft.fields[f.key] === 'false')}>
+                  No
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                <button onClick={() => setFieldFilter(f.key, null)} className={chip(draft.fields[f.key] === undefined)}>
+                  Cualquiera
+                </button>
+                {f.options?.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => setFieldFilter(f.key, draft.fields[f.key] === opt ? null : opt)}
+                    className={chip(draft.fields[f.key] === opt)}
+                  >
+                    {opt}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        ))}
 
         {/* Acciones */}
         <div className="flex gap-3 pt-1">

@@ -6,7 +6,7 @@ import { useNotifications } from '../hooks/useNotifications'
 import type { Category, Listing } from '../lib/types'
 import ListingCard from '../components/ListingCard'
 import ListingRail from '../components/ListingRail'
-import FeedFilters, { EMPTY_FILTERS, countActiveFilters, type FeedFilterValues } from '../components/FeedFilters'
+import FeedFilters, { EMPTY_FILTERS, countActiveFilters, filterableFields, type FeedFilterValues } from '../components/FeedFilters'
 import {
   getCachedBuyerLocation,
   requestBuyerLocation,
@@ -158,6 +158,10 @@ export default function Home() {
     if (filters.priceMin && !Number.isNaN(Number(filters.priceMin))) query = query.gte('price', Number(filters.priceMin))
     if (filters.priceMax && !Number.isNaN(Number(filters.priceMax))) query = query.lte('price', Number(filters.priceMax))
     if (filters.conditions.length) query = query.in('condition', filters.conditions)
+    // Filtros por campo de categoría (sobre el jsonb structured_fields).
+    for (const [key, val] of Object.entries(filters.fields)) {
+      query = query.eq(`structured_fields->>${key}`, val)
+    }
     return query
   }, [search, categoryId, onlyVerified, filters, order])
 
@@ -288,6 +292,21 @@ export default function Home() {
     }
     return arr
   }, [listings, buyerLoc, filters.radiusKm])
+
+  // Campos filtrables de la categoría elegida (select/boolean).
+  const categoryFieldDefs = useMemo(
+    () => filterableFields(categories.find((c) => c.id === categoryId)?.required_fields),
+    [categories, categoryId],
+  )
+  // Al cambiar de categoría, los filtros de campo de la anterior ya no aplican.
+  const firstCat = useRef(true)
+  useEffect(() => {
+    if (firstCat.current) {
+      firstCat.current = false
+      return
+    }
+    setFilters((f) => (Object.keys(f.fields).length ? { ...f, fields: {} } : f))
+  }, [categoryId])
 
   const activeFilters = countActiveFilters(filters)
   const canSaveSearch = Boolean(search.trim()) || activeFilters > 0 || categoryId !== null
@@ -519,6 +538,7 @@ export default function Home() {
           value={filters}
           onApply={setFilters}
           ensureLocation={ensureLocation}
+          categoryFields={categoryFieldDefs}
           onClose={() => setFiltersOpen(false)}
         />
       )}
