@@ -61,22 +61,32 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
           {timeAgo(listing.created_at)}
         </p>
       </div>
-      <button
-        onClick={onSave}
-        aria-label={saved ? 'Quitar de guardados' : 'Guardar'}
-        aria-pressed={saved}
-        className="absolute right-2 top-2 rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm transition active:scale-90"
-      >
-        <svg
-          viewBox="0 0 24 24"
-          className={`h-4 w-4 ${saved ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-white'}`}
-          strokeWidth="2"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+      <div className="absolute right-2 top-2 flex flex-col items-end gap-1.5">
+        {listing.photos.length > 1 && (
+          <span className="rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm" title={`${listing.photos.length} fotos`}>
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="8" y="8" width="13" height="13" rx="2" />
+              <path d="M4 16V5a1 1 0 0 1 1-1h11" />
+            </svg>
+          </span>
+        )}
+        <button
+          onClick={onSave}
+          aria-label={saved ? 'Quitar de guardados' : 'Guardar'}
+          aria-pressed={saved}
+          className="rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm transition active:scale-90"
         >
-          <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
-        </svg>
-      </button>
+          <svg
+            viewBox="0 0 24 24"
+            className={`h-4 w-4 ${saved ? 'fill-red-500 stroke-red-500' : 'fill-none stroke-white'}`}
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
+          </svg>
+        </button>
+      </div>
       <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
         {listing.seller?.identity_verified && (
           <span className="rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm" title="Vendedor verificado">

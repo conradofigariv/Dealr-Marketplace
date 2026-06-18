@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
 import { timeAgo } from '../lib/format'
 import type { AppNotification, NotificationType } from '../lib/types'
+import EmptyState from '../components/EmptyState'
 
 const icons: Record<NotificationType, ReactElement> = {
   message: <path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8l-4 4V6a1 1 0 0 1 1-1Z" />,
@@ -77,9 +78,10 @@ export default function Notifications() {
       </header>
 
       {grouped.length === 0 ? (
-        <div className="px-8 py-24 text-center text-sm text-neutral-500">
-          No tenés notificaciones todavía.
-        </div>
+        <EmptyState
+          icon={<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>}
+          title="No tenés notificaciones todavía."
+        />
       ) : (
         <ul>
           {grouped.map((n) => {

@@ -61,6 +61,7 @@ src/
   lib/      …, geo.ts (distancia Haversine, formato, difuminado del punto, reverse-geocode Nominatim, caché de ubicación del comprador)
   components/ BottomNav, ListingCard, Modal, RatingForm, SellFlowModal, Avatar, SellerBadges, StarRating
               LocationPicker (mapa interactivo al publicar) · LocationMap (círculo aprox. en el detalle) · leafletSetup (CSS + fix de íconos + tiles)
+              PhotoViewer (galería fullscreen) · ListingRail (riel horizontal) · FeedFilters (sheet) · UpdatePrompt (aviso de versión nueva) · Toast (useToast(), reemplaza alert) · EmptyState
   pages/    Home(feed) ListingDetail Publish Chats ChatThread Profile PublicProfile
             Auth Onboarding Saved Notifications Feedback Explorar(grid de categorías) SavedSearches(/busquedas)
 api/og.ts   OG para crawlers

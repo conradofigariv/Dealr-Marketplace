@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useFavorites } from '../hooks/useFavorites'
 import type { Listing } from '../lib/types'
 import ListingCard from '../components/ListingCard'
+import EmptyState from '../components/EmptyState'
 
 export default function Saved() {
   const navigate = useNavigate()
@@ -43,12 +44,12 @@ export default function Saved() {
       </header>
 
       {fetched && listings.length === 0 ? (
-        <div className="px-8 py-24 text-center text-sm text-neutral-500">
-          Todavía no guardaste nada.
-          <Link to="/" className="mt-2 block font-semibold text-white">
-            Explorar productos
-          </Link>
-        </div>
+        <EmptyState
+          icon={<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />}
+          title="Todavía no guardaste nada."
+        >
+          <Link to="/" className="font-semibold text-white">Explorar productos</Link>
+        </EmptyState>
       ) : (
         <div className="columns-2 gap-0.5">
           {listings.map((listing) => (

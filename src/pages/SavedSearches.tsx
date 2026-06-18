@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { conditionLabels, formatPrice } from '../lib/format'
 import type { Category, SavedSearch } from '../lib/types'
+import EmptyState from '../components/EmptyState'
 import { openFeed } from './Home'
 
 function summarize(s: SavedSearch, categoryName?: string): string {
@@ -83,12 +84,12 @@ export default function SavedSearches() {
       </header>
 
       {fetched && searches.length === 0 ? (
-        <div className="px-8 py-24 text-center text-sm text-neutral-500">
-          Todavía no guardaste ninguna búsqueda.
-          <Link to="/" className="mt-2 block font-semibold text-white">
-            Buscar productos
-          </Link>
-        </div>
+        <EmptyState
+          icon={<><circle cx="11" cy="11" r="7" /><path d="m20 20-3.5-3.5" /></>}
+          title="Todavía no guardaste ninguna búsqueda."
+        >
+          <Link to="/" className="font-semibold text-white">Buscar productos</Link>
+        </EmptyState>
       ) : (
         <ul className="space-y-2 px-5">
           {searches.map((s) => (

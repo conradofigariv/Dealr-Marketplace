@@ -4,6 +4,7 @@ import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { timeAgo } from '../lib/format'
 import type { Conversation } from '../lib/types'
+import EmptyState from '../components/EmptyState'
 
 interface ConvMeta {
   body: string
@@ -66,10 +67,12 @@ export default function Chats() {
       </header>
 
       {fetched && conversations.length === 0 ? (
-        <div className="px-8 py-24 text-center text-sm text-neutral-500">
-          Todavía no tenés conversaciones.
-          <Link to="/" className="mt-2 block font-semibold text-white">Explorar productos</Link>
-        </div>
+        <EmptyState
+          icon={<path d="M4 5h16a1 1 0 0 1 1 1v10a1 1 0 0 1-1 1H8l-4 4V6a1 1 0 0 1 1-1Z" />}
+          title="Todavía no tenés conversaciones."
+        >
+          <Link to="/" className="font-semibold text-white">Explorar productos</Link>
+        </EmptyState>
       ) : (
         <ul>
           {conversations.map((conv) => {

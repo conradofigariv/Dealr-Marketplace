@@ -14,6 +14,7 @@ import SellFlowModal from '../components/SellFlowModal'
 import LocationMap from '../components/LocationMap'
 import ListingRail from '../components/ListingRail'
 import PhotoViewer from '../components/PhotoViewer'
+import { useToast } from '../components/Toast'
 import { getCachedBuyerLocation, haversineKm, formatDistance, pushRecentlyViewed } from '../lib/geo'
 import { invalidateFeedCache } from './Home'
 
@@ -22,6 +23,7 @@ export default function ListingDetail() {
   const navigate = useNavigate()
   const { session } = useAuth()
   const { isFavorite, toggle } = useFavorites()
+  const toast = useToast()
 
   const [listing, setListing] = useState<Listing | null>(null)
   const [fieldDefs, setFieldDefs] = useState<FieldDef[]>([])
@@ -41,6 +43,7 @@ export default function ListingDetail() {
   const [sellerItems, setSellerItems] = useState<Listing[]>([])
   const [similar, setSimilar] = useState<Listing[]>([])
   const [viewerAt, setViewerAt] = useState<number | null>(null)
+  const [photoIndex, setPhotoIndex] = useState(0)
   const countedView = useRef(false)
 
   const isOwner = session?.user.id === listing?.seller_id
@@ -132,7 +135,7 @@ export default function ListingDetail() {
     // El trigger de la DB marca answered_at y la hace pública
     const { error } = await supabase.from('questions').update({ answer_body: answer }).eq('id', questionId)
     if (error) {
-      alert('No pudimos publicar la respuesta. Probá de nuevo.')
+      toast('No pudimos publicar la respuesta. Probá de nuevo.')
       return
     }
     setAnswerDrafts((d) => ({ ...d, [questionId]: '' }))
@@ -147,7 +150,7 @@ export default function ListingDetail() {
       target_id: questionId,
       reason: 'Contenido inapropiado en pregunta pública',
     })
-    alert(
+    toast(
       error
         ? 'No pudimos enviar el reporte. Probá de nuevo.'
         : 'Reporte enviado. Gracias por ayudar a mantener Dealr.',
@@ -189,7 +192,7 @@ export default function ListingDetail() {
       .select('id')
       .single()
     if (error || !created) {
-      alert('No pudimos abrir el chat. Probá de nuevo.')
+      toast('No pudimos abrir el chat. Probá de nuevo.')
       return
     }
     capture('chat_opened', { listing_id: listing.id })
@@ -230,7 +233,7 @@ export default function ListingDetail() {
       target_id: id,
       reason: 'Publicación reportada',
     })
-    alert(
+    toast(
       error
         ? 'No pudimos enviar el reporte. Probá de nuevo.'
         : 'Reporte enviado. Gracias por ayudar a mantener Dealr.',
@@ -324,7 +327,10 @@ export default function ListingDetail() {
             </button>
           )}
         </div>
-        <div className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto bg-neutral-900">
+        <div
+          onScroll={(e) => setPhotoIndex(Math.round(e.currentTarget.scrollLeft / e.currentTarget.clientWidth))}
+          className="no-scrollbar flex snap-x snap-mandatory overflow-x-auto bg-neutral-900"
+        >
           {(listing.photos.length ? listing.photos : [null]).map((p, i) => (
             <div key={i} className="aspect-square w-full shrink-0 snap-center">
               {p ? (
@@ -340,6 +346,16 @@ export default function ListingDetail() {
             </div>
           ))}
         </div>
+        {listing.photos.length > 1 && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 flex justify-center gap-1.5">
+            {listing.photos.map((_, i) => (
+              <span
+                key={i}
+                className={`h-1.5 rounded-full transition-all ${i === photoIndex ? 'w-4 bg-white' : 'w-1.5 bg-white/50'}`}
+              />
+            ))}
+          </div>
+        )}
         {listing.status !== 'active' && (
           <div className="absolute inset-x-0 bottom-0 bg-black/80 py-2 text-center text-sm font-bold uppercase tracking-wide text-white backdrop-blur-sm">
             {listing.status === 'sold' ? 'Vendido' : listing.status === 'reserved' ? 'Reservado' : 'Pausado'}
@@ -671,6 +687,7 @@ export default function ListingDetail() {
 
 function OwnerOffers({ listingId, currency }: { listingId: string; currency: Listing['currency'] }) {
   const [offers, setOffers] = useState<import('../lib/types').Offer[]>([])
+  const toast = useToast()
 
   async function load() {
     const { data } = await supabase
@@ -689,7 +706,7 @@ function OwnerOffers({ listingId, currency }: { listingId: string; currency: Lis
   async function respond(offerId: string, status: 'accepted' | 'rejected') {
     const { error } = await supabase.from('offers').update({ status }).eq('id', offerId)
     if (error) {
-      alert('No pudimos actualizar la oferta. Probá de nuevo.')
+      toast('No pudimos actualizar la oferta. Probá de nuevo.')
       return
     }
     load()
