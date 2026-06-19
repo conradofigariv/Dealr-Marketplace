@@ -53,7 +53,9 @@ alter table public.listings
   add column if not exists auction_ends_at timestamptz,
   add column if not exists current_bid numeric,
   add column if not exists bids_count integer not null default 0,
-  add column if not exists auction_closed boolean not null default false;
+  add column if not exists auction_closed boolean not null default false,
+  add column if not exists auction_cascade boolean not null default false,
+  add column if not exists auction_passed uuid[] not null default '{}';
 
 -- Backfill del contador de guardados.
 update public.listings l
