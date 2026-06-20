@@ -49,8 +49,9 @@ No hay suite de tests ni linter configurado. Verificación = `npm run build`.
 - `00016` limpia campos comunes de las categorías: saca `zona` (redundante con la ubicación del mapa) y `motivo_venta` (ruido) de `categories.required_fields`.
 - `00017` subastas: `listings.is_auction/auction_ends_at/current_bid/bids_count/auction_closed/auction_cascade/auction_passed`, tabla `bids` (RLS: solo ves las tuyas → ofertas anónimas), RPC `place_bid` (valida), `close_auctions` (crea chat ganador↔vendedor + notifica; cron si hay pg_cron, si no el cliente la cierra al abrir), `reassign_auction` (ofrecer al siguiente postor). Tipos de notificación `bid/outbid/auction_won`.
 - `00018` categoría nueva "Plantas y Jardinería" (`plantas-jardineria`), idempotente (`on conflict (slug) do nothing`).
+- `00019` Web Push: tabla `push_subscriptions` (endpoint+claves por dispositivo, RLS propia). La Edge Function `send-push` (service role) la lee y manda el push al insertarse una notificación (Database Webhook INSERT en `notifications`). Requiere VAPID: `VITE_VAPID_PUBLIC_KEY` (front) + secrets `VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT` (función). Sin la key, el push queda no-op.
 
-> **Atajo:** `supabase/apply_all.sql` es un script único e idempotente con 00008→00018. Pegarlo entero en el SQL Editor evita trackear migración por migración (se puede re-correr sin romper).
+> **Atajo:** `supabase/apply_all.sql` es un script único e idempotente con 00008→00019. Pegarlo entero en el SQL Editor evita trackear migración por migración (se puede re-correr sin romper).
 
 ## Arquitectura
 

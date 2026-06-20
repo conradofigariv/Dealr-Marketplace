@@ -1,6 +1,7 @@
-import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react'
+import { createContext, useCallback, useContext, useEffect, useRef, useState, type ReactNode } from 'react'
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
+import { alertIncoming } from '../lib/notify'
 import type { AppNotification } from '../lib/types'
 
 interface NotificationsState {
@@ -20,6 +21,8 @@ const NotificationsContext = createContext<NotificationsState>({
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
   const [items, setItems] = useState<AppNotification[]>([])
+  // Ids ya alertados, para no sonar dos veces (StrictMode / reentregas).
+  const alertedRef = useRef<Set<string>>(new Set())
 
   const refresh = useCallback(async () => {
     if (!session) {
@@ -47,11 +50,13 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
         (payload) => {
-          setItems((prev) =>
-            prev.some((n) => n.id === (payload.new as AppNotification).id)
-              ? prev
-              : [payload.new as AppNotification, ...prev],
-          )
+          const n = payload.new as AppNotification
+          if (!alertedRef.current.has(n.id)) {
+            alertedRef.current.add(n.id)
+            // Sonido + vibración + globo (si la pestaña no está visible).
+            alertIncoming(n.title, n.body, n.link)
+          }
+          setItems((prev) => (prev.some((p) => p.id === n.id) ? prev : [n, ...prev]))
         },
       )
       .subscribe()

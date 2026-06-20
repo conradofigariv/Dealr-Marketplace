@@ -10,6 +10,7 @@ import SellerBadges from '../components/SellerBadges'
 import StarRating from '../components/StarRating'
 import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
+import NotificationSettings from '../components/NotificationSettings'
 import { invalidateFeedCache } from './Home'
 
 const statusLabels: Record<Listing['status'], string> = {
@@ -465,10 +466,7 @@ export default function Profile() {
       {settingsOpen && (
         <Modal title="Configuración" onClose={() => setSettingsOpen(false)}>
           <div className="space-y-2 text-sm">
-            <div className="flex items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800">
-              <span className="text-neutral-300">Notificaciones</span>
-              <span className="text-xs text-neutral-600">Próximamente</span>
-            </div>
+            <NotificationSettings />
             <div className="flex items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800">
               <span className="text-neutral-300">Privacidad y datos</span>
               <span className="text-xs text-neutral-600">Próximamente</span>

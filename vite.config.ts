@@ -29,6 +29,9 @@ export default defineConfig({
       },
       workbox: {
         navigateFallbackDenylist: [/^\/api/],
+        // Inyecta los handlers de Web Push (push + notificationclick) en el SW
+        // generado, sin tener que escribir un SW propio (injectManifest).
+        importScripts: ['push-listener.js'],
       },
     }),
   ],
