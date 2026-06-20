@@ -40,7 +40,7 @@ function CategoryTile({ category, onOpen }: { category: Category; onOpen: (c: Ca
   return (
     <button
       onClick={() => onOpen(category)}
-      className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-neutral-800 transition active:opacity-80"
+      className="relative aspect-square overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-neutral-800 transition active:opacity-80"
     >
       {step < 2 ? (
         <img

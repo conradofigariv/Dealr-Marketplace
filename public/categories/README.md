@@ -23,4 +23,4 @@ Poné cada archivo con **exactamente** este nombre (extensión `.jpg`):
 | Libros, Música y Pelis | `libros-musica.jpg`           |
 | Otros                  | `otros.jpg`                   |
 
-Recomendado: ~640×480 px, recortadas, livianas (<150 KB).
+Recomendado: ~640×640 px (cuadradas), recortadas, livianas (<150 KB).
