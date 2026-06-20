@@ -95,8 +95,9 @@ function Shell() {
   if (profile && /^usuario_[0-9a-f]{8}$/.test(profile.username)) {
     return <Navigate to="/onboarding" replace />
   }
-  // El hilo de chat y el detalle manejan sus propias acciones a pantalla completa
-  const hideNav = /^\/(chats|p)\/.+/.test(location.pathname)
+  // El hilo de chat y el detalle manejan sus propias acciones a pantalla
+  // completa; el wizard de publicar tiene su propia barra fija abajo.
+  const hideNav = /^\/(chats|p)\/.+/.test(location.pathname) || location.pathname === '/publicar'
   // Volver (POP) entra desde la izquierda; avanzar, desde la derecha (iOS).
   const pageAnim = navType === 'POP' ? 'page-pop' : 'page-push'
   return (

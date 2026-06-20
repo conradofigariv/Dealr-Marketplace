@@ -13,7 +13,7 @@ import { invalidateFeedCache } from './Home'
 const MAX_PHOTOS = 6
 
 const WIZARD_STEPS = [
-  { name: 'Fotos', title: 'Mostrá tu producto', subtitle: 'Fotos claras y un buen título venden más rápido.' },
+  { name: 'Fotos', title: 'Mostrá tu producto', subtitle: 'Subí hasta 6 fotos. La primera es la portada.' },
   { name: 'Detalles', title: 'Contá los detalles', subtitle: 'Categoría, condición y una buena descripción.' },
   { name: 'Precio', title: 'Poné el precio', subtitle: 'Precio fijo o subasta — vos elegís.' },
   { name: 'Entrega', title: '¿Dónde lo entregás?', subtitle: 'Solo se muestra el área aproximada.' },
@@ -49,6 +49,7 @@ export default function Publish() {
   const [busy, setBusy] = useState(false)
   const [publishedId, setPublishedId] = useState<string | null>(null)
   const [step, setStep] = useState(1)
+  const [stepDir, setStepDir] = useState<'fwd' | 'back'>('fwd')
 
   const category = useMemo(
     () => categories.find((c) => c.id === categoryId),
@@ -167,6 +168,7 @@ export default function Publish() {
     if (err) return setError(err)
     setError('')
     window.scrollTo(0, 0)
+    setStepDir('fwd')
     setStep((s) => s + 1)
   }
 
@@ -174,7 +176,10 @@ export default function Publish() {
     setError('')
     window.scrollTo(0, 0)
     if (step === 1) navigate(-1)
-    else setStep((s) => s - 1)
+    else {
+      setStepDir('back')
+      setStep((s) => s - 1)
+    }
   }
 
   async function submit(e: FormEvent) {
@@ -595,6 +600,7 @@ export default function Publish() {
       </header>
 
       <form onSubmit={handleWizardSubmit} className="px-5 py-5">
+        <div key={step} className={stepDir === 'fwd' ? 'step-fwd' : 'step-back'}>
         <div className="mb-6">
           <h1 className="text-2xl font-bold tracking-tight text-white">{stepInfo.title}</h1>
           <p className="mt-1 text-sm text-neutral-500">{stepInfo.subtitle}</p>
@@ -606,53 +612,83 @@ export default function Publish() {
             <>
               <div>
                 <label className={labelClass}>Fotos ({photos.length}/{MAX_PHOTOS})</label>
-                <div className="grid grid-cols-3 gap-1">
-                  {photos.map((photo, i) => (
-                    <div key={photo.preview} className="relative aspect-square overflow-hidden bg-neutral-900">
-                      <img src={photo.preview} alt="" className="h-full w-full object-cover" />
-                      <button
-                        type="button"
-                        onClick={() => removePhoto(i)}
-                        aria-label="Quitar foto"
-                        className="absolute right-1.5 top-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
+                {/* Grid fijo de 6 slots: la portada (slot 0) ocupa 2x2 y el
+                    resto son cuadrados chicos alrededor. Los vacíos abren el
+                    selector; el primer slot vacío es la portada destacada. */}
+                <div className="grid grid-cols-3 gap-1.5">
+                  {Array.from({ length: MAX_PHOTOS }).map((_, i) => {
+                    const photo = photos[i]
+                    const isCover = i === 0
+                    const slotClass = isCover ? 'col-span-2 row-span-2' : 'aspect-square'
+
+                    if (photo) {
+                      return (
+                        <div key={photo.preview} className={`relative overflow-hidden rounded-xl bg-neutral-900 ${slotClass}`}>
+                          <img src={photo.preview} alt="" className="h-full w-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => removePhoto(i)}
+                            aria-label="Quitar foto"
+                            className="absolute right-1.5 top-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
+                          >
+                            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                              <path d="M6 6l12 12M18 6 6 18" />
+                            </svg>
+                          </button>
+                          {isCover ? (
+                            <span className="absolute left-1.5 top-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                              Portada
+                            </span>
+                          ) : (
+                            <button
+                              type="button"
+                              onClick={() => movePhotoLeft(i)}
+                              aria-label="Mover foto hacia adelante"
+                              className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
+                            >
+                              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                <path d="M19 12H5m7-7-7 7 7 7" />
+                              </svg>
+                            </button>
+                          )}
+                        </div>
+                      )
+                    }
+
+                    // Slot vacío: solo el primero disponible acepta toques (para
+                    // que las fotos se llenen en orden sin huecos).
+                    const isNextSlot = i === photos.length
+                    return (
+                      <label
+                        key={`empty-${i}`}
+                        className={`relative flex flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-neutral-700 text-neutral-600 transition ${slotClass} ${
+                          isNextSlot ? 'cursor-pointer active:bg-neutral-900' : 'pointer-events-none opacity-50'
+                        }`}
                       >
-                        <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                          <path d="M6 6l12 12M18 6 6 18" />
-                        </svg>
-                      </button>
-                      {i === 0 ? (
-                        <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-                          Portada
-                        </span>
-                      ) : (
-                        <button
-                          type="button"
-                          onClick={() => movePhotoLeft(i)}
-                          aria-label="Mover foto hacia adelante"
-                          className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
-                        >
-                          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                            <path d="M19 12H5m7-7-7 7 7 7" />
-                          </svg>
-                        </button>
-                      )}
-                    </div>
-                  ))}
-                  {photos.length < MAX_PHOTOS && (
-                    <label className="flex aspect-square cursor-pointer items-center justify-center bg-neutral-900 text-neutral-600 transition active:bg-neutral-800">
-                      {addingPhotos ? (
-                        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
-                      ) : (
-                        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                          <path d="M12 5v14M5 12h14" />
-                        </svg>
-                      )}
-                      <input type="file" accept="image/*" multiple hidden disabled={addingPhotos} onChange={(e) => addPhotos(e.target.files)} />
-                    </label>
-                  )}
+                        {isCover && (
+                          <span className="absolute left-1.5 top-1.5 rounded-full bg-neutral-800 px-2 py-0.5 text-[10px] font-semibold text-neutral-400">
+                            Portada
+                          </span>
+                        )}
+                        {isNextSlot && addingPhotos ? (
+                          <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+                        ) : (
+                          <>
+                            <svg viewBox="0 0 24 24" className={isCover ? 'h-8 w-8' : 'h-6 w-6'} fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                              <path d="M12 5v14M5 12h14" />
+                            </svg>
+                            {isCover && <span className="text-xs font-medium">Agregar foto</span>}
+                          </>
+                        )}
+                        {isNextSlot && (
+                          <input type="file" accept="image/*" multiple hidden disabled={addingPhotos} onChange={(e) => addPhotos(e.target.files)} />
+                        )}
+                      </label>
+                    )
+                  })}
                 </div>
                 <p className="mt-2 text-xs text-neutral-600">
-                  Se comprimen automáticamente. La primera es la portada — usá la flecha para reordenar.
+                  {photos.length} de {MAX_PHOTOS} · se comprimen solas al subirlas. La primera es la portada — usá la flecha para reordenar.
                 </p>
               </div>
 
@@ -881,6 +917,7 @@ export default function Publish() {
           )}
 
           {error && <p className="text-sm text-red-400">{error}</p>}
+        </div>
         </div>
 
         <div className="fixed bottom-0 left-1/2 z-20 flex w-full max-w-lg -translate-x-1/2 items-center gap-4 bg-gradient-to-t from-black via-black/95 to-transparent px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-8">

@@ -125,6 +125,36 @@ textarea {
   animation: pagePop 0.34s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
+/* Transición entre pasos del wizard de publicar: el paso nuevo entra
+   deslizándose (desde la derecha al avanzar, desde la izquierda al volver)
+   con un fade. Mismo lenguaje que las transiciones de pantalla. */
+@keyframes stepFwd {
+  from {
+    transform: translateX(36px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+@keyframes stepBack {
+  from {
+    transform: translateX(-36px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+.step-fwd {
+  animation: stepFwd 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+.step-back {
+  animation: stepBack 0.3s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
 /* Entrada del Modal: backdrop que aparece + hoja que sube. */
 @keyframes overlayIn {
   from {
@@ -203,6 +233,8 @@ textarea {
 @media (prefers-reduced-motion: reduce) {
   .page-push,
   .page-pop,
+  .step-fwd,
+  .step-back,
   .overlay-in,
   .sheet-in,
   .img-shimmer,
