@@ -76,6 +76,25 @@ textarea {
   scrollbar-width: none;
 }
 
+/* Scrollbar fina y discreta, acorde al tema oscuro (chat). */
+.thin-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(115, 115, 115, 0.35) transparent;
+}
+.thin-scrollbar::-webkit-scrollbar {
+  width: 5px;
+}
+.thin-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb {
+  background-color: rgba(115, 115, 115, 0.35);
+  border-radius: 9999px;
+}
+.thin-scrollbar::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(115, 115, 115, 0.55);
+}
+
 /* ---------- Animaciones ---------- */
 
 /* Transición de pantalla estilo iOS: al navegar hacia adelante la pantalla

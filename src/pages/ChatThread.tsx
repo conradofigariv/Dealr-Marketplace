@@ -314,7 +314,7 @@ export default function ChatThread() {
       </header>
 
       {/* Mensajes */}
-      <div ref={scrollerRef} className="flex-1 space-y-2 overflow-y-auto px-4 py-4">
+      <div ref={scrollerRef} className="thin-scrollbar flex-1 space-y-2 overflow-y-auto px-4 py-4">
         {messages.length === 0 && iAmBuyer && (
           <div className="space-y-2 py-4">
             <p className="pb-2 text-center text-xs text-neutral-600">Empezá con una pregunta concreta:</p>
