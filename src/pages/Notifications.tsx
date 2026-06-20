@@ -28,6 +28,24 @@ const icons: Record<NotificationType, ReactElement> = {
       <path d="m20 20-3.5-3.5" />
     </>
   ),
+  bid: (
+    <>
+      <path d="M20.59 13.41 13.42 20.6a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82Z" />
+      <circle cx="7" cy="7" r="1.2" />
+    </>
+  ),
+  outbid: (
+    <>
+      <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" />
+      <polyline points="17 6 23 6 23 12" />
+    </>
+  ),
+  auction_won: (
+    <>
+      <path d="M8 21h8M12 17v4M7 4h10v4a5 5 0 0 1-10 0V4Z" />
+      <path d="M5 6H3a2 2 0 0 0 2 3M19 6h2a2 2 0 0 1-2 3" />
+    </>
+  ),
   question_answered: (
     <>
       <path d="M9.1 9a3 3 0 0 1 5.8 1c0 2-3 3-3 3" />

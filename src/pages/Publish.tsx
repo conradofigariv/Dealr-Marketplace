@@ -35,6 +35,9 @@ export default function Publish() {
   const [addingPhotos, setAddingPhotos] = useState(false)
   const [location, setLocation] = useState<LatLng | null>(null)
   const [locationLabel, setLocationLabel] = useState('')
+  const [isAuction, setIsAuction] = useState(false)
+  const [auctionDays, setAuctionDays] = useState(3)
+  const [auctionCascade, setAuctionCascade] = useState(false)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [publishedId, setPublishedId] = useState<string | null>(null)
@@ -189,9 +192,16 @@ export default function Publish() {
         invalidateFeedCache()
         navigate(`/p/${id}`)
       } else {
+        const auctionFields = isAuction
+          ? {
+              is_auction: true,
+              auction_ends_at: new Date(Date.now() + auctionDays * 86400000).toISOString(),
+              auction_cascade: auctionCascade,
+            }
+          : {}
         const { data, error: err } = await supabase
           .from('listings')
-          .insert({ ...payload, seller_id: session.user.id })
+          .insert({ ...payload, ...auctionFields, seller_id: session.user.id })
           .select('id')
           .single()
         if (err) throw err
@@ -270,6 +280,9 @@ export default function Publish() {
               setPhotos([])
               setLocation(null)
               setLocationLabel('')
+              setIsAuction(false)
+              setAuctionDays(3)
+              setAuctionCascade(false)
               setError('')
             }}
             className="w-full py-2 text-center text-sm text-neutral-500"
@@ -351,9 +364,24 @@ export default function Publish() {
           <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Estado, uso, accesorios incluidos…" className="input-line resize-none" />
         </div>
 
+        {/* Tipo de publicación: precio fijo o subasta (solo al crear) */}
+        {!id && (
+          <div>
+            <label className={labelClass}>Tipo de publicación</label>
+            <div className="flex gap-1.5">
+              <button type="button" onClick={() => setIsAuction(false)} className={`chip ${!isAuction ? 'chip-on' : 'chip-off'}`}>
+                Precio fijo
+              </button>
+              <button type="button" onClick={() => setIsAuction(true)} className={`chip ${isAuction ? 'chip-on' : 'chip-off'}`}>
+                🔨 Subasta
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="flex items-end gap-6">
           <div className="flex-1">
-            <label className={labelClass}>Precio</label>
+            <label className={labelClass}>{isAuction ? 'Precio inicial' : 'Precio'}</label>
             <input required type="number" min="0" step="any" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className="input-line text-xl font-semibold" />
           </div>
           <div className="flex gap-1.5 pb-1">
@@ -369,6 +397,32 @@ export default function Publish() {
             ))}
           </div>
         </div>
+
+        {isAuction && !id && (
+          <div className="space-y-4 rounded-2xl bg-neutral-900/60 p-4 ring-1 ring-neutral-800">
+            <div>
+              <label className={labelClass}>Duración</label>
+              <div className="flex gap-1.5">
+                {[1, 3, 7].map((d) => (
+                  <button key={d} type="button" onClick={() => setAuctionDays(d)} className={`chip ${auctionDays === d ? 'chip-on' : 'chip-off'}`}>
+                    {d} {d === 1 ? 'día' : 'días'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <label className="flex items-start gap-3">
+              <input
+                type="checkbox"
+                checked={auctionCascade}
+                onChange={(e) => setAuctionCascade(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 accent-white"
+              />
+              <span className="text-sm text-neutral-300">
+                Si el ganador no responde, ofrecer al siguiente postor a su precio
+              </span>
+            </label>
+          </div>
+        )}
 
         <div>
           <label className={labelClass}>Categoría</label>

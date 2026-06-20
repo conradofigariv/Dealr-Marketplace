@@ -36,6 +36,21 @@ export function lastSeenLabel(iso: string | null): string | null {
   return `Activo ${timeAgo(iso)}`
 }
 
+/** Cuenta regresiva legible para subastas: "2d 3h", "4h 12m", "5m 30s". */
+export function timeLeftLabel(endIso: string, now: number = Date.now()): string {
+  const ms = new Date(endIso).getTime() - now
+  if (ms <= 0) return 'Finalizada'
+  const s = Math.floor(ms / 1000)
+  const d = Math.floor(s / 86400)
+  const h = Math.floor((s % 86400) / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const sec = s % 60
+  if (d > 0) return `${d}d ${h}h`
+  if (h > 0) return `${h}h ${m}m`
+  if (m > 0) return `${m}m ${sec}s`
+  return `${sec}s`
+}
+
 export function timeAgo(iso: string): string {
   const seconds = Math.floor((Date.now() - new Date(iso).getTime()) / 1000)
   if (seconds < 60) return 'recién'

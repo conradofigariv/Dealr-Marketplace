@@ -33,19 +33,21 @@ function imageFor(slug: string, id: number): string {
 }
 
 function CategoryTile({ category, onOpen }: { category: Category; onOpen: (c: Category) => void }) {
-  const [failed, setFailed] = useState(false)
+  // 0 = imagen local (/public/categories/<slug>.jpg), 1 = foto remota, 2 = emoji
+  const [step, setStep] = useState(0)
   const meta = CATS[category.slug]
+  const src = step === 0 ? `/categories/${category.slug}.jpg` : imageFor(category.slug, category.id)
   return (
     <button
       onClick={() => onOpen(category)}
       className="relative aspect-[4/3] overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-neutral-800 transition active:opacity-80"
     >
-      {!failed ? (
+      {step < 2 ? (
         <img
-          src={imageFor(category.slug, category.id)}
+          src={src}
           alt=""
           loading="lazy"
-          onError={() => setFailed(true)}
+          onError={() => setStep((s) => s + 1)}
           className="h-full w-full object-cover"
         />
       ) : (

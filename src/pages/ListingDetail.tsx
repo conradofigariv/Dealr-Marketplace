@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import type { FieldDef, Listing, Question } from '../lib/types'
-import { formatPrice, conditionLabels, timeAgo, priceDropPct, lastSeenLabel } from '../lib/format'
+import { formatPrice, conditionLabels, timeAgo, priceDropPct, lastSeenLabel, timeLeftLabel } from '../lib/format'
 import { capture } from '../lib/analytics'
 import { useFavorites } from '../hooks/useFavorites'
 import Avatar from '../components/Avatar'
@@ -44,7 +44,11 @@ export default function ListingDetail() {
   const [similar, setSimilar] = useState<Listing[]>([])
   const [viewerAt, setViewerAt] = useState<number | null>(null)
   const [photoIndex, setPhotoIndex] = useState(0)
+  const [bidAmount, setBidAmount] = useState('')
+  const [bidBusy, setBidBusy] = useState(false)
+  const [now, setNow] = useState(Date.now())
   const countedView = useRef(false)
+  const closedOnce = useRef(false)
 
   const isOwner = session?.user.id === listing?.seller_id
 
@@ -111,6 +115,55 @@ export default function ListingDetail() {
       .then(({ data }) => setSimilar((data as Listing[]) ?? []))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing?.id])
+
+  // Cuenta regresiva en vivo (solo si es subasta abierta).
+  useEffect(() => {
+    if (!listing?.is_auction || listing.auction_closed) return
+    const t = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(t)
+  }, [listing?.is_auction, listing?.auction_closed])
+
+  // Subasta vencida sin cerrar: la cierra al abrir (crea el chat ganador↔vendedor).
+  useEffect(() => {
+    if (!listing?.is_auction || listing.auction_closed || !listing.auction_ends_at) return
+    if (new Date(listing.auction_ends_at).getTime() > Date.now() || closedOnce.current) return
+    closedOnce.current = true
+    supabase.rpc('close_auctions').then(() => load())
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing?.id, listing?.auction_closed, listing?.auction_ends_at])
+
+  // Realtime: oferta actual / cantidad en vivo.
+  useEffect(() => {
+    if (!listing?.is_auction || !id) return
+    const channel = supabase
+      .channel(`listing-${id}`)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'listings', filter: `id=eq.${id}` }, () => load())
+      .subscribe()
+    return () => {
+      supabase.removeChannel(channel)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listing?.is_auction, id])
+
+  async function placeBid(e: FormEvent) {
+    e.preventDefault()
+    if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
+    setBidBusy(true)
+    const { data, error } = await supabase.rpc('place_bid', { p_listing: id, p_amount: Number(bidAmount) })
+    setBidBusy(false)
+    if (error) return toast('No pudimos registrar la oferta. Probá de nuevo.')
+    if (data) return toast(data as string) // mensaje de validación de la DB
+    setBidAmount('')
+    toast('¡Oferta registrada! Sos el mejor postor.')
+    load()
+  }
+
+  async function reassignAuction() {
+    const { data, error } = await supabase.rpc('reassign_auction', { p_listing: id })
+    if (error) return toast('No se pudo reasignar. Probá de nuevo.')
+    toast(data ? (data as string) : 'Se ofreció al siguiente postor.')
+    load()
+  }
 
   async function askQuestion(e: FormEvent) {
     e.preventDefault()
@@ -272,6 +325,9 @@ export default function ListingDetail() {
 
   const seller = listing.seller!
   const dropPct = priceDropPct(listing)
+  const auction = listing.is_auction
+  const auctionEnded = auction && listing.auction_ends_at ? new Date(listing.auction_ends_at).getTime() <= now : false
+  const iWon = auction && listing.auction_closed && session?.user.id === listing.sold_to
   const buyerLoc = getCachedBuyerLocation()
   const distanceKm =
     listing.lat != null && listing.lng != null && buyerLoc
@@ -365,17 +421,34 @@ export default function ListingDetail() {
 
       <div className="space-y-6 px-5 py-6">
         <div>
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-            <p className="text-3xl font-bold text-white">{formatPrice(listing.price, listing.currency)}</p>
-            {dropPct != null && (
-              <>
-                <span className="text-base text-neutral-500 line-through">
-                  {formatPrice(listing.previous_price!, listing.currency)}
+          {auction ? (
+            <div>
+              <div className="flex items-baseline gap-2">
+                <p className="text-3xl font-bold text-white">{formatPrice(listing.current_bid ?? listing.price, listing.currency)}</p>
+                <span className="text-xs text-neutral-500">{listing.current_bid != null ? 'oferta actual' : 'precio inicial'}</span>
+              </div>
+              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
+                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-400">🔨 Subasta</span>
+                <span className="text-neutral-400">{listing.bids_count} {listing.bids_count === 1 ? 'oferta' : 'ofertas'}</span>
+                <span className="text-neutral-600">·</span>
+                <span className={auctionEnded ? 'text-neutral-500' : 'font-semibold text-white'}>
+                  {auctionEnded ? 'Finalizada' : `Termina en ${timeLeftLabel(listing.auction_ends_at!, now)}`}
                 </span>
-                <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-bold text-black">Bajó {dropPct}%</span>
-              </>
-            )}
-          </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+              <p className="text-3xl font-bold text-white">{formatPrice(listing.price, listing.currency)}</p>
+              {dropPct != null && (
+                <>
+                  <span className="text-base text-neutral-500 line-through">
+                    {formatPrice(listing.previous_price!, listing.currency)}
+                  </span>
+                  <span className="rounded-full bg-emerald-500 px-2 py-0.5 text-xs font-bold text-black">Bajó {dropPct}%</span>
+                </>
+              )}
+            </div>
+          )}
           <h1 className="mt-1.5 text-lg leading-snug text-neutral-200">{listing.title}</h1>
           <p className="mt-2 text-sm text-neutral-500">
             {conditionLabels[listing.condition]} · publicado {timeAgo(listing.created_at)}
@@ -480,8 +553,28 @@ export default function ListingDetail() {
                 </span>
               </p>
             </div>
+            {auction && (
+              <p className="mb-3 text-xs text-neutral-400">
+                🔨 {listing.bids_count} {listing.bids_count === 1 ? 'oferta' : 'ofertas'} ·{' '}
+                {listing.auction_closed
+                  ? listing.sold_to
+                    ? 'Cerrada con ganador (notificado)'
+                    : 'Cerrada sin ofertas'
+                  : auctionEnded
+                    ? 'Finalizó, cerrando…'
+                    : `Termina en ${timeLeftLabel(listing.auction_ends_at!, now)}`}
+              </p>
+            )}
             <div className="flex flex-wrap gap-2">
-              {listing.status === 'active' ? (
+              {auction ? (
+                <>
+                  {listing.auction_closed && listing.auction_cascade && listing.sold_to && (
+                    <button onClick={reassignAuction} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
+                      El ganador no retiró → ofrecer al siguiente
+                    </button>
+                  )}
+                </>
+              ) : listing.status === 'active' ? (
                 <>
                   <button onClick={() => setStatus('active', true)} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
                     Renovar
@@ -589,8 +682,42 @@ export default function ListingDetail() {
         )}
       </div>
 
-      {/* Barra de acciones del comprador */}
-      {!isOwner && listing.status === 'active' && (
+      {/* Barra de acciones del comprador — subasta */}
+      {!isOwner && auction && (
+        <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-lg -translate-x-1/2 bg-gradient-to-t from-black via-black/95 to-transparent px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-8">
+          {iWon ? (
+            <button onClick={openChat} className="w-full rounded-full bg-amber-500 py-3 text-sm font-bold text-black">
+              🏆 Ganaste — coordinar con el vendedor
+            </button>
+          ) : auctionEnded || listing.status !== 'active' ? (
+            <p className="rounded-full bg-neutral-900 py-3 text-center text-sm font-medium text-neutral-400 ring-1 ring-neutral-800">
+              Subasta finalizada
+            </p>
+          ) : (
+            <form onSubmit={placeBid} className="flex items-center gap-2">
+              <div className="flex flex-1 items-center gap-1.5 rounded-full bg-neutral-900 px-4 ring-1 ring-neutral-700">
+                <span className="text-sm font-semibold text-neutral-500">{listing.currency === 'USD' ? 'US$' : '$'}</span>
+                <input
+                  type="number"
+                  min="0"
+                  step="any"
+                  required
+                  value={bidAmount}
+                  onChange={(e) => setBidAmount(e.target.value)}
+                  placeholder={String(listing.current_bid != null ? Math.floor(listing.current_bid + 1) : listing.price)}
+                  className="w-full bg-transparent py-3 text-sm font-semibold text-white outline-none"
+                />
+              </div>
+              <button disabled={bidBusy} className="shrink-0 rounded-full bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-50">
+                Ofertar
+              </button>
+            </form>
+          )}
+        </div>
+      )}
+
+      {/* Barra de acciones del comprador — precio fijo */}
+      {!isOwner && !auction && listing.status === 'active' && (
         <div className="fixed bottom-0 left-1/2 z-20 flex w-full max-w-lg -translate-x-1/2 gap-3 bg-gradient-to-t from-black via-black/95 to-transparent px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-8">
           <button
             onClick={() => setOfferOpen(true)}

@@ -57,6 +57,12 @@ export interface Listing {
   views_count: number
   previous_price: number | null
   price_dropped_at: string | null
+  is_auction: boolean
+  auction_ends_at: string | null
+  current_bid: number | null
+  bids_count: number
+  auction_closed: boolean
+  auction_cascade: boolean
   created_at: string
   last_renewed_at: string
   seller?: Profile
@@ -123,6 +129,9 @@ export type NotificationType =
   | 'sale_confirmed'
   | 'price_drop'
   | 'saved_search'
+  | 'bid'
+  | 'outbid'
+  | 'auction_won'
 
 export interface AppNotification {
   id: string

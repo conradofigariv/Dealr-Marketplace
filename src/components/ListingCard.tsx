@@ -2,7 +2,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import type { MouseEvent } from 'react'
 import type { Listing } from '../lib/types'
 import { photoUrl } from '../lib/supabase'
-import { formatPrice, priceDropPct, isRecentlyPosted, timeAgo } from '../lib/format'
+import { formatPrice, priceDropPct, isRecentlyPosted, timeAgo, timeLeftLabel } from '../lib/format'
 import { formatDistance } from '../lib/geo'
 import { useAuth } from '../hooks/useAuth'
 import { useFavorites } from '../hooks/useFavorites'
@@ -12,6 +12,8 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
   const photo = listing.photos[0]
   const dropPct = priceDropPct(listing)
   const recent = isRecentlyPosted(listing.created_at)
+  const auction = listing.is_auction
+  const auctionPrice = listing.current_bid ?? listing.price
   const navigate = useNavigate()
   const { session } = useAuth()
   const { isFavorite, toggle } = useFavorites()
@@ -49,7 +51,7 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
       <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/45 to-transparent px-2.5 pb-2 pt-7">
         <div className="flex items-center gap-1.5">
           <span className="shrink-0 text-xs font-bold text-white">
-            {formatPrice(listing.price, listing.currency)}
+            {formatPrice(auction ? auctionPrice : listing.price, listing.currency)}
           </span>
           <span className="truncate text-xs text-white/85">{listing.title}</span>
           {distanceKm != null && (
@@ -57,8 +59,9 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
           )}
         </div>
         <p className="mt-0.5 truncate text-[10px] text-white/55">
-          {listing.location_label ? `${listing.location_label} · ` : ''}
-          {timeAgo(listing.created_at)}
+          {auction && listing.auction_ends_at
+            ? `🔨 ${listing.bids_count} ${listing.bids_count === 1 ? 'oferta' : 'ofertas'} · ${timeLeftLabel(listing.auction_ends_at) === 'Finalizada' ? 'Finalizada' : 'Termina en ' + timeLeftLabel(listing.auction_ends_at)}`
+            : `${listing.location_label ? `${listing.location_label} · ` : ''}${timeAgo(listing.created_at)}`}
         </p>
       </div>
       <div className="absolute right-2 top-2 flex flex-col items-end gap-1.5">
@@ -88,6 +91,9 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
         </button>
       </div>
       <div className="absolute left-2 top-2 flex flex-col items-start gap-1.5">
+        {auction && (
+          <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">🔨 Subasta</span>
+        )}
         {listing.seller?.identity_verified && (
           <span className="rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm" title="Vendedor verificado">
             <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
