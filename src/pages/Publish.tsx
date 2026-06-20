@@ -12,6 +12,13 @@ import { invalidateFeedCache } from './Home'
 
 const MAX_PHOTOS = 6
 
+const WIZARD_STEPS = [
+  { name: 'Fotos', title: 'Mostrá tu producto', subtitle: 'Fotos claras y un buen título venden más rápido.' },
+  { name: 'Detalles', title: 'Contá los detalles', subtitle: 'Categoría, condición y una buena descripción.' },
+  { name: 'Precio', title: 'Poné el precio', subtitle: 'Precio fijo o subasta — vos elegís.' },
+  { name: 'Entrega', title: '¿Dónde lo entregás?', subtitle: 'Solo se muestra el área aproximada.' },
+]
+
 interface PendingPhoto {
   file?: File // nueva foto, todavía sin subir
   path?: string // foto existente (modo edición)
@@ -41,6 +48,7 @@ export default function Publish() {
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [publishedId, setPublishedId] = useState<string | null>(null)
+  const [step, setStep] = useState(1)
 
   const category = useMemo(
     () => categories.find((c) => c.id === categoryId),
@@ -136,6 +144,37 @@ export default function Publish() {
       if (def.type === 'boolean' && value === undefined) return `Indicá "${def.label}"`
     }
     return null
+  }
+
+  // Wizard de publicación (solo al crear): 4 pasos con validación propia.
+  function stepError(s: number): string | null {
+    if (s === 1) {
+      if (photos.length === 0) return 'Subí al menos una foto'
+      if (title.trim().length < 4) return 'Poné un título de al menos 4 letras'
+    }
+    if (s === 2) {
+      if (!categoryId) return 'Elegí una categoría'
+      return validateFields()
+    }
+    if (s === 3) {
+      if (!price || Number(price) <= 0) return 'Poné un precio'
+    }
+    return null
+  }
+
+  function goNext() {
+    const err = stepError(step)
+    if (err) return setError(err)
+    setError('')
+    window.scrollTo(0, 0)
+    setStep((s) => s + 1)
+  }
+
+  function goBack() {
+    setError('')
+    window.scrollTo(0, 0)
+    if (step === 1) navigate(-1)
+    else setStep((s) => s - 1)
   }
 
   async function submit(e: FormEvent) {
@@ -284,6 +323,7 @@ export default function Publish() {
               setAuctionDays(3)
               setAuctionCascade(false)
               setError('')
+              setStep(1)
             }}
             className="w-full py-2 text-center text-sm text-neutral-500"
           >
@@ -294,259 +334,568 @@ export default function Publish() {
     )
   }
 
-  return (
-    <div className="pb-32">
-      <header className="px-5 pb-2 pt-[max(1.25rem,env(safe-area-inset-top))]">
-        <h1 className="text-2xl font-bold tracking-tight text-white">{id ? 'Editar' : 'Vender'}</h1>
-      </header>
+  // ---------- Modo edición: formulario clásico en una sola pantalla ----------
+  if (id) {
+    return (
+      <div className="pb-32">
+        <header className="px-5 pb-2 pt-[max(1.25rem,env(safe-area-inset-top))]">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Editar</h1>
+        </header>
 
-      <form onSubmit={submit} className="space-y-7 px-5 py-4">
-        {/* Fotos */}
-        <div>
-          <label className={labelClass}>Fotos ({photos.length}/{MAX_PHOTOS})</label>
-          <div className="grid grid-cols-3 gap-1">
-            {photos.map((photo, i) => (
-              <div key={photo.preview} className="relative aspect-square overflow-hidden bg-neutral-900">
-                <img src={photo.preview} alt="" className="h-full w-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => removePhoto(i)}
-                  aria-label="Quitar foto"
-                  className="absolute right-1.5 top-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
-                >
-                  <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                    <path d="M6 6l12 12M18 6 6 18" />
-                  </svg>
-                </button>
-                {i === 0 ? (
-                  <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
-                    Portada
-                  </span>
-                ) : (
+        <form onSubmit={submit} className="space-y-7 px-5 py-4">
+          {/* Fotos */}
+          <div>
+            <label className={labelClass}>Fotos ({photos.length}/{MAX_PHOTOS})</label>
+            <div className="grid grid-cols-3 gap-1">
+              {photos.map((photo, i) => (
+                <div key={photo.preview} className="relative aspect-square overflow-hidden bg-neutral-900">
+                  <img src={photo.preview} alt="" className="h-full w-full object-cover" />
                   <button
                     type="button"
-                    onClick={() => movePhotoLeft(i)}
-                    aria-label="Mover foto hacia adelante"
-                    className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
+                    onClick={() => removePhoto(i)}
+                    aria-label="Quitar foto"
+                    className="absolute right-1.5 top-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
                   >
-                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M19 12H5m7-7-7 7 7 7" />
+                    <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M6 6l12 12M18 6 6 18" />
                     </svg>
                   </button>
-                )}
-              </div>
-            ))}
-            {photos.length < MAX_PHOTOS && (
-              <label className="flex aspect-square cursor-pointer items-center justify-center bg-neutral-900 text-neutral-600 transition active:bg-neutral-800">
-                {addingPhotos ? (
-                  <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
-                ) : (
-                  <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
-                    <path d="M12 5v14M5 12h14" />
-                  </svg>
-                )}
-                <input type="file" accept="image/*" multiple hidden disabled={addingPhotos} onChange={(e) => addPhotos(e.target.files)} />
-              </label>
-            )}
-          </div>
-          <p className="mt-2 text-xs text-neutral-600">
-            Se comprimen automáticamente. La primera es la portada — usá la flecha para reordenar.
-          </p>
-        </div>
-
-        <div>
-          <label className={labelClass}>Título</label>
-          <input required minLength={4} maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: iPhone 13 128GB" className="input-line" />
-        </div>
-
-        <div>
-          <label className={labelClass}>Descripción</label>
-          <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Estado, uso, accesorios incluidos…" className="input-line resize-none" />
-        </div>
-
-        {/* Tipo de publicación: precio fijo o subasta (solo al crear) */}
-        {!id && (
-          <div>
-            <label className={labelClass}>Tipo de publicación</label>
-            <div className="flex gap-1.5">
-              <button type="button" onClick={() => setIsAuction(false)} className={`chip ${!isAuction ? 'chip-on' : 'chip-off'}`}>
-                Precio fijo
-              </button>
-              <button type="button" onClick={() => setIsAuction(true)} className={`chip ${isAuction ? 'chip-on glow-badge' : 'chip-off'}`}>
-                Subasta
-              </button>
-            </div>
-          </div>
-        )}
-
-        <div className="flex items-end gap-6">
-          <div className="flex-1">
-            <label className={labelClass}>{isAuction ? 'Precio inicial' : 'Precio'}</label>
-            <input required type="number" min="0" step="any" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className="input-line text-xl font-semibold" />
-          </div>
-          <div className="flex gap-1.5 pb-1">
-            {(['ARS', 'USD'] as Currency[]).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCurrency(c)}
-                className={`chip ${currency === c ? 'chip-on' : 'chip-off'}`}
-              >
-                {c}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {isAuction && !id && (
-          <div className="space-y-4 rounded-2xl bg-neutral-900/60 p-4 ring-1 ring-neutral-800">
-            <div>
-              <label className={labelClass}>Duración</label>
-              <div className="flex gap-1.5">
-                {[1, 3, 7].map((d) => (
-                  <button key={d} type="button" onClick={() => setAuctionDays(d)} className={`chip ${auctionDays === d ? 'chip-on' : 'chip-off'}`}>
-                    {d} {d === 1 ? 'día' : 'días'}
-                  </button>
-                ))}
-              </div>
-            </div>
-            <label className="flex items-start gap-3">
-              <input
-                type="checkbox"
-                checked={auctionCascade}
-                onChange={(e) => setAuctionCascade(e.target.checked)}
-                className="mt-0.5 h-4 w-4 shrink-0 accent-white"
-              />
-              <span className="text-sm text-neutral-300">
-                Si el ganador no responde, ofrecer al siguiente postor a su precio
-              </span>
-            </label>
-          </div>
-        )}
-
-        <div>
-          <label className={labelClass}>Categoría</label>
-          <select
-            required
-            value={categoryId}
-            onChange={(e) => {
-              setCategoryId(Number(e.target.value))
-              setFields({})
-            }}
-            className="input-line appearance-none"
-          >
-            <option value="" disabled>Elegí una categoría</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id} className="bg-neutral-900">{c.name}</option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label className={labelClass}>Condición</label>
-          <div className="flex flex-wrap gap-1.5">
-            {(Object.keys(conditionLabels) as ListingCondition[]).map((c) => (
-              <button
-                key={c}
-                type="button"
-                onClick={() => setCondition(c)}
-                className={`chip ${condition === c ? 'chip-on' : 'chip-off'}`}
-              >
-                {conditionLabels[c]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Ubicación: se muestra como área aproximada en la publicación */}
-        <div>
-          <label className={labelClass}>Ubicación</label>
-          <LocationPicker
-            value={location}
-            onChange={(loc, label) => {
-              setLocation(loc)
-              if (label !== undefined) setLocationLabel(label)
-            }}
-          />
-          <p className="mt-2 text-xs text-neutral-600">
-            {locationLabel ? (
-              <>
-                <span className="text-neutral-400">{locationLabel}</span> · solo se muestra el área aproximada, nunca el punto exacto.
-              </>
-            ) : (
-              'Solo se muestra el área aproximada, nunca el punto exacto.'
-            )}
-          </p>
-        </div>
-
-        {/* Campos estructurados obligatorios por categoría */}
-        {fieldDefs.map((def) => (
-          <div key={def.key}>
-            <label className={labelClass}>
-              {def.label}
-              {!def.required && <span className="ml-1 normal-case text-neutral-700">(opcional)</span>}
-            </label>
-            {def.type === 'text' && (
-              <input
-                value={(fields[def.key] as string) ?? ''}
-                onChange={(e) => setField(def.key, e.target.value)}
-                className="input-line"
-              />
-            )}
-            {def.type === 'select' && (
-              <select
-                value={(fields[def.key] as string) ?? ''}
-                onChange={(e) => setField(def.key, e.target.value)}
-                className="input-line appearance-none"
-              >
-                <option value="" disabled>Elegir…</option>
-                {def.options?.map((opt) => (
-                  <option key={opt} value={opt} className="bg-neutral-900">{opt}</option>
-                ))}
-              </select>
-            )}
-            {def.type === 'multiselect' && (
-              <div className="flex flex-wrap gap-1.5">
-                {def.options?.map((opt) => {
-                  const selected = ((fields[def.key] as string[]) ?? []).includes(opt)
-                  return (
+                  {i === 0 ? (
+                    <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                      Portada
+                    </span>
+                  ) : (
                     <button
-                      key={opt}
                       type="button"
-                      onClick={() => {
-                        const current = (fields[def.key] as string[]) ?? []
-                        setField(def.key, selected ? current.filter((o) => o !== opt) : [...current, opt])
-                      }}
-                      className={`chip ${selected ? 'chip-on' : 'chip-off'}`}
+                      onClick={() => movePhotoLeft(i)}
+                      aria-label="Mover foto hacia adelante"
+                      className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
                     >
-                      {opt}
+                      <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M19 12H5m7-7-7 7 7 7" />
+                      </svg>
                     </button>
-                  )
-                })}
-              </div>
-            )}
-            {def.type === 'boolean' && (
-              <div className="flex gap-1.5">
-                {[true, false].map((v) => (
-                  <button
-                    key={String(v)}
-                    type="button"
-                    onClick={() => setField(def.key, v)}
-                    className={`chip ${fields[def.key] === v ? 'chip-on' : 'chip-off'}`}
-                  >
-                    {v ? 'Sí' : 'No'}
-                  </button>
-                ))}
-              </div>
-            )}
+                  )}
+                </div>
+              ))}
+              {photos.length < MAX_PHOTOS && (
+                <label className="flex aspect-square cursor-pointer items-center justify-center bg-neutral-900 text-neutral-600 transition active:bg-neutral-800">
+                  {addingPhotos ? (
+                    <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+                  ) : (
+                    <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                      <path d="M12 5v14M5 12h14" />
+                    </svg>
+                  )}
+                  <input type="file" accept="image/*" multiple hidden disabled={addingPhotos} onChange={(e) => addPhotos(e.target.files)} />
+                </label>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-neutral-600">
+              Se comprimen automáticamente. La primera es la portada — usá la flecha para reordenar.
+            </p>
           </div>
-        ))}
 
-        {error && <p className="text-sm text-red-400">{error}</p>}
+          <div>
+            <label className={labelClass}>Título</label>
+            <input required minLength={4} maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: iPhone 13 128GB" className="input-line" />
+          </div>
 
-        <button disabled={busy} className="btn-primary">
-          {busy ? 'Publicando…' : id ? 'Guardar cambios' : 'Publicar'}
+          <div>
+            <label className={labelClass}>Descripción</label>
+            <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Estado, uso, accesorios incluidos…" className="input-line resize-none" />
+          </div>
+
+          <div className="flex items-end gap-6">
+            <div className="flex-1">
+              <label className={labelClass}>Precio</label>
+              <input required type="number" min="0" step="any" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className="input-line text-xl font-semibold" />
+            </div>
+            <div className="flex gap-1.5 pb-1">
+              {(['ARS', 'USD'] as Currency[]).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCurrency(c)}
+                  className={`chip ${currency === c ? 'chip-on' : 'chip-off'}`}
+                >
+                  {c}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className={labelClass}>Categoría</label>
+            <select
+              required
+              value={categoryId}
+              onChange={(e) => {
+                setCategoryId(Number(e.target.value))
+                setFields({})
+              }}
+              className="input-line appearance-none"
+            >
+              <option value="" disabled>Elegí una categoría</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id} className="bg-neutral-900">{c.name}</option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className={labelClass}>Condición</label>
+            <div className="flex flex-wrap gap-1.5">
+              {(Object.keys(conditionLabels) as ListingCondition[]).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCondition(c)}
+                  className={`chip ${condition === c ? 'chip-on' : 'chip-off'}`}
+                >
+                  {conditionLabels[c]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Ubicación: se muestra como área aproximada en la publicación */}
+          <div>
+            <label className={labelClass}>Ubicación</label>
+            <LocationPicker
+              value={location}
+              onChange={(loc, label) => {
+                setLocation(loc)
+                if (label !== undefined) setLocationLabel(label)
+              }}
+            />
+            <p className="mt-2 text-xs text-neutral-600">
+              {locationLabel ? (
+                <>
+                  <span className="text-neutral-400">{locationLabel}</span> · solo se muestra el área aproximada, nunca el punto exacto.
+                </>
+              ) : (
+                'Solo se muestra el área aproximada, nunca el punto exacto.'
+              )}
+            </p>
+          </div>
+
+          {/* Campos estructurados obligatorios por categoría */}
+          {fieldDefs.map((def) => (
+            <div key={def.key}>
+              <label className={labelClass}>
+                {def.label}
+                {!def.required && <span className="ml-1 normal-case text-neutral-700">(opcional)</span>}
+              </label>
+              {def.type === 'text' && (
+                <input
+                  value={(fields[def.key] as string) ?? ''}
+                  onChange={(e) => setField(def.key, e.target.value)}
+                  className="input-line"
+                />
+              )}
+              {def.type === 'select' && (
+                <select
+                  value={(fields[def.key] as string) ?? ''}
+                  onChange={(e) => setField(def.key, e.target.value)}
+                  className="input-line appearance-none"
+                >
+                  <option value="" disabled>Elegir…</option>
+                  {def.options?.map((opt) => (
+                    <option key={opt} value={opt} className="bg-neutral-900">{opt}</option>
+                  ))}
+                </select>
+              )}
+              {def.type === 'multiselect' && (
+                <div className="flex flex-wrap gap-1.5">
+                  {def.options?.map((opt) => {
+                    const selected = ((fields[def.key] as string[]) ?? []).includes(opt)
+                    return (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => {
+                          const current = (fields[def.key] as string[]) ?? []
+                          setField(def.key, selected ? current.filter((o) => o !== opt) : [...current, opt])
+                        }}
+                        className={`chip ${selected ? 'chip-on' : 'chip-off'}`}
+                      >
+                        {opt}
+                      </button>
+                    )
+                  })}
+                </div>
+              )}
+              {def.type === 'boolean' && (
+                <div className="flex gap-1.5">
+                  {[true, false].map((v) => (
+                    <button
+                      key={String(v)}
+                      type="button"
+                      onClick={() => setField(def.key, v)}
+                      className={`chip ${fields[def.key] === v ? 'chip-on' : 'chip-off'}`}
+                    >
+                      {v ? 'Sí' : 'No'}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
+
+          <button disabled={busy} className="btn-primary">
+            {busy ? 'Guardando…' : 'Guardar cambios'}
+          </button>
+        </form>
+      </div>
+    )
+  }
+
+  // ---------- Modo crear: wizard de 4 pasos ----------
+  const stepInfo = WIZARD_STEPS[step - 1]
+  const isLastStep = step === WIZARD_STEPS.length
+
+  function handleWizardSubmit(e: FormEvent) {
+    e.preventDefault()
+    if (!isLastStep) {
+      goNext()
+      return
+    }
+    submit(e)
+  }
+
+  return (
+    <div className="pb-36">
+      <header className="px-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
+        <button
+          type="button"
+          onClick={goBack}
+          aria-label="Volver"
+          className="-ml-1.5 flex h-9 w-9 items-center justify-center text-white"
+        >
+          <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M15 19 8 12l7-7" />
+          </svg>
         </button>
+        <div className="mt-3 flex gap-1.5">
+          {WIZARD_STEPS.map((s, i) => (
+            <div key={s.name} className="h-1 flex-1 overflow-hidden rounded-full bg-neutral-800">
+              <div
+                className="h-full rounded-full bg-white transition-all"
+                style={{ width: i < step ? '100%' : '0%' }}
+              />
+            </div>
+          ))}
+        </div>
+        <p className="mt-2 text-xs font-medium text-neutral-500">
+          {stepInfo.name} · Paso {step} de {WIZARD_STEPS.length}
+        </p>
+      </header>
+
+      <form onSubmit={handleWizardSubmit} className="px-5 py-5">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold tracking-tight text-white">{stepInfo.title}</h1>
+          <p className="mt-1 text-sm text-neutral-500">{stepInfo.subtitle}</p>
+        </div>
+
+        <div className="space-y-7">
+          {/* Paso 1: Fotos + Título */}
+          {step === 1 && (
+            <>
+              <div>
+                <label className={labelClass}>Fotos ({photos.length}/{MAX_PHOTOS})</label>
+                <div className="grid grid-cols-3 gap-1">
+                  {photos.map((photo, i) => (
+                    <div key={photo.preview} className="relative aspect-square overflow-hidden bg-neutral-900">
+                      <img src={photo.preview} alt="" className="h-full w-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => removePhoto(i)}
+                        aria-label="Quitar foto"
+                        className="absolute right-1.5 top-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
+                      >
+                        <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                          <path d="M6 6l12 12M18 6 6 18" />
+                        </svg>
+                      </button>
+                      {i === 0 ? (
+                        <span className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm">
+                          Portada
+                        </span>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => movePhotoLeft(i)}
+                          aria-label="Mover foto hacia adelante"
+                          className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M19 12H5m7-7-7 7 7 7" />
+                          </svg>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  {photos.length < MAX_PHOTOS && (
+                    <label className="flex aspect-square cursor-pointer items-center justify-center bg-neutral-900 text-neutral-600 transition active:bg-neutral-800">
+                      {addingPhotos ? (
+                        <span className="h-2.5 w-2.5 animate-pulse rounded-full bg-white" />
+                      ) : (
+                        <svg viewBox="0 0 24 24" className="h-7 w-7" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round">
+                          <path d="M12 5v14M5 12h14" />
+                        </svg>
+                      )}
+                      <input type="file" accept="image/*" multiple hidden disabled={addingPhotos} onChange={(e) => addPhotos(e.target.files)} />
+                    </label>
+                  )}
+                </div>
+                <p className="mt-2 text-xs text-neutral-600">
+                  Se comprimen automáticamente. La primera es la portada — usá la flecha para reordenar.
+                </p>
+              </div>
+
+              <div>
+                <label className={labelClass}>Título</label>
+                <input required minLength={4} maxLength={80} value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ej: iPhone 13 128GB" className="input-line" />
+              </div>
+            </>
+          )}
+
+          {/* Paso 2: Descripción + Categoría + Condición + campos por categoría */}
+          {step === 2 && (
+            <>
+              <div>
+                <label className={labelClass}>Descripción</label>
+                <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Estado, uso, accesorios incluidos…" className="input-line resize-none" />
+              </div>
+
+              <div>
+                <label className={labelClass}>Categoría</label>
+                <select
+                  required
+                  value={categoryId}
+                  onChange={(e) => {
+                    setCategoryId(Number(e.target.value))
+                    setFields({})
+                  }}
+                  className="input-line appearance-none"
+                >
+                  <option value="" disabled>Elegí una categoría</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id} className="bg-neutral-900">{c.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className={labelClass}>Condición</label>
+                <div className="flex flex-wrap gap-1.5">
+                  {(Object.keys(conditionLabels) as ListingCondition[]).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCondition(c)}
+                      className={`chip ${condition === c ? 'chip-on' : 'chip-off'}`}
+                    >
+                      {conditionLabels[c]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {fieldDefs.map((def) => (
+                <div key={def.key}>
+                  <label className={labelClass}>
+                    {def.label}
+                    {!def.required && <span className="ml-1 normal-case text-neutral-700">(opcional)</span>}
+                  </label>
+                  {def.type === 'text' && (
+                    <input
+                      value={(fields[def.key] as string) ?? ''}
+                      onChange={(e) => setField(def.key, e.target.value)}
+                      className="input-line"
+                    />
+                  )}
+                  {def.type === 'select' && (
+                    <select
+                      value={(fields[def.key] as string) ?? ''}
+                      onChange={(e) => setField(def.key, e.target.value)}
+                      className="input-line appearance-none"
+                    >
+                      <option value="" disabled>Elegir…</option>
+                      {def.options?.map((opt) => (
+                        <option key={opt} value={opt} className="bg-neutral-900">{opt}</option>
+                      ))}
+                    </select>
+                  )}
+                  {def.type === 'multiselect' && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {def.options?.map((opt) => {
+                        const selected = ((fields[def.key] as string[]) ?? []).includes(opt)
+                        return (
+                          <button
+                            key={opt}
+                            type="button"
+                            onClick={() => {
+                              const current = (fields[def.key] as string[]) ?? []
+                              setField(def.key, selected ? current.filter((o) => o !== opt) : [...current, opt])
+                            }}
+                            className={`chip ${selected ? 'chip-on' : 'chip-off'}`}
+                          >
+                            {opt}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  )}
+                  {def.type === 'boolean' && (
+                    <div className="flex gap-1.5">
+                      {[true, false].map((v) => (
+                        <button
+                          key={String(v)}
+                          type="button"
+                          onClick={() => setField(def.key, v)}
+                          className={`chip ${fields[def.key] === v ? 'chip-on' : 'chip-off'}`}
+                        >
+                          {v ? 'Sí' : 'No'}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              ))}
+            </>
+          )}
+
+          {/* Paso 3: Tipo de publicación + Precio + opciones de subasta */}
+          {step === 3 && (
+            <>
+              <div>
+                <label className={labelClass}>Tipo de publicación</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsAuction(false)}
+                    className={`rounded-2xl p-4 text-left ring-1 transition ${
+                      !isAuction ? 'bg-white text-black ring-white' : 'bg-neutral-900 text-white ring-neutral-800'
+                    }`}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+                    </svg>
+                    <p className="mt-2.5 text-sm font-semibold">Precio fijo</p>
+                    <p className={`mt-0.5 text-xs ${!isAuction ? 'text-black/60' : 'text-neutral-500'}`}>Venta directa</p>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setIsAuction(true)}
+                    className={`rounded-2xl p-4 text-left ring-1 transition ${
+                      isAuction ? 'glow-badge bg-white text-black ring-white' : 'bg-neutral-900 text-white ring-neutral-800'
+                    }`}
+                  >
+                    <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="m14 12-8.5 8.5a2.12 2.12 0 1 1-3-3L11 9" />
+                      <path d="M15 13 9 7l4-4 6 6-4 4Z" />
+                      <path d="m17.6 13.4 3.7-3.7" />
+                    </svg>
+                    <p className={`mt-2.5 text-sm font-semibold ${isAuction ? 'glow-text' : ''}`}>Subasta</p>
+                    <p className={`mt-0.5 text-xs ${isAuction ? 'text-black/60' : 'text-neutral-500'}`}>Mejor oferta</p>
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-end gap-6">
+                <div className="flex-1">
+                  <label className={labelClass}>{isAuction ? 'Precio inicial' : 'Precio'}</label>
+                  <input required type="number" min="0" step="any" value={price} onChange={(e) => setPrice(e.target.value)} placeholder="0" className="input-line text-xl font-semibold" />
+                </div>
+                <div className="flex gap-1.5 pb-1">
+                  {(['ARS', 'USD'] as Currency[]).map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => setCurrency(c)}
+                      className={`chip ${currency === c ? 'chip-on' : 'chip-off'}`}
+                    >
+                      {c}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-xs text-neutral-600">
+                {isAuction
+                  ? 'Los compradores ofertan a partir de este precio. Vos definís cuánto dura.'
+                  : 'Los compradores también pueden hacerte una oferta para negociar.'}
+              </p>
+
+              {isAuction && (
+                <div className="space-y-4 rounded-2xl bg-neutral-900/60 p-4 ring-1 ring-neutral-800">
+                  <div>
+                    <label className={labelClass}>Duración</label>
+                    <div className="flex gap-1.5">
+                      {[1, 3, 7].map((d) => (
+                        <button key={d} type="button" onClick={() => setAuctionDays(d)} className={`chip ${auctionDays === d ? 'chip-on' : 'chip-off'}`}>
+                          {d} {d === 1 ? 'día' : 'días'}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  <label className="flex items-start gap-3">
+                    <input
+                      type="checkbox"
+                      checked={auctionCascade}
+                      onChange={(e) => setAuctionCascade(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 shrink-0 accent-white"
+                    />
+                    <span className="text-sm text-neutral-300">
+                      Si el ganador no responde, ofrecer al siguiente postor a su precio
+                    </span>
+                  </label>
+                </div>
+              )}
+            </>
+          )}
+
+          {/* Paso 4: Ubicación */}
+          {step === 4 && (
+            <div>
+              <LocationPicker
+                value={location}
+                onChange={(loc, label) => {
+                  setLocation(loc)
+                  if (label !== undefined) setLocationLabel(label)
+                }}
+              />
+              <p className="mt-2 text-xs text-neutral-600">
+                {locationLabel ? (
+                  <>
+                    <span className="text-neutral-400">{locationLabel}</span> · solo se muestra el área aproximada, nunca el punto exacto.
+                  </>
+                ) : (
+                  'Solo se muestra el área aproximada, nunca el punto exacto.'
+                )}
+              </p>
+            </div>
+          )}
+
+          {error && <p className="text-sm text-red-400">{error}</p>}
+        </div>
+
+        <div className="fixed bottom-0 left-1/2 z-20 flex w-full max-w-lg -translate-x-1/2 items-center gap-4 bg-gradient-to-t from-black via-black/95 to-transparent px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-8">
+          <button type="button" onClick={goBack} className="shrink-0 text-sm font-medium text-neutral-500">
+            Atrás
+          </button>
+          <button type="submit" disabled={busy} className="btn-primary flex items-center justify-center gap-2">
+            {busy ? 'Publicando…' : isLastStep ? 'Publicar' : 'Continuar'}
+            {!busy && (
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M5 12h14m-6-7 7 7-7 7" />
+              </svg>
+            )}
+          </button>
+        </div>
       </form>
     </div>
   )
