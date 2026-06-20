@@ -6,6 +6,7 @@ import { useNotifications } from '../hooks/useNotifications'
 import type { Category, Listing } from '../lib/types'
 import ListingCard from '../components/ListingCard'
 import ListingRail from '../components/ListingRail'
+import AuctionRail from '../components/AuctionRail'
 import FeedFilters, { EMPTY_FILTERS, countActiveFilters, filterableFields, type FeedFilterValues } from '../components/FeedFilters'
 import {
   getCachedBuyerLocation,
@@ -31,6 +32,7 @@ let feedCache: {
   search: string
   categoryId: number | null
   onlyVerified: boolean
+  onlyAuctions: boolean
   filters: FeedFilterValues
   order: FeedOrder
   scrollY: number
@@ -85,6 +87,8 @@ export default function Home() {
   const [searchOpen, setSearchOpen] = useState(Boolean(pending?.search ?? feedCache?.search))
   const [categoryId, setCategoryId] = useState<number | null>(pending?.categoryId ?? feedCache?.categoryId ?? null)
   const [onlyVerified, setOnlyVerified] = useState(feedCache?.onlyVerified ?? false)
+  const [onlyAuctions, setOnlyAuctions] = useState(feedCache?.onlyAuctions ?? false)
+  const [featuredAuctions, setFeaturedAuctions] = useState<Listing[]>([])
   const [filters, setFilters] = useState<FeedFilterValues>(pending?.filters ?? feedCache?.filters ?? EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [savedSearch, setSavedSearch] = useState(false)
@@ -120,8 +124,21 @@ export default function Home() {
       })
   }, [])
 
+  // Subastas destacadas: activas, las que terminan antes.
+  useEffect(() => {
+    supabase
+      .from('listings')
+      .select('id, title, price, currency, photos, current_bid, bids_count, auction_ends_at')
+      .eq('is_auction', true)
+      .eq('status', 'active')
+      .gt('auction_ends_at', new Date().toISOString())
+      .order('auction_ends_at', { ascending: true })
+      .limit(12)
+      .then(({ data }) => setFeaturedAuctions((data as Listing[]) ?? []))
+  }, [])
+
   // Vistos recientemente (localStorage): solo en la vista por defecto.
-  const defaultView = !search.trim() && !categoryId && !onlyVerified && countActiveFilters(filters) === 0
+  const defaultView = !search.trim() && !categoryId && !onlyVerified && !onlyAuctions && countActiveFilters(filters) === 0
   useEffect(() => {
     const ids = getRecentlyViewed()
     if (ids.length === 0) {
@@ -147,7 +164,9 @@ export default function Home() {
       // sold_to), así que el embed debe decir cuál usar o PostgREST falla.
       .select(`${SELECT}${onlyVerified ? '!inner' : ''}(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count)`)
       .eq('status', 'active')
-    if (order === 'price_asc') query = query.order('price', { ascending: true })
+    if (onlyAuctions) query = query.eq('is_auction', true)
+    if (onlyAuctions) query = query.order('auction_ends_at', { ascending: true })
+    else if (order === 'price_asc') query = query.order('price', { ascending: true })
     else if (order === 'price_desc') query = query.order('price', { ascending: false })
     else query = query.order('last_renewed_at', { ascending: false })
     const term = search.trim().replace(/[,()]/g, ' ').trim()
@@ -163,7 +182,7 @@ export default function Home() {
       query = query.eq(`structured_fields->>${key}`, val)
     }
     return query
-  }, [search, categoryId, onlyVerified, filters, order])
+  }, [search, categoryId, onlyVerified, onlyAuctions, filters, order])
 
   // Primera página (reset): reemplaza la lista.
   const loadFirst = useCallback(async () => {
@@ -180,11 +199,12 @@ export default function Home() {
       search,
       categoryId,
       onlyVerified,
+      onlyAuctions,
       filters,
       order,
       scrollY: feedCache?.scrollY ?? 0,
     }
-  }, [buildQuery, search, categoryId, onlyVerified, filters, order])
+  }, [buildQuery, search, categoryId, onlyVerified, onlyAuctions, filters, order])
 
   // Página siguiente (scroll infinito): agrega al final.
   const loadMore = useCallback(async () => {
@@ -433,17 +453,32 @@ export default function Home() {
       {/* Filtros como tabs de texto, no pills de color */}
       <div className="no-scrollbar flex items-center gap-5 overflow-x-auto px-4 py-3">
         <button
-          onClick={() => setCategoryId(null)}
-          className={`shrink-0 text-sm font-medium transition ${!categoryId ? 'text-white' : 'text-neutral-500'}`}
+          onClick={() => {
+            setCategoryId(null)
+            setOnlyAuctions(false)
+          }}
+          className={`shrink-0 text-sm font-medium transition ${!categoryId && !onlyAuctions ? 'text-white' : 'text-neutral-500'}`}
         >
           Todo
+        </button>
+        <button
+          onClick={() => {
+            setOnlyAuctions(true)
+            setCategoryId(null)
+          }}
+          className={`shrink-0 text-sm font-semibold transition ${onlyAuctions ? 'text-amber-400' : 'text-neutral-500'}`}
+        >
+          🔨 Subastas
         </button>
         {categories
           .filter((c) => !c.parent_id)
           .map((cat) => (
             <button
               key={cat.id}
-              onClick={() => setCategoryId(categoryId === cat.id ? null : cat.id)}
+              onClick={() => {
+                setCategoryId(categoryId === cat.id ? null : cat.id)
+                setOnlyAuctions(false)
+              }}
               className={`shrink-0 text-sm font-medium transition ${
                 categoryId === cat.id ? 'text-white' : 'text-neutral-500'
               }`}
@@ -499,7 +534,12 @@ export default function Home() {
         </div>
       )}
 
-      {/* Vistos recientemente: solo en la vista por defecto */}
+      {/* Subastas destacadas + vistos recientemente: solo en la vista por defecto */}
+      {defaultView && featuredAuctions.length > 0 && (
+        <div className="px-4 pb-3 pt-1">
+          <AuctionRail listings={featuredAuctions} />
+        </div>
+      )}
       {defaultView && recentItems.length > 0 && (
         <div className="px-4 pb-3 pt-1">
           <ListingRail title="Vistos recientemente" listings={recentItems} />
