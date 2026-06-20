@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { formatPrice } from '../lib/format'
+import { formatPrice, isOnline, lastSeenLabel } from '../lib/format'
 import { compressPhoto } from '../lib/images'
 import type { Conversation, Message } from '../lib/types'
 import Modal from '../components/Modal'
@@ -35,6 +35,7 @@ export default function ChatThread() {
   const [othersTyping, setOthersTyping] = useState(false)
   const [viewerPhoto, setViewerPhoto] = useState<string | null>(null)
   const [sellOpen, setSellOpen] = useState(false)
+  const [attachOpen, setAttachOpen] = useState(false)
   const [offerOpen, setOfferOpen] = useState(false)
   const [offerAmount, setOfferAmount] = useState('')
   const [offerSent, setOfferSent] = useState(false)
@@ -42,7 +43,8 @@ export default function ChatThread() {
   const [offerBusy, setOfferBusy] = useState(false)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const didInitialScroll = useRef(false)
-  const fileInputRef = useRef<HTMLInputElement>(null)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const galleryInputRef = useRef<HTMLInputElement>(null)
   const channelRef = useRef<RealtimeChannel | null>(null)
   const typingTimer = useRef<ReturnType<typeof setTimeout>>()
   const lastTypingSent = useRef(0)
@@ -241,10 +243,21 @@ export default function ChatThread() {
           </button>
           {other ? (
             <Link to={`/u/${other.username}`} className="flex min-w-0 flex-1 items-center gap-2.5">
-              <Avatar profile={other} size="sm" />
+              <div className="relative shrink-0">
+                <Avatar profile={other} size="sm" />
+                {isOnline(other.last_seen_at) && (
+                  <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 ring-2 ring-black" />
+                )}
+              </div>
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold text-white">{other.username}</p>
-                {othersTyping && <p className="text-[11px] text-sky-400">escribiendo…</p>}
+                {othersTyping ? (
+                  <p className="text-[11px] text-sky-400">escribiendo…</p>
+                ) : isOnline(other.last_seen_at) ? (
+                  <p className="text-[11px] text-emerald-400">En línea</p>
+                ) : lastSeenLabel(other.last_seen_at) ? (
+                  <p className="truncate text-[11px] text-neutral-500">{lastSeenLabel(other.last_seen_at)}</p>
+                ) : null}
               </div>
             </Link>
           ) : (
@@ -381,7 +394,19 @@ export default function ChatThread() {
         className="flex items-center gap-2 border-t border-neutral-900 px-4 py-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
       >
         <input
-          ref={fileInputRef}
+          ref={cameraInputRef}
+          type="file"
+          accept="image/*"
+          capture="environment"
+          hidden
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file) sendImage(file)
+            e.target.value = ''
+          }}
+        />
+        <input
+          ref={galleryInputRef}
           type="file"
           accept="image/*"
           hidden
@@ -393,18 +418,16 @@ export default function ChatThread() {
         />
         <button
           type="button"
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => setAttachOpen(true)}
           disabled={sending}
-          aria-label="Enviar foto"
+          aria-label="Adjuntar"
           className="shrink-0 rounded-full p-2 text-neutral-400 transition active:text-white disabled:opacity-40"
         >
           {sending ? (
             <span className="block h-5 w-5 animate-pulse rounded-full bg-neutral-600" />
           ) : (
             <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="3" y="5" width="18" height="14" rx="2" />
-              <circle cx="9" cy="10" r="1.5" />
-              <path d="m5 18 5-5 3 3 3-3 3 4" />
+              <path d="M21.44 11.05 12.25 20.24a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.19 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.49" />
             </svg>
           )}
         </button>
@@ -424,6 +447,44 @@ export default function ChatThread() {
           </svg>
         </button>
       </form>
+
+      {attachOpen && (
+        <Modal title="Adjuntar" onClose={() => setAttachOpen(false)}>
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => {
+                setAttachOpen(false)
+                cameraInputRef.current?.click()
+              }}
+              className="flex flex-col items-center gap-2 rounded-2xl bg-neutral-900 py-5 text-sm font-medium text-white ring-1 ring-neutral-800 transition active:bg-neutral-800"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-black">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" />
+                  <circle cx="12" cy="13" r="4" />
+                </svg>
+              </span>
+              Cámara
+            </button>
+            <button
+              onClick={() => {
+                setAttachOpen(false)
+                galleryInputRef.current?.click()
+              }}
+              className="flex flex-col items-center gap-2 rounded-2xl bg-neutral-900 py-5 text-sm font-medium text-white ring-1 ring-neutral-800 transition active:bg-neutral-800"
+            >
+              <span className="flex h-11 w-11 items-center justify-center rounded-full bg-white text-black">
+                <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="3" width="18" height="18" rx="2" />
+                  <circle cx="9" cy="9" r="2" />
+                  <path d="m21 15-5-5L5 21" />
+                </svg>
+              </span>
+              Galería
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {viewerPhoto && <PhotoViewer photos={[viewerPhoto]} onClose={() => setViewerPhoto(null)} />}
 

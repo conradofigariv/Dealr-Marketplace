@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
-import { timeAgo } from '../lib/format'
+import { timeAgo, isOnline } from '../lib/format'
 import type { Conversation } from '../lib/types'
 import EmptyState from '../components/EmptyState'
 
@@ -28,6 +28,8 @@ export default function Chats() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [meta, setMeta] = useState<Record<string, ConvMeta>>({})
   const [fetched, setFetched] = useState(false)
+  const [searchOpen, setSearchOpen] = useState(false)
+  const [query, setQuery] = useState('')
 
   useEffect(() => {
     if (!loading && !session) navigate('/auth', { state: { from: location.pathname, back: '/' } })
@@ -37,7 +39,9 @@ export default function Chats() {
     if (!session) return
     supabase
       .from('conversations')
-      .select('*, listing:listings(title, photos, status), buyer:profiles!conversations_buyer_id_fkey(username), seller:profiles!conversations_seller_id_fkey(username)')
+      .select(
+        '*, listing:listings(title, photos, status), buyer:profiles!conversations_buyer_id_fkey(username, avatar_url, last_seen_at), seller:profiles!conversations_seller_id_fkey(username, avatar_url, last_seen_at)',
+      )
       .order('last_message_at', { ascending: false })
       .then(async ({ data }) => {
         const convs = (data as Conversation[]) ?? []
@@ -60,10 +64,49 @@ export default function Chats() {
       })
   }, [session])
 
+  const filtered = query.trim()
+    ? conversations.filter((conv) => {
+        const other = conv.buyer_id === session?.user.id ? conv.seller : conv.buyer
+        const q = query.trim().toLowerCase()
+        return conv.listing?.title?.toLowerCase().includes(q) || other?.username.toLowerCase().includes(q)
+      })
+    : conversations
+
   return (
     <div className="pb-28">
-      <header className="px-5 pb-4 pt-[max(1.25rem,env(safe-area-inset-top))]">
-        <h1 className="text-2xl font-bold tracking-tight text-white">Chats</h1>
+      <header className="px-5 pb-3 pt-[max(1.25rem,env(safe-area-inset-top))]">
+        <div className="flex items-center justify-between gap-3">
+          {searchOpen ? (
+            <input
+              autoFocus
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="Buscar chats…"
+              className="w-full rounded-full bg-neutral-900 px-4 py-2 text-sm text-white placeholder-neutral-500 outline-none ring-1 ring-neutral-800"
+            />
+          ) : (
+            <h1 className="text-2xl font-bold tracking-tight text-white">Chats</h1>
+          )}
+          <button
+            onClick={() => {
+              setSearchOpen((s) => !s)
+              setQuery('')
+            }}
+            aria-label={searchOpen ? 'Cerrar búsqueda' : 'Buscar'}
+            className="shrink-0 rounded-full p-2 text-neutral-400 transition active:bg-neutral-900 active:text-white"
+          >
+            {searchOpen ? (
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <circle cx="11" cy="11" r="7" />
+                <path d="m21 21-4.3-4.3" />
+              </svg>
+            )}
+          </button>
+        </div>
       </header>
 
       {fetched && conversations.length === 0 ? (
@@ -75,19 +118,36 @@ export default function Chats() {
         </EmptyState>
       ) : (
         <ul>
-          {conversations.map((conv) => {
+          {filtered.map((conv) => {
             const other = conv.buyer_id === session?.user.id ? conv.seller : conv.buyer
             const photo = conv.listing?.photos?.[0]
             const m = meta[conv.id]
             const unread = m?.unread ?? 0
+            const online = isOnline(other?.last_seen_at ?? null)
             const preview = m
               ? `${m.senderId === session?.user.id ? 'Vos: ' : ''}${m.body}`
               : `con ${other?.username}`
             return (
               <li key={conv.id}>
                 <Link to={`/chats/${conv.id}`} className="flex items-center gap-4 px-5 py-3.5 transition active:bg-neutral-900">
-                  <div className="h-[3.25rem] w-[3.25rem] shrink-0 overflow-hidden rounded-xl bg-neutral-900">
-                    {photo && <img src={photoUrl(photo)} alt="" className="h-full w-full object-cover" />}
+                  <div className="relative h-[3.25rem] w-[3.25rem] shrink-0">
+                    <div className="h-full w-full overflow-hidden rounded-full bg-neutral-900 ring-1 ring-neutral-800">
+                      {photo && <img src={photoUrl(photo)} alt="" className="h-full w-full object-cover" />}
+                    </div>
+                    {other && (
+                      <div className="absolute -bottom-0.5 -right-0.5 h-5 w-5 overflow-hidden rounded-full bg-neutral-700 ring-2 ring-black">
+                        {other.avatar_url ? (
+                          <img src={photoUrl(other.avatar_url)} alt="" className="h-full w-full object-cover" />
+                        ) : (
+                          <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white">
+                            {other.username.slice(0, 1).toUpperCase()}
+                          </span>
+                        )}
+                      </div>
+                    )}
+                    {online && (
+                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-black" />
+                    )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className={`truncate text-sm ${unread > 0 ? 'font-bold text-white' : 'font-semibold text-white'}`}>

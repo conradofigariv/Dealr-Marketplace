@@ -36,6 +36,12 @@ export function lastSeenLabel(iso: string | null): string | null {
   return `Activo ${timeAgo(iso)}`
 }
 
+/** "En línea" = tuvo actividad en los últimos 3 minutos. */
+export function isOnline(iso: string | null): boolean {
+  if (!iso) return false
+  return Date.now() - new Date(iso).getTime() < 3 * 60 * 1000
+}
+
 /** Cuenta regresiva legible para subastas: "2d 3h", "4h 12m", "5m 30s". */
 export function timeLeftLabel(endIso: string, now: number = Date.now()): string {
   const ms = new Date(endIso).getTime() - now
