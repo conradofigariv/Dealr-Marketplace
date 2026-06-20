@@ -466,9 +466,9 @@ export default function Home() {
             setOnlyAuctions(true)
             setCategoryId(null)
           }}
-          className={`shrink-0 text-sm font-semibold transition ${onlyAuctions ? 'text-amber-400' : 'text-neutral-500'}`}
+          className={`shrink-0 text-sm font-semibold transition ${onlyAuctions ? 'glow-text text-amber-400' : 'text-neutral-500'}`}
         >
-          🔨 Subastas
+          Subastas
         </button>
         {categories
           .filter((c) => !c.parent_id)

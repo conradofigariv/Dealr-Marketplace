@@ -326,3 +326,13 @@ begin
     perform cron.schedule('close-auctions', '* * * * *', 'select public.close_auctions()');
   end if;
 end $$;
+
+-- =============================================================
+-- 00018 — Categoría nueva: Plantas y Jardinería
+-- =============================================================
+insert into public.categories (name, slug, required_fields) values
+  ('Plantas y Jardinería', 'plantas-jardineria', '[
+    {"key": "formas_de_pago", "label": "Formas de pago", "type": "multiselect", "required": true, "options": ["Efectivo", "Transferencia", "Mercado Pago"]},
+    {"key": "acepta_envio", "label": "Acepta envío", "type": "boolean", "required": true}
+  ]'::jsonb)
+on conflict (slug) do nothing;

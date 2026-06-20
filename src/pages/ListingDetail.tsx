@@ -14,6 +14,7 @@ import SellFlowModal from '../components/SellFlowModal'
 import LocationMap from '../components/LocationMap'
 import ListingRail from '../components/ListingRail'
 import PhotoViewer from '../components/PhotoViewer'
+import SmartImage from '../components/SmartImage'
 import { useToast } from '../components/Toast'
 import { getCachedBuyerLocation, haversineKm, formatDistance, pushRecentlyViewed } from '../lib/geo'
 import { invalidateFeedCache } from './Home'
@@ -390,10 +391,11 @@ export default function ListingDetail() {
           {(listing.photos.length ? listing.photos : [null]).map((p, i) => (
             <div key={i} className="aspect-square w-full shrink-0 snap-center">
               {p ? (
-                <img
+                <SmartImage
                   src={photoUrl(p)}
                   alt={`${listing.title} foto ${i + 1}`}
                   onClick={() => setViewerAt(i)}
+                  wrapperClassName="h-full w-full"
                   className="h-full w-full cursor-zoom-in object-cover"
                 />
               ) : (
@@ -428,7 +430,7 @@ export default function ListingDetail() {
                 <span className="text-xs text-neutral-500">{listing.current_bid != null ? 'oferta actual' : 'precio inicial'}</span>
               </div>
               <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
-                <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-400">🔨 Subasta</span>
+                <span className="glow-badge rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Subasta</span>
                 <span className="text-neutral-400">{listing.bids_count} {listing.bids_count === 1 ? 'oferta' : 'ofertas'}</span>
                 <span className="text-neutral-600">·</span>
                 <span className={auctionEnded ? 'text-neutral-500' : 'font-semibold text-white'}>
@@ -554,8 +556,8 @@ export default function ListingDetail() {
               </p>
             </div>
             {auction && (
-              <p className="mb-3 text-xs text-neutral-400">
-                🔨 {listing.bids_count} {listing.bids_count === 1 ? 'oferta' : 'ofertas'} ·{' '}
+              <p className="glow-text mb-3 text-xs text-amber-400">
+                {listing.bids_count} {listing.bids_count === 1 ? 'oferta' : 'ofertas'} ·{' '}
                 {listing.auction_closed
                   ? listing.sold_to
                     ? 'Cerrada con ganador (notificado)'

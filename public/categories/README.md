@@ -21,6 +21,7 @@ Poné cada archivo con **exactamente** este nombre (extensión `.jpg`):
 | Herramientas           | `herramientas.jpg`            |
 | Instrumentos Musicales | `instrumentos.jpg`            |
 | Libros, Música y Pelis | `libros-musica.jpg`           |
+| Plantas y Jardinería   | `plantas-jardineria.jpg`      |
 | Otros                  | `otros.jpg`                   |
 
 Recomendado: ~640×640 px (cuadradas), recortadas, livianas (<150 KB).

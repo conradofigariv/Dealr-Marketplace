@@ -23,6 +23,7 @@ const CATS: Record<string, { emoji: string; kw: string }> = {
   herramientas: { emoji: '🔧', kw: 'tools' },
   instrumentos: { emoji: '🎸', kw: 'guitar' },
   'libros-musica': { emoji: '📚', kw: 'books' },
+  'plantas-jardineria': { emoji: '🪴', kw: 'plants' },
   otros: { emoji: '📦', kw: 'boxes' },
 }
 
@@ -35,6 +36,7 @@ function imageFor(slug: string, id: number): string {
 function CategoryTile({ category, onOpen }: { category: Category; onOpen: (c: Category) => void }) {
   // 0 = imagen local (/public/categories/<slug>.jpg), 1 = foto remota, 2 = emoji
   const [step, setStep] = useState(0)
+  const [loaded, setLoaded] = useState(false)
   const meta = CATS[category.slug]
   const src = step === 0 ? `/categories/${category.slug}.jpg` : imageFor(category.slug, category.id)
   return (
@@ -43,13 +45,20 @@ function CategoryTile({ category, onOpen }: { category: Category; onOpen: (c: Ca
       className="relative aspect-square overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-neutral-800 transition active:opacity-80"
     >
       {step < 2 ? (
-        <img
-          src={src}
-          alt=""
-          loading="lazy"
-          onError={() => setStep((s) => s + 1)}
-          className="h-full w-full object-cover"
-        />
+        <>
+          {!loaded && <div className="img-shimmer pointer-events-none absolute inset-0" />}
+          <img
+            src={src}
+            alt=""
+            loading="lazy"
+            onLoad={() => setLoaded(true)}
+            onError={() => {
+              setLoaded(false)
+              setStep((s) => s + 1)
+            }}
+            className={`h-full w-full object-cover transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
+          />
+        </>
       ) : (
         <span className="flex h-full w-full items-center justify-center text-4xl">{meta?.emoji ?? '🏷️'}</span>
       )}

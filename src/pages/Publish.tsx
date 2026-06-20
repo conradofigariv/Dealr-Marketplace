@@ -372,8 +372,8 @@ export default function Publish() {
               <button type="button" onClick={() => setIsAuction(false)} className={`chip ${!isAuction ? 'chip-on' : 'chip-off'}`}>
                 Precio fijo
               </button>
-              <button type="button" onClick={() => setIsAuction(true)} className={`chip ${isAuction ? 'chip-on' : 'chip-off'}`}>
-                🔨 Subasta
+              <button type="button" onClick={() => setIsAuction(true)} className={`chip ${isAuction ? 'chip-on glow-badge' : 'chip-off'}`}>
+                Subasta
               </button>
             </div>
           </div>
