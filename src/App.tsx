@@ -67,6 +67,7 @@ const Saved = lazy(() => import('./pages/Saved'))
 const Notifications = lazy(() => import('./pages/Notifications'))
 const Explorar = lazy(() => import('./pages/Explorar'))
 const SavedSearches = lazy(() => import('./pages/SavedSearches'))
+const MapView = lazy(() => import('./pages/MapView'))
 
 // Captura un $pageview en cada cambio de ruta (PostHog no lo hace solo en SPA).
 function PageviewTracker() {
@@ -95,8 +96,8 @@ function Shell() {
   if (profile && /^usuario_[0-9a-f]{8}$/.test(profile.username)) {
     return <Navigate to="/onboarding" replace />
   }
-  // El hilo de chat y el detalle manejan sus propias acciones a pantalla completa
-  const hideNav = /^\/(chats|p)\/.+/.test(location.pathname)
+  // El hilo de chat, el detalle y el mapa manejan su propio chrome a pantalla completa
+  const hideNav = /^\/(chats|p)\/.+/.test(location.pathname) || location.pathname === '/mapa'
   // Volver (POP) entra desde la izquierda; avanzar, desde la derecha (iOS).
   const pageAnim = navType === 'POP' ? 'page-pop' : 'page-push'
   return (
@@ -190,6 +191,7 @@ export default function App() {
             <Route path="/notificaciones" element={<Notifications />} />
             <Route path="/explorar" element={<Explorar />} />
             <Route path="/busquedas" element={<SavedSearches />} />
+            <Route path="/mapa" element={<MapView />} />
           </Route>
         </Routes>
         </BrowserRouter>

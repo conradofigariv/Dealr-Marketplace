@@ -89,6 +89,47 @@ export async function reverseGeocode({ lat, lng }: LatLng): Promise<string | nul
   }
 }
 
+/**
+ * Geocoding directo: busca una ciudad/dirección por texto y devuelve hasta 5
+ * coincidencias (Nominatim, OSM). Sesgado a Argentina. Sirve para publicar algo
+ * que no está donde estás parado (ej. un alquiler en otra ciudad).
+ */
+export interface GeocodeResult extends LatLng {
+  label: string
+}
+
+export async function geocodeSearch(query: string): Promise<GeocodeResult[]> {
+  const q = query.trim()
+  if (q.length < 3) return []
+  try {
+    const res = await fetch(
+      `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}` +
+        `&countrycodes=ar&accept-language=es&limit=5&addressdetails=1`,
+    )
+    if (!res.ok) return []
+    const data = (await res.json()) as Array<{
+      lat: string
+      lon: string
+      display_name: string
+      address?: Record<string, string>
+    }>
+    return data.map((d) => {
+      const a = d.address ?? {}
+      const local = a.suburb || a.neighbourhood || a.city_district || a.town || a.village || a.city || a.county
+      const region = a.state || a.province
+      const parts = [local, region].filter(Boolean)
+      const unique = parts.filter((v, i) => parts.indexOf(v) === i)
+      return {
+        lat: Number(d.lat),
+        lng: Number(d.lon),
+        label: unique.length ? unique.join(', ') : d.display_name.split(',').slice(0, 2).join(',').trim(),
+      }
+    })
+  } catch {
+    return []
+  }
+}
+
 // ---------- Ubicación del comprador (para el "cerca tuyo") ----------
 const BUYER_LOC_KEY = 'dealr_buyer_loc'
 

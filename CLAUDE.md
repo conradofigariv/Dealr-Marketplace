@@ -50,8 +50,9 @@ No hay suite de tests ni linter configurado. Verificación = `npm run build`.
 - `00017` subastas: `listings.is_auction/auction_ends_at/current_bid/bids_count/auction_closed/auction_cascade/auction_passed`, tabla `bids` (RLS: solo ves las tuyas → ofertas anónimas), RPC `place_bid` (valida), `close_auctions` (crea chat ganador↔vendedor + notifica; cron si hay pg_cron, si no el cliente la cierra al abrir), `reassign_auction` (ofrecer al siguiente postor). Tipos de notificación `bid/outbid/auction_won`.
 - `00018` categoría nueva "Plantas y Jardinería" (`plantas-jardineria`), idempotente (`on conflict (slug) do nothing`).
 - `00019` Web Push: tabla `push_subscriptions` (endpoint+claves por dispositivo, RLS propia). La Edge Function `send-push` (service role) la lee y manda el push al insertarse una notificación (Database Webhook INSERT en `notifications`). Requiere VAPID: `VITE_VAPID_PUBLIC_KEY` (front) + secrets `VAPID_PUBLIC_KEY/PRIVATE_KEY/SUBJECT` (función). Sin la key, el push queda no-op.
+- `00020` categoría nueva "Alquileres" (`alquileres`) con campos estructurados estilo ZonaProp (tipo de propiedad, modalidad, ambientes, dormitorios, baños, superficie, expensas, amoblado/balcón/cochera/patio/mascotas). El `price` del listing = alquiler. Idempotente (`on conflict (slug) do nothing`).
 
-> **Atajo:** `supabase/apply_all.sql` es un script único e idempotente con 00008→00019. Pegarlo entero en el SQL Editor evita trackear migración por migración (se puede re-correr sin romper).
+> **Atajo:** `supabase/apply_all.sql` es un script único e idempotente con 00008→00020. Pegarlo entero en el SQL Editor evita trackear migración por migración (se puede re-correr sin romper).
 
 ## Arquitectura
 
@@ -61,12 +62,12 @@ src/
             images.ts (compresión client-side), analytics.ts (PostHog), authErrors.ts, welcome.ts
   hooks/    useAuth (sesión+perfil, Context) · useFavorites · useNotifications · useUnreadChats
             (los 3 últimos son Providers con Context + Realtime)
-  lib/      …, geo.ts (distancia Haversine, formato, difuminado del punto, reverse-geocode Nominatim, caché de ubicación del comprador)
+  lib/      …, geo.ts (distancia Haversine, formato, difuminado del punto, reverse-geocode + geocode-search Nominatim, caché de ubicación del comprador)
   components/ BottomNav, ListingCard, Modal, RatingForm, SellFlowModal, Avatar, SellerBadges, StarRating
-              LocationPicker (mapa interactivo al publicar) · LocationMap (círculo aprox. en el detalle) · leafletSetup (CSS + fix de íconos + tiles)
+              LocationPicker (mapa interactivo al publicar, con buscador de ciudad/dirección) · LocationMap (círculo aprox. en el detalle) · ListingsMap (burbujas de precio en el mapa) · leafletSetup (CSS + fix de íconos + tiles)
               PhotoViewer (galería fullscreen) · ListingRail (riel horizontal) · FeedFilters (sheet) · UpdatePrompt (aviso de versión nueva) · Toast (useToast(), reemplaza alert) · EmptyState
   pages/    Home(feed) ListingDetail Publish Chats ChatThread Profile PublicProfile
-            Auth Onboarding Saved Notifications Feedback Explorar(grid de categorías) SavedSearches(/busquedas)
+            Auth Onboarding Saved Notifications Feedback Explorar(grid de categorías) SavedSearches(/busquedas) MapView(/mapa)
 api/og.ts   OG para crawlers
 supabase/migrations/, supabase/functions/didit-webhook/ (verificación de identidad, opcional)
 ```

@@ -413,6 +413,12 @@ export default function Home() {
                 </svg>
               )}
             </button>
+            <Link to="/mapa" aria-label="Ver en el mapa" className="p-2 text-white">
+              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" />
+                <path d="M9 4v14M15 6v14" />
+              </svg>
+            </Link>
             <Link to="/guardados" aria-label="Guardados" className="p-2 text-white">
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
