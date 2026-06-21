@@ -19,6 +19,82 @@ const QUICK_REPLIES = [
   '¿Por qué zona estás para coordinar?',
 ]
 
+// Menú contextual estilo iOS: clona el mensaje tocado en su posición exacta
+// (queda nítido) y difumina todo lo demás detrás, con un popup chico al
+// lado en vez de una hoja que ocupe la pantalla.
+function MessageContextMenu({
+  message,
+  rect,
+  mine,
+  onClose,
+  onEdit,
+  onDelete,
+}: {
+  message: Message
+  rect: DOMRect
+  mine: boolean
+  onClose: () => void
+  onEdit: () => void
+  onDelete: () => void
+}) {
+  const canEdit = !message.image_path
+  const menuHeight = canEdit ? 100 : 52
+  const menuWidth = 168
+  const gap = 8
+  const spaceBelow = window.innerHeight - rect.bottom
+  const placeAbove = spaceBelow < menuHeight + gap + 24
+  const menuTop = placeAbove ? Math.max(8, rect.top - menuHeight - gap) : rect.bottom + gap
+  const alignRight = rect.right > window.innerWidth / 2
+  const menuLeft = alignRight
+    ? Math.max(8, rect.right - menuWidth)
+    : Math.min(window.innerWidth - menuWidth - 8, rect.left)
+
+  return (
+    <div className="fixed inset-0 z-[600]" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/55 backdrop-blur-md" />
+      <div
+        className="absolute"
+        style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {message.image_path ? (
+          <img src={photoUrl(message.image_path)} alt="" className="h-full w-full rounded-2xl object-cover" />
+        ) : (
+          <div
+            className={`flex h-full w-full items-center rounded-3xl px-4 py-2.5 text-[15px] ${
+              mine ? 'rounded-br-lg bg-white text-black' : 'rounded-bl-lg bg-neutral-900 text-neutral-100'
+            }`}
+          >
+            {message.body}
+          </div>
+        )}
+      </div>
+      <div
+        className="absolute w-[168px] overflow-hidden rounded-2xl bg-neutral-800/95 shadow-xl ring-1 ring-white/10"
+        style={{ top: menuTop, left: menuLeft }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {canEdit && (
+          <button
+            onClick={onEdit}
+            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-white transition active:bg-white/10"
+          >
+            Editar
+          </button>
+        )}
+        <button
+          onClick={onDelete}
+          className={`block w-full px-4 py-3 text-left text-[15px] font-medium text-red-400 transition active:bg-white/10 ${
+            canEdit ? 'border-t border-white/10' : ''
+          }`}
+        >
+          Eliminar
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function ChatThread() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -41,7 +117,7 @@ export default function ChatThread() {
   const [offerSent, setOfferSent] = useState(false)
   const [offerError, setOfferError] = useState('')
   const [offerBusy, setOfferBusy] = useState(false)
-  const [actionMessage, setActionMessage] = useState<Message | null>(null)
+  const [contextMenu, setContextMenu] = useState<{ message: Message; rect: DOMRect } | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pendingPhoto, setPendingPhoto] = useState<{ file: File; preview: string; mirrored: boolean } | null>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -252,11 +328,11 @@ export default function ChatThread() {
     setMessages((prev) => prev.map((m) => (m.id === (data as Message).id ? (data as Message) : m)))
   }
 
-  function startLongPress(m: Message) {
+  function startLongPress(m: Message, el: HTMLElement) {
     if (m.sender_id !== myId || m.deleted_at) return
     longPressMoved.current = false
     longPressTimer.current = setTimeout(() => {
-      if (!longPressMoved.current) setActionMessage(m)
+      if (!longPressMoved.current) setContextMenu({ message: m, rect: el.getBoundingClientRect() })
     }, 500)
   }
 
@@ -271,7 +347,7 @@ export default function ChatThread() {
   function startEdit(m: Message) {
     setEditingId(m.id)
     setDraft(m.body ?? '')
-    setActionMessage(null)
+    setContextMenu(null)
   }
 
   function cancelEdit() {
@@ -402,20 +478,7 @@ export default function ChatThread() {
         {messages.map((m) => {
           const mine = m.sender_id === myId
           return (
-            <div
-              key={m.id}
-              className={`flex items-end gap-1 ${mine ? 'justify-end' : 'justify-start'}`}
-              onPointerDown={() => startLongPress(m)}
-              onPointerUp={cancelLongPress}
-              onPointerLeave={cancelLongPress}
-              onPointerMove={moveLongPress}
-              onContextMenu={(e) => {
-                if (mine && !m.deleted_at) {
-                  e.preventDefault()
-                  setActionMessage(m)
-                }
-              }}
-            >
+            <div key={m.id} className={`flex items-end gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
               {m.deleted_at ? (
                 <div
                   className={`max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] italic text-neutral-500 ${
@@ -429,10 +492,30 @@ export default function ChatThread() {
                   src={photoUrl(m.image_path)}
                   alt="Foto"
                   onClick={() => setViewerPhoto(m.image_path!)}
+                  onPointerDown={(e) => startLongPress(m, e.currentTarget)}
+                  onPointerUp={cancelLongPress}
+                  onPointerLeave={cancelLongPress}
+                  onPointerMove={moveLongPress}
+                  onContextMenu={(e) => {
+                    if (mine) {
+                      e.preventDefault()
+                      setContextMenu({ message: m, rect: e.currentTarget.getBoundingClientRect() })
+                    }
+                  }}
                   className="max-h-72 max-w-[70%] cursor-zoom-in rounded-2xl object-cover"
                 />
               ) : (
                 <div
+                  onPointerDown={(e) => startLongPress(m, e.currentTarget)}
+                  onPointerUp={cancelLongPress}
+                  onPointerLeave={cancelLongPress}
+                  onPointerMove={moveLongPress}
+                  onContextMenu={(e) => {
+                    if (mine) {
+                      e.preventDefault()
+                      setContextMenu({ message: m, rect: e.currentTarget.getBoundingClientRect() })
+                    }
+                  }}
                   className={`max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] ${
                     mine ? 'rounded-br-lg bg-white text-black' : 'rounded-bl-lg bg-neutral-900 text-neutral-100'
                   }`}
@@ -592,28 +675,18 @@ export default function ChatThread() {
         </Modal>
       )}
 
-      {actionMessage && (
-        <Modal title="Mensaje" onClose={() => setActionMessage(null)}>
-          <div className="space-y-2">
-            {!actionMessage.image_path && (
-              <button
-                onClick={() => startEdit(actionMessage)}
-                className="block w-full rounded-2xl bg-neutral-900 py-3 text-center text-sm font-medium text-white ring-1 ring-neutral-800 transition active:bg-neutral-800"
-              >
-                Editar
-              </button>
-            )}
-            <button
-              onClick={() => {
-                deleteMessage(actionMessage.id)
-                setActionMessage(null)
-              }}
-              className="block w-full rounded-2xl bg-neutral-900 py-3 text-center text-sm font-medium text-red-400 ring-1 ring-neutral-800 transition active:bg-neutral-800"
-            >
-              Eliminar
-            </button>
-          </div>
-        </Modal>
+      {contextMenu && (
+        <MessageContextMenu
+          message={contextMenu.message}
+          rect={contextMenu.rect}
+          mine={contextMenu.message.sender_id === myId}
+          onClose={() => setContextMenu(null)}
+          onEdit={() => startEdit(contextMenu.message)}
+          onDelete={() => {
+            deleteMessage(contextMenu.message.id)
+            setContextMenu(null)
+          }}
+        />
       )}
 
       {pendingPhoto && (
