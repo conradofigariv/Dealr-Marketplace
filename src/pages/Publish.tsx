@@ -687,9 +687,6 @@ export default function Publish() {
                     )
                   })}
                 </div>
-                <p className="mt-2 text-xs text-neutral-600">
-                  {photos.length} de {MAX_PHOTOS} · se comprimen solas al subirlas. La primera es la portada — usá la flecha para reordenar.
-                </p>
               </div>
 
               <div>
