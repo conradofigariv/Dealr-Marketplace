@@ -145,7 +145,7 @@ export function getCachedBuyerLocation(): LatLng | null {
   return null
 }
 
-function cacheBuyerLocation(loc: LatLng) {
+export function cacheBuyerLocation(loc: LatLng) {
   try {
     localStorage.setItem(BUYER_LOC_KEY, JSON.stringify(loc))
   } catch {

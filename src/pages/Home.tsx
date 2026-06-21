@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from 'react'
+import { lazy, Suspense, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type TouchEvent as ReactTouchEvent } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -8,9 +8,11 @@ import ListingCard from '../components/ListingCard'
 import ListingRail from '../components/ListingRail'
 import AuctionRail from '../components/AuctionRail'
 import FeedFilters, { EMPTY_FILTERS, countActiveFilters, filterableFields, type FeedFilterValues } from '../components/FeedFilters'
+import Modal from '../components/Modal'
 import {
   getCachedBuyerLocation,
   requestBuyerLocation,
+  cacheBuyerLocation,
   haversineKm,
   reverseGeocode,
   getCachedBuyerLabel,
@@ -18,6 +20,9 @@ import {
   getRecentlyViewed,
   type LatLng,
 } from '../lib/geo'
+
+// Carga diferida: Leaflet (~156KB) solo entra cuando se abre el selector de mapa.
+const LocationPicker = lazy(() => import('../components/LocationPicker'))
 
 type FeedOrder = 'recent' | 'price_asc' | 'price_desc'
 
@@ -95,6 +100,10 @@ export default function Home() {
   const [buyerLoc, setBuyerLoc] = useState<LatLng | null>(getCachedBuyerLocation())
   const [buyerLabel, setBuyerLabel] = useState<string | null>(getCachedBuyerLabel())
   const [locating, setLocating] = useState(false)
+  const [zoneMenuOpen, setZoneMenuOpen] = useState(false)
+  const [pickingOnMap, setPickingOnMap] = useState(false)
+  const [mapPick, setMapPick] = useState<LatLng | null>(null)
+  const [mapPickLabel, setMapPickLabel] = useState<string | undefined>(undefined)
   const [order, setOrder] = useState<FeedOrder>(feedCache?.order ?? 'recent')
   const [loading, setLoading] = useState(pending ? true : !feedCache)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -285,7 +294,8 @@ export default function Home() {
   }
 
   // Pill de ubicación: pide geolocalización y geocodifica para mostrar la zona.
-  async function pickLocation() {
+  async function useCurrentLocation() {
+    setZoneMenuOpen(false)
     setLocating(true)
     try {
       const loc = await requestBuyerLocation()
@@ -299,6 +309,24 @@ export default function Home() {
     } finally {
       setLocating(false)
     }
+  }
+
+  function openMapPicker() {
+    setZoneMenuOpen(false)
+    setMapPick(buyerLoc)
+    setMapPickLabel(undefined)
+    setPickingOnMap(true)
+  }
+
+  function confirmMapPick() {
+    if (!mapPick) return
+    setBuyerLoc(mapPick)
+    cacheBuyerLocation(mapPick)
+    if (mapPickLabel) {
+      setBuyerLabel(mapPickLabel)
+      cacheBuyerLabel(mapPickLabel)
+    }
+    setPickingOnMap(false)
   }
 
   // Distancia por publicación (para el chip). Si hay radio activo, filtra por
@@ -445,7 +473,7 @@ export default function Home() {
         </div>
         {/* Pill de ubicación: define la zona de referencia para la cercanía */}
         <button
-          onClick={pickLocation}
+          onClick={() => setZoneMenuOpen(true)}
           disabled={locating}
           className="mt-1 flex items-center gap-1.5 text-xs font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
         >
@@ -459,6 +487,50 @@ export default function Home() {
           )}
           {locating ? 'Buscando ubicación…' : buyerLabel ?? 'Definí tu zona'}
         </button>
+
+        {zoneMenuOpen && (
+          <Modal title="Tu zona" onClose={() => setZoneMenuOpen(false)}>
+            <div className="flex flex-col gap-2">
+              <button
+                onClick={useCurrentLocation}
+                className="surface flex items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-white transition active:scale-[0.98]"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+                </svg>
+                Ubicación actual
+              </button>
+              <button
+                onClick={openMapPicker}
+                className="surface flex items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-white transition active:scale-[0.98]"
+              >
+                <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
+                  <circle cx="12" cy="10" r="3" />
+                </svg>
+                Seleccionar del mapa
+              </button>
+            </div>
+          </Modal>
+        )}
+
+        {pickingOnMap && (
+          <Modal title="Seleccioná tu zona" onClose={() => setPickingOnMap(false)}>
+            <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl bg-neutral-900" />}>
+              <LocationPicker
+                value={mapPick}
+                onChange={(loc, label) => {
+                  setMapPick(loc)
+                  if (label) setMapPickLabel(label)
+                }}
+              />
+            </Suspense>
+            <button onClick={confirmMapPick} disabled={!mapPick} className="btn-primary mt-4 disabled:opacity-40">
+              Confirmar
+            </button>
+          </Modal>
+        )}
         {searchOpen && (
           <input
             autoFocus
