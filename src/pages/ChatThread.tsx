@@ -183,7 +183,9 @@ export default function ChatThread() {
     setSendError('')
     try {
       const compressed = await compressPhoto(file)
-      const path = `chat/${id}/${crypto.randomUUID()}.webp`
+      // El path arranca con el uid: la policy de Storage exige que la primera
+      // carpeta sea auth.uid() (igual que las fotos de publicaciones).
+      const path = `${myId}/chat/${id}/${crypto.randomUUID()}.webp`
       const { error: upErr } = await supabase.storage
         .from('listing-photos')
         .upload(path, compressed, { contentType: 'image/webp' })
