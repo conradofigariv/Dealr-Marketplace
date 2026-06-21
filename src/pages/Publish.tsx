@@ -572,7 +572,7 @@ export default function Publish() {
   }
 
   return (
-    <div className="pb-36">
+    <div className="pb-28">
       <header className="px-5 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <button
           type="button"
@@ -917,21 +917,23 @@ export default function Publish() {
           )}
 
           {error && <p className="text-sm text-red-400">{error}</p>}
-        </div>
-        </div>
 
-        <div className="fixed bottom-0 left-1/2 z-20 flex w-full max-w-lg -translate-x-1/2 items-center gap-4 bg-gradient-to-t from-black via-black/95 to-transparent px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-8">
-          <button type="button" onClick={goBack} className="shrink-0 text-sm font-medium text-neutral-500">
-            Atrás
-          </button>
-          <button type="submit" disabled={busy} className="btn-primary flex items-center justify-center gap-2">
-            {busy ? 'Publicando…' : isLastStep ? 'Publicar' : 'Continuar'}
-            {!busy && (
-              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M5 12h14m-6-7 7 7-7 7" />
-              </svg>
-            )}
-          </button>
+          {/* Acciones del paso: inline al final del contenido, así quedan
+              arriba del menú flotante (sin solaparse con él). */}
+          <div className="flex items-center gap-4 pt-2">
+            <button type="button" onClick={goBack} className="shrink-0 text-sm font-medium text-neutral-500">
+              Atrás
+            </button>
+            <button type="submit" disabled={busy} className="btn-primary flex items-center justify-center gap-2">
+              {busy ? 'Publicando…' : isLastStep ? 'Publicar' : 'Continuar'}
+              {!busy && (
+                <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 12h14m-6-7 7 7-7 7" />
+                </svg>
+              )}
+            </button>
+          </div>
+        </div>
         </div>
       </form>
     </div>
