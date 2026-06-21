@@ -94,6 +94,7 @@ export default function Home() {
   const [savedSearch, setSavedSearch] = useState(false)
   const [buyerLoc, setBuyerLoc] = useState<LatLng | null>(getCachedBuyerLocation())
   const [buyerLabel, setBuyerLabel] = useState<string | null>(getCachedBuyerLabel())
+  const [locating, setLocating] = useState(false)
   const [order, setOrder] = useState<FeedOrder>(feedCache?.order ?? 'recent')
   const [loading, setLoading] = useState(pending ? true : !feedCache)
   const [loadingMore, setLoadingMore] = useState(false)
@@ -285,13 +286,18 @@ export default function Home() {
 
   // Pill de ubicación: pide geolocalización y geocodifica para mostrar la zona.
   async function pickLocation() {
-    const loc = await requestBuyerLocation()
-    if (!loc) return
-    setBuyerLoc(loc)
-    const label = await reverseGeocode(loc)
-    if (label) {
-      setBuyerLabel(label)
-      cacheBuyerLabel(label)
+    setLocating(true)
+    try {
+      const loc = await requestBuyerLocation()
+      if (!loc) return
+      setBuyerLoc(loc)
+      const label = await reverseGeocode(loc)
+      if (label) {
+        setBuyerLabel(label)
+        cacheBuyerLabel(label)
+      }
+    } finally {
+      setLocating(false)
     }
   }
 
@@ -438,12 +444,20 @@ export default function Home() {
           </div>
         </div>
         {/* Pill de ubicación: define la zona de referencia para la cercanía */}
-        <button onClick={pickLocation} className="mt-1 flex items-center gap-1 text-xs font-medium text-neutral-400 transition active:text-white">
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
-            <circle cx="12" cy="10" r="3" />
-          </svg>
-          {buyerLabel ?? 'Definí tu zona'}
+        <button
+          onClick={pickLocation}
+          disabled={locating}
+          className="mt-1 flex items-center gap-1.5 text-xs font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
+        >
+          {locating ? (
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-500/40 border-t-neutral-300" />
+          ) : (
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
+              <circle cx="12" cy="10" r="3" />
+            </svg>
+          )}
+          {locating ? 'Buscando ubicación…' : buyerLabel ?? 'Definí tu zona'}
         </button>
         {searchOpen && (
           <input
