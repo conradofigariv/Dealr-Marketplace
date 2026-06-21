@@ -129,32 +129,32 @@ export default function Chats() {
               : `con ${other?.username}`
             return (
               <li key={conv.id}>
-                <Link to={`/chats/${conv.id}`} className="flex items-center gap-3.5 px-5 py-4 transition active:bg-neutral-900">
-                  <div className="relative h-14 w-14 shrink-0">
+                <Link to={`/chats/${conv.id}`} className="flex items-center gap-4 px-5 py-[1.1rem] transition active:bg-neutral-900">
+                  <div className="relative h-[3.85rem] w-[3.85rem] shrink-0">
                     <div className="h-full w-full overflow-hidden rounded-full bg-neutral-900 ring-1 ring-neutral-800">
                       {photo && <img src={photoUrl(photo)} alt="" className="h-full w-full object-cover" />}
                     </div>
                     {online && (
-                      <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-black" />
+                      <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full bg-emerald-500 ring-2 ring-black" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
                     <div className="flex items-baseline gap-2">
-                      <p className="min-w-0 flex-1 truncate text-[15px] text-white">
+                      <p className="min-w-0 flex-1 truncate text-base text-white">
                         <span className={unread > 0 ? 'font-bold' : 'font-semibold'}>{other?.username}</span>
                         {conv.listing?.title && (
                           <span className="font-normal text-neutral-400"> · {conv.listing.title}</span>
                         )}
                       </p>
-                      <span className="shrink-0 text-xs text-neutral-500">{timeAgo(conv.last_message_at)}</span>
+                      <span className="shrink-0 text-sm text-neutral-500">{timeAgo(conv.last_message_at)}</span>
                     </div>
-                    <div className="mt-1 flex items-center gap-2">
-                      <p className={`min-w-0 flex-1 truncate text-sm ${unread > 0 ? 'text-neutral-200' : 'text-neutral-500'}`}>
+                    <div className="mt-1.5 flex items-center gap-2">
+                      <p className={`min-w-0 flex-1 truncate text-[15px] ${unread > 0 ? 'text-neutral-200' : 'text-neutral-500'}`}>
                         {preview}
                         {conv.listing?.status === 'sold' && ' · vendido'}
                       </p>
                       {unread > 0 && (
-                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                        <span className="flex h-[1.4rem] min-w-[1.4rem] shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-xs font-bold text-white">
                           {unread > 9 ? '9+' : unread}
                         </span>
                       )}
