@@ -99,6 +99,8 @@ export interface Message {
   image_path: string | null
   created_at: string
   read_at: string | null
+  edited_at: string | null
+  deleted_at: string | null
 }
 
 export interface Offer {

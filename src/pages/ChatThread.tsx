@@ -4,7 +4,7 @@ import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatPrice, isOnline, lastSeenLabel } from '../lib/format'
-import { compressPhoto } from '../lib/images'
+import { compressPhoto, mirrorImage } from '../lib/images'
 import type { Conversation, Message } from '../lib/types'
 import Modal from '../components/Modal'
 import RatingForm from '../components/RatingForm'
@@ -41,6 +41,9 @@ export default function ChatThread() {
   const [offerSent, setOfferSent] = useState(false)
   const [offerError, setOfferError] = useState('')
   const [offerBusy, setOfferBusy] = useState(false)
+  const [actionMessage, setActionMessage] = useState<Message | null>(null)
+  const [editingId, setEditingId] = useState<string | null>(null)
+  const [pendingPhoto, setPendingPhoto] = useState<{ file: File; preview: string; mirrored: boolean } | null>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const didInitialScroll = useRef(false)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -48,6 +51,8 @@ export default function ChatThread() {
   const channelRef = useRef<RealtimeChannel | null>(null)
   const typingTimer = useRef<ReturnType<typeof setTimeout>>()
   const lastTypingSent = useRef(0)
+  const longPressTimer = useRef<ReturnType<typeof setTimeout>>()
+  const longPressMoved = useRef(false)
 
   const myId = session?.user.id
   const iAmBuyer = conversation?.buyer_id === myId
@@ -175,14 +180,15 @@ export default function ChatThread() {
     setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]))
   }
 
-  async function sendImage(file: File) {
+  async function sendImage(file: File, mirrored = false) {
     if (!myId || !id) return
     const preview = URL.createObjectURL(file)
     setUploadingPreview(preview)
     setSending(true)
     setSendError('')
     try {
-      const compressed = await compressPhoto(file)
+      const source = mirrored ? await mirrorImage(file) : file
+      const compressed = await compressPhoto(source)
       // El path arranca con el uid: la policy de Storage exige que la primera
       // carpeta sea auth.uid() (igual que las fotos de publicaciones).
       const path = `${myId}/chat/${id}/${crypto.randomUUID()}.webp`
@@ -219,7 +225,58 @@ export default function ChatThread() {
 
   function onSubmit(e: FormEvent) {
     e.preventDefault()
-    send(draft)
+    if (editingId) editMessage(editingId, draft)
+    else send(draft)
+  }
+
+  async function editMessage(messageId: string, body: string) {
+    const text = body.trim()
+    if (!text) return
+    setDraft('')
+    setEditingId(null)
+    setSendError('')
+    const { data, error } = await supabase.rpc('edit_message', { p_message_id: messageId, p_body: text }).single()
+    if (error || !data) {
+      setSendError('No se pudo editar el mensaje.')
+      return
+    }
+    setMessages((prev) => prev.map((m) => (m.id === (data as Message).id ? (data as Message) : m)))
+  }
+
+  async function deleteMessage(messageId: string) {
+    const { data, error } = await supabase.rpc('delete_message', { p_message_id: messageId }).single()
+    if (error || !data) {
+      setSendError('No se pudo borrar el mensaje.')
+      return
+    }
+    setMessages((prev) => prev.map((m) => (m.id === (data as Message).id ? (data as Message) : m)))
+  }
+
+  function startLongPress(m: Message) {
+    if (m.sender_id !== myId || m.deleted_at) return
+    longPressMoved.current = false
+    longPressTimer.current = setTimeout(() => {
+      if (!longPressMoved.current) setActionMessage(m)
+    }, 500)
+  }
+
+  function cancelLongPress() {
+    clearTimeout(longPressTimer.current)
+  }
+
+  function moveLongPress() {
+    longPressMoved.current = true
+  }
+
+  function startEdit(m: Message) {
+    setEditingId(m.id)
+    setDraft(m.body ?? '')
+    setActionMessage(null)
+  }
+
+  function cancelEdit() {
+    setEditingId(null)
+    setDraft('')
   }
 
   async function sendOffer(e: FormEvent) {
@@ -345,8 +402,29 @@ export default function ChatThread() {
         {messages.map((m) => {
           const mine = m.sender_id === myId
           return (
-            <div key={m.id} className={`flex items-end gap-1 ${mine ? 'justify-end' : 'justify-start'}`}>
-              {m.image_path ? (
+            <div
+              key={m.id}
+              className={`flex items-end gap-1 ${mine ? 'justify-end' : 'justify-start'}`}
+              onPointerDown={() => startLongPress(m)}
+              onPointerUp={cancelLongPress}
+              onPointerLeave={cancelLongPress}
+              onPointerMove={moveLongPress}
+              onContextMenu={(e) => {
+                if (mine && !m.deleted_at) {
+                  e.preventDefault()
+                  setActionMessage(m)
+                }
+              }}
+            >
+              {m.deleted_at ? (
+                <div
+                  className={`max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] italic text-neutral-500 ${
+                    mine ? 'rounded-br-lg bg-neutral-900' : 'rounded-bl-lg bg-neutral-900'
+                  }`}
+                >
+                  Mensaje eliminado
+                </div>
+              ) : m.image_path ? (
                 <img
                   src={photoUrl(m.image_path)}
                   alt="Foto"
@@ -360,9 +438,14 @@ export default function ChatThread() {
                   }`}
                 >
                   {m.body}
+                  {m.edited_at && (
+                    <span className={`ml-1.5 text-[11px] ${mine ? 'text-neutral-500' : 'text-neutral-500'}`}>
+                      editado
+                    </span>
+                  )}
                 </div>
               )}
-              {mine && (
+              {mine && !m.deleted_at && (
                 <svg
                   viewBox="0 0 24 24"
                   className={`mb-1 h-3.5 w-3.5 shrink-0 ${m.read_at ? 'text-sky-400' : 'text-neutral-600'}`}
@@ -401,6 +484,16 @@ export default function ChatThread() {
       </div>
 
       {/* Input */}
+      {editingId && (
+        <div className="flex items-center justify-between border-t border-neutral-900 bg-neutral-950 px-4 py-2">
+          <p className="text-xs font-medium text-sky-400">Editando mensaje</p>
+          <button onClick={cancelEdit} aria-label="Cancelar edición" className="text-neutral-500">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+              <path d="M6 6l12 12M18 6 6 18" />
+            </svg>
+          </button>
+        </div>
+      )}
       {sendError && <p className="px-4 pb-1 text-center text-xs text-red-400">{sendError}</p>}
       <form
         onSubmit={onSubmit}
@@ -414,7 +507,7 @@ export default function ChatThread() {
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0]
-            if (file) sendImage(file)
+            if (file) setPendingPhoto({ file, preview: URL.createObjectURL(file), mirrored: false })
             e.target.value = ''
           }}
         />
@@ -425,7 +518,7 @@ export default function ChatThread() {
           hidden
           onChange={(e) => {
             const file = e.target.files?.[0]
-            if (file) sendImage(file)
+            if (file) setPendingPhoto({ file, preview: URL.createObjectURL(file), mirrored: false })
             e.target.value = ''
           }}
         />
@@ -494,6 +587,72 @@ export default function ChatThread() {
                 </svg>
               </span>
               Galería
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {actionMessage && (
+        <Modal title="Mensaje" onClose={() => setActionMessage(null)}>
+          <div className="space-y-2">
+            {!actionMessage.image_path && (
+              <button
+                onClick={() => startEdit(actionMessage)}
+                className="block w-full rounded-2xl bg-neutral-900 py-3 text-center text-sm font-medium text-white ring-1 ring-neutral-800 transition active:bg-neutral-800"
+              >
+                Editar
+              </button>
+            )}
+            <button
+              onClick={() => {
+                deleteMessage(actionMessage.id)
+                setActionMessage(null)
+              }}
+              className="block w-full rounded-2xl bg-neutral-900 py-3 text-center text-sm font-medium text-red-400 ring-1 ring-neutral-800 transition active:bg-neutral-800"
+            >
+              Eliminar
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {pendingPhoto && (
+        <Modal
+          title="Enviar foto"
+          onClose={() => {
+            URL.revokeObjectURL(pendingPhoto.preview)
+            setPendingPhoto(null)
+          }}
+        >
+          <div className="space-y-4">
+            <div className="overflow-hidden rounded-2xl bg-neutral-900">
+              <img
+                src={pendingPhoto.preview}
+                alt="Vista previa"
+                className="max-h-96 w-full object-contain"
+                style={{ transform: pendingPhoto.mirrored ? 'scaleX(-1)' : undefined }}
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setPendingPhoto((p) => (p ? { ...p, mirrored: !p.mirrored } : p))}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-neutral-900 py-2.5 text-sm font-medium text-white ring-1 ring-neutral-800 transition active:bg-neutral-800"
+            >
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M12 3v18M16 7l4 5-4 5M8 7 4 12l4 5" />
+              </svg>
+              Espejar
+            </button>
+            <button
+              onClick={() => {
+                const { file, mirrored, preview } = pendingPhoto
+                setPendingPhoto(null)
+                sendImage(file, mirrored)
+                URL.revokeObjectURL(preview)
+              }}
+              className="btn-primary"
+            >
+              Enviar
             </button>
           </div>
         </Modal>

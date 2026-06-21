@@ -85,6 +85,35 @@ async function rotateImageByOrientation(file: File, orientation: number): Promis
   })
 }
 
+// Espeja horizontalmente una imagen (corrige fotos de cámara frontal que
+// algunos teléfonos guardan ya invertidas, sin marca EXIF que lo indique).
+export async function mirrorImage(file: File): Promise<File> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onload = () => {
+        const canvas = document.createElement('canvas')
+        canvas.width = img.width
+        canvas.height = img.height
+        const ctx = canvas.getContext('2d')!
+        ctx.translate(img.width, 0)
+        ctx.scale(-1, 1)
+        ctx.drawImage(img, 0, 0)
+        canvas.toBlob(
+          (blob) => resolve(new File([blob!], file.name, { type: 'image/jpeg' })),
+          'image/jpeg',
+          0.95,
+        )
+      }
+      img.onerror = () => reject(new Error('No se pudo cargar la imagen'))
+      img.src = e.target?.result as string
+    }
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo'))
+    reader.readAsDataURL(file)
+  })
+}
+
 // Compresión client-side antes de subir: max 1920px lado mayor,
 // calidad 85%, objetivo ~0,4-1MB por foto. Nítida en pantallas modernas
 // sin llegar a pesar como el original de cámara. Corrige orientación EXIF.
