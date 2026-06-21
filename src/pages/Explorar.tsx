@@ -24,6 +24,7 @@ const CATS: Record<string, { emoji: string; kw: string }> = {
   instrumentos: { emoji: '🎸', kw: 'guitar' },
   'libros-musica': { emoji: '📚', kw: 'books' },
   'plantas-jardineria': { emoji: '🪴', kw: 'plants' },
+  alquileres: { emoji: '🏠', kw: 'apartment' },
   otros: { emoji: '📦', kw: 'boxes' },
 }
 
