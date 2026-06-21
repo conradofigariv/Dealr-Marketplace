@@ -230,6 +230,21 @@ textarea {
   animation: ctxPopIn 0.22s cubic-bezier(0.22, 1.2, 0.36, 1);
 }
 
+/* Aviso "Hay una versión nueva": entra desde abajo con un leve rebote. */
+@keyframes updatePromptIn {
+  from {
+    opacity: 0;
+    transform: translateY(24px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.update-prompt-in {
+  animation: updatePromptIn 0.4s cubic-bezier(0.22, 1.2, 0.36, 1);
+}
+
 /* Skeleton de carga de imágenes: glow que barre de izq. a der. mientras
    la foto baja. Se apaga al cargar (la img sube de opacidad). */
 @keyframes imgShimmer {
@@ -289,7 +304,8 @@ textarea {
   .img-shimmer,
   .glow-text,
   .glow-badge,
-  .ctx-pop-in {
+  .ctx-pop-in,
+  .update-prompt-in {
     animation: none;
   }
   .msg-pressable {
