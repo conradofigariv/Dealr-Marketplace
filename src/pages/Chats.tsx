@@ -125,46 +125,40 @@ export default function Chats() {
             const unread = m?.unread ?? 0
             const online = isOnline(other?.last_seen_at ?? null)
             const preview = m
-              ? `${m.senderId === session?.user.id ? 'Vos: ' : ''}${m.body}`
+              ? `${m.senderId === session?.user.id ? 'Vos' : other?.username}: ${m.body}`
               : `con ${other?.username}`
             return (
               <li key={conv.id}>
-                <Link to={`/chats/${conv.id}`} className="flex items-center gap-4 px-5 py-3.5 transition active:bg-neutral-900">
-                  <div className="relative h-[3.25rem] w-[3.25rem] shrink-0">
+                <Link to={`/chats/${conv.id}`} className="flex items-center gap-3.5 px-5 py-4 transition active:bg-neutral-900">
+                  <div className="relative h-14 w-14 shrink-0">
                     <div className="h-full w-full overflow-hidden rounded-full bg-neutral-900 ring-1 ring-neutral-800">
                       {photo && <img src={photoUrl(photo)} alt="" className="h-full w-full object-cover" />}
                     </div>
-                    {other && (
-                      <div className="absolute -bottom-0.5 -right-0.5 h-5 w-5 overflow-hidden rounded-full bg-neutral-700 ring-2 ring-black">
-                        {other.avatar_url ? (
-                          <img src={photoUrl(other.avatar_url)} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <span className="flex h-full w-full items-center justify-center text-[10px] font-bold text-white">
-                            {other.username.slice(0, 1).toUpperCase()}
-                          </span>
-                        )}
-                      </div>
-                    )}
                     {online && (
-                      <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-black" />
+                      <span className="absolute bottom-0 right-0 h-3.5 w-3.5 rounded-full bg-emerald-500 ring-2 ring-black" />
                     )}
                   </div>
                   <div className="min-w-0 flex-1">
-                    <p className={`truncate text-sm ${unread > 0 ? 'font-bold text-white' : 'font-semibold text-white'}`}>
-                      {conv.listing?.title}
-                    </p>
-                    <p className={`truncate text-xs ${unread > 0 ? 'text-neutral-300' : 'text-neutral-500'}`}>
-                      {preview}
-                      {conv.listing?.status === 'sold' && ' · vendido'}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 flex-col items-end gap-1">
-                    <span className="text-xs text-neutral-600">{timeAgo(conv.last_message_at)}</span>
-                    {unread > 0 && (
-                      <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
-                        {unread > 9 ? '9+' : unread}
-                      </span>
-                    )}
+                    <div className="flex items-baseline gap-2">
+                      <p className="min-w-0 flex-1 truncate text-[15px] text-white">
+                        <span className={unread > 0 ? 'font-bold' : 'font-semibold'}>{other?.username}</span>
+                        {conv.listing?.title && (
+                          <span className="font-normal text-neutral-400"> · {conv.listing.title}</span>
+                        )}
+                      </p>
+                      <span className="shrink-0 text-xs text-neutral-500">{timeAgo(conv.last_message_at)}</span>
+                    </div>
+                    <div className="mt-1 flex items-center gap-2">
+                      <p className={`min-w-0 flex-1 truncate text-sm ${unread > 0 ? 'text-neutral-200' : 'text-neutral-500'}`}>
+                        {preview}
+                        {conv.listing?.status === 'sold' && ' · vendido'}
+                      </p>
+                      {unread > 0 && (
+                        <span className="flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white">
+                          {unread > 9 ? '9+' : unread}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </Link>
               </li>
