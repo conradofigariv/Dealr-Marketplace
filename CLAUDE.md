@@ -65,7 +65,7 @@ src/
             (los 3 últimos son Providers con Context + Realtime)
   lib/      …, geo.ts (distancia Haversine, formato, difuminado del punto, reverse-geocode + geocode-search Nominatim, caché de ubicación del comprador)
   components/ BottomNav, ListingCard, Modal, RatingForm, SellFlowModal, Avatar, SellerBadges, StarRating
-              LocationPicker (mapa interactivo al publicar, con buscador de ciudad/dirección) · LocationMap (círculo aprox. en el detalle) · ListingsMap (burbujas de precio en el mapa) · leafletSetup (CSS + fix de íconos + tiles)
+              LocationPicker (mapa interactivo al publicar, con buscador de ciudad/dirección) · LocationMap (círculo aprox. en el detalle) · ListingsMap (marcadores foto+precio en el mapa, estilo FB Marketplace; clases `.map-pin*` en index.css) · leafletSetup (CSS + fix de íconos + tiles)
               PhotoViewer (galería fullscreen) · ListingRail (riel horizontal) · FeedFilters (sheet) · UpdatePrompt (aviso de versión nueva) · Toast (useToast(), reemplaza alert) · EmptyState
   pages/    Home(feed) ListingDetail Publish Chats ChatThread Profile PublicProfile
             Auth Onboarding Saved Notifications Feedback Explorar(grid de categorías) SavedSearches(/busquedas) MapView(/mapa)

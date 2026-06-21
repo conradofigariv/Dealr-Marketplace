@@ -2,6 +2,7 @@ import { useEffect, useRef } from 'react'
 import L from 'leaflet'
 import { TILE_URL, TILE_ATTRIBUTION } from './leafletSetup'
 import { approxCenter, type LatLng } from '../lib/geo'
+import { photoUrl } from '../lib/supabase'
 import type { Currency, Listing } from '../lib/types'
 
 // Mapa con las publicaciones cercanas, estilo "ver qué se vende cerca tuyo".
@@ -84,14 +85,20 @@ export default function ListingsMap({ listings, center, selectedId, onSelect }: 
       if (l.lat == null || l.lng == null) return
       const c = approxCenter({ lat: l.lat, lng: l.lng }, l.id)
       const price = l.is_auction && l.current_bid != null ? l.current_bid : l.price
+      const photo = l.photos?.[0]
+      const on = l.id === selectedId
+      // Círculo con la foto (si hay) + etiqueta de precio colgando abajo.
+      const photoHtml = photo
+        ? `<div class="map-pin-photo" style="background-image:url('${photoUrl(photo)}')"></div>`
+        : ''
       const icon = L.divIcon({
         className: '',
-        html: `<div class="price-pin${l.id === selectedId ? ' price-pin-on' : ''}">${shortPrice(price, l.currency)}</div>`,
+        html: `<div class="map-pin${on ? ' map-pin-on' : ''}${photo ? '' : ' map-pin-bare'}">${photoHtml}<div class="map-pin-price">${shortPrice(price, l.currency)}</div></div>`,
         // Sin iconSize: Leaflet dimensiona el ícono al contenido (clickeable);
-        // el centrado sobre el punto lo hace el transform del .price-pin.
+        // el centrado sobre el punto lo hace el transform del .map-pin.
         iconSize: undefined,
       })
-      const marker = L.marker([c.lat, c.lng], { icon }).addTo(map)
+      const marker = L.marker([c.lat, c.lng], { icon, zIndexOffset: on ? 1000 : 0 }).addTo(map)
       marker.on('click', () => onSelectRef.current(l))
       markersRef.current.set(l.id, marker)
     })

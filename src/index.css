@@ -95,26 +95,54 @@ textarea {
   background-color: rgba(115, 115, 115, 0.55);
 }
 
-/* Burbuja de precio en el mapa de publicaciones (ListingsMap). Se centra
-   sobre el punto con el transform; el ícono de Leaflet no lleva estilos. */
-.price-pin {
-  display: inline-flex;
+/* Marcador del mapa de publicaciones (ListingsMap): círculo con la foto y una
+   etiquetita de precio colgando abajo, estilo Facebook Marketplace. Se ancla
+   por el centro sobre el punto (transform). El ícono de Leaflet no lleva
+   estilos propios. */
+.map-pin {
+  display: flex;
+  flex-direction: column;
   align-items: center;
-  white-space: nowrap;
   transform: translate(-50%, -50%);
+  transition: transform 0.15s ease;
+}
+.map-pin-photo {
+  width: 44px;
+  height: 44px;
   border-radius: 9999px;
-  border: 2px solid transparent;
+  border: 2px solid #fff;
+  background-color: #262626;
+  background-size: cover;
+  background-position: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.map-pin-price {
+  margin-top: -8px;
+  white-space: nowrap;
+  border-radius: 9999px;
   background: #fff;
-  padding: 2px 9px;
-  font-size: 12px;
+  padding: 1px 7px;
+  font-size: 11px;
   font-weight: 700;
   color: #000;
-  box-shadow: 0 1px 5px rgba(0, 0, 0, 0.55);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.5);
 }
-.price-pin-on {
+/* Seleccionado: agranda el conjunto e invierte la etiqueta a negro. */
+.map-pin-on {
+  transform: translate(-50%, -50%) scale(1.18);
+  z-index: 500;
+}
+.map-pin-on .map-pin-photo {
   border-color: #fff;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35), 0 2px 6px rgba(0, 0, 0, 0.6);
+}
+.map-pin-on .map-pin-price {
   background: #000;
   color: #fff;
+}
+/* Sin foto: la etiqueta de precio sola, como burbuja (fallback). */
+.map-pin-bare .map-pin-price {
+  margin-top: 0;
 }
 
 /* ---------- Animaciones ---------- */
