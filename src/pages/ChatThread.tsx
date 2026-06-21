@@ -7,6 +7,7 @@ import { formatPrice, isOnline, lastSeenLabel } from '../lib/format'
 import { compressPhoto, mirrorImage } from '../lib/images'
 import type { Conversation, Message } from '../lib/types'
 import Modal from '../components/Modal'
+import { useToast } from '../components/Toast'
 import RatingForm from '../components/RatingForm'
 import Avatar from '../components/Avatar'
 import PhotoViewer from '../components/PhotoViewer'
@@ -19,26 +20,30 @@ const QUICK_REPLIES = [
   '¿Por qué zona estás para coordinar?',
 ]
 
+interface ContextAction {
+  label: string
+  onClick: () => void
+  destructive?: boolean
+}
+
 // Menú contextual estilo iOS: clona el mensaje tocado en su posición exacta
-// (queda nítido) y difumina todo lo demás detrás, con un popup chico al
-// lado en vez de una hoja que ocupe la pantalla.
+// (queda nítido, con un pop elástico al aparecer) y difumina todo lo demás
+// detrás, con un popup chico al lado en vez de una hoja que ocupe la pantalla.
 function MessageContextMenu({
   message,
   rect,
   mine,
+  actions,
   onClose,
-  onEdit,
-  onDelete,
 }: {
   message: Message
   rect: DOMRect
   mine: boolean
+  actions: ContextAction[]
   onClose: () => void
-  onEdit: () => void
-  onDelete: () => void
 }) {
-  const canEdit = !message.image_path
-  const menuHeight = canEdit ? 100 : 52
+  const rowHeight = 46
+  const menuHeight = actions.length * rowHeight + 8
   const menuWidth = 168
   const gap = 8
   const spaceBelow = window.innerHeight - rect.bottom
@@ -51,9 +56,9 @@ function MessageContextMenu({
 
   return (
     <div className="fixed inset-0 z-[600]" onClick={onClose}>
-      <div className="absolute inset-0 bg-black/55 backdrop-blur-md" />
+      <div className="overlay-in absolute inset-0 bg-black/55 backdrop-blur-md" />
       <div
-        className="absolute"
+        className="ctx-pop-in absolute"
         style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -70,26 +75,21 @@ function MessageContextMenu({
         )}
       </div>
       <div
-        className="absolute w-[168px] overflow-hidden rounded-2xl bg-neutral-800/95 shadow-xl ring-1 ring-white/10"
-        style={{ top: menuTop, left: menuLeft }}
+        className="ctx-pop-in absolute w-[168px] overflow-hidden rounded-2xl bg-neutral-800/95 shadow-xl ring-1 ring-white/10"
+        style={{ top: menuTop, left: menuLeft, animationDelay: '0.03s' }}
         onClick={(e) => e.stopPropagation()}
       >
-        {canEdit && (
+        {actions.map((action, i) => (
           <button
-            onClick={onEdit}
-            className="block w-full px-4 py-3 text-left text-[15px] font-medium text-white transition active:bg-white/10"
+            key={action.label}
+            onClick={action.onClick}
+            className={`block w-full px-4 py-3 text-left text-[15px] font-medium transition active:bg-white/10 ${
+              action.destructive ? 'text-red-400' : 'text-white'
+            } ${i > 0 ? 'border-t border-white/10' : ''}`}
           >
-            Editar
+            {action.label}
           </button>
-        )}
-        <button
-          onClick={onDelete}
-          className={`block w-full px-4 py-3 text-left text-[15px] font-medium text-red-400 transition active:bg-white/10 ${
-            canEdit ? 'border-t border-white/10' : ''
-          }`}
-        >
-          Eliminar
-        </button>
+        ))}
       </div>
     </div>
   )
@@ -99,6 +99,7 @@ export default function ChatThread() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { session, loading } = useAuth()
+  const toast = useToast()
 
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -118,6 +119,7 @@ export default function ChatThread() {
   const [offerError, setOfferError] = useState('')
   const [offerBusy, setOfferBusy] = useState(false)
   const [contextMenu, setContextMenu] = useState<{ message: Message; rect: DOMRect } | null>(null)
+  const [pressingId, setPressingId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
   const [pendingPhoto, setPendingPhoto] = useState<{ file: File; preview: string; mirrored: boolean } | null>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
@@ -328,20 +330,31 @@ export default function ChatThread() {
     setMessages((prev) => prev.map((m) => (m.id === (data as Message).id ? (data as Message) : m)))
   }
 
+  // Mensaje propio: copiar/editar/borrar. Mensaje ajeno: solo copiar (si
+  // tiene texto). Si no hay ninguna acción posible, ni abrimos el menú.
+  function hasMenu(m: Message): boolean {
+    if (m.deleted_at) return false
+    return m.sender_id === myId || Boolean(m.body)
+  }
+
   function startLongPress(m: Message, el: HTMLElement) {
-    if (m.sender_id !== myId || m.deleted_at) return
+    if (!hasMenu(m)) return
     longPressMoved.current = false
+    setPressingId(m.id)
     longPressTimer.current = setTimeout(() => {
+      setPressingId(null)
       if (!longPressMoved.current) setContextMenu({ message: m, rect: el.getBoundingClientRect() })
-    }, 500)
+    }, 450)
   }
 
   function cancelLongPress() {
     clearTimeout(longPressTimer.current)
+    setPressingId(null)
   }
 
   function moveLongPress() {
     longPressMoved.current = true
+    setPressingId(null)
   }
 
   function startEdit(m: Message) {
@@ -353,6 +366,17 @@ export default function ChatThread() {
   function cancelEdit() {
     setEditingId(null)
     setDraft('')
+  }
+
+  async function copyMessage(m: Message) {
+    if (!m.body) return
+    try {
+      await navigator.clipboard.writeText(m.body)
+      toast('Mensaje copiado')
+    } catch {
+      toast('No se pudo copiar')
+    }
+    setContextMenu(null)
   }
 
   async function sendOffer(e: FormEvent) {
@@ -497,12 +521,14 @@ export default function ChatThread() {
                   onPointerLeave={cancelLongPress}
                   onPointerMove={moveLongPress}
                   onContextMenu={(e) => {
-                    if (mine) {
+                    if (hasMenu(m)) {
                       e.preventDefault()
                       setContextMenu({ message: m, rect: e.currentTarget.getBoundingClientRect() })
                     }
                   }}
-                  className="max-h-72 max-w-[70%] cursor-zoom-in rounded-2xl object-cover"
+                  className={`msg-pressable max-h-72 max-w-[70%] cursor-zoom-in rounded-2xl object-cover ${
+                    pressingId === m.id ? 'msg-pressing' : ''
+                  }`}
                 />
               ) : (
                 <div
@@ -511,14 +537,14 @@ export default function ChatThread() {
                   onPointerLeave={cancelLongPress}
                   onPointerMove={moveLongPress}
                   onContextMenu={(e) => {
-                    if (mine) {
+                    if (hasMenu(m)) {
                       e.preventDefault()
                       setContextMenu({ message: m, rect: e.currentTarget.getBoundingClientRect() })
                     }
                   }}
-                  className={`max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] ${
+                  className={`msg-pressable max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] ${
                     mine ? 'rounded-br-lg bg-white text-black' : 'rounded-bl-lg bg-neutral-900 text-neutral-100'
-                  }`}
+                  } ${pressingId === m.id ? 'msg-pressing' : ''}`}
                 >
                   {m.body}
                   {m.edited_at && (
@@ -675,19 +701,32 @@ export default function ChatThread() {
         </Modal>
       )}
 
-      {contextMenu && (
-        <MessageContextMenu
-          message={contextMenu.message}
-          rect={contextMenu.rect}
-          mine={contextMenu.message.sender_id === myId}
-          onClose={() => setContextMenu(null)}
-          onEdit={() => startEdit(contextMenu.message)}
-          onDelete={() => {
-            deleteMessage(contextMenu.message.id)
-            setContextMenu(null)
-          }}
-        />
-      )}
+      {contextMenu &&
+        (() => {
+          const m = contextMenu.message
+          const mine = m.sender_id === myId
+          const actions: ContextAction[] = []
+          if (m.body) actions.push({ label: 'Copiar', onClick: () => copyMessage(m) })
+          if (mine && !m.image_path) actions.push({ label: 'Editar', onClick: () => startEdit(m) })
+          if (mine)
+            actions.push({
+              label: 'Eliminar',
+              destructive: true,
+              onClick: () => {
+                deleteMessage(m.id)
+                setContextMenu(null)
+              },
+            })
+          return (
+            <MessageContextMenu
+              message={m}
+              rect={contextMenu.rect}
+              mine={mine}
+              actions={actions}
+              onClose={() => setContextMenu(null)}
+            />
+          )
+        })()}
 
       {pendingPhoto && (
         <Modal
