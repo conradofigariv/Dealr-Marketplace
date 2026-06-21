@@ -32,6 +32,11 @@ export default function ListingsMap({ listings, center, selectedId, onSelect }: 
   const onSelectRef = useRef(onSelect)
   onSelectRef.current = onSelect
 
+  // Centro con el que se inicializó el mapa: cuando `center` cambia después
+  // (ej. llega la geolocalización tras el primer render con el default de
+  // Córdoba), recentramos una vez sin pisar el pan/zoom manual del usuario.
+  const initialCenterRef = useRef(center)
+
   // Crear el mapa una sola vez.
   useEffect(() => {
     if (!containerRef.current || mapRef.current) return
@@ -44,13 +49,29 @@ export default function ListingsMap({ listings, center, selectedId, onSelect }: 
     mapRef.current = map
     L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map)
     setTimeout(() => map.invalidateSize(), 0)
+    // El contenedor puede animar su entrada (transición de pantalla, 0.34s):
+    // recalculamos tamaño otra vez al terminar para que los tiles cubran todo.
+    const settleTimer = setTimeout(() => map.invalidateSize(), 400)
     return () => {
+      clearTimeout(settleTimer)
       map.remove()
       mapRef.current = null
       markersRef.current.clear()
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Si `center` cambia (geolocalización llegó después del montaje), movemos
+  // el mapa ahí. Solo cuando es distinto del centro inicial, así no
+  // sobreescribe el pan/zoom que ya hizo el usuario.
+  useEffect(() => {
+    const map = mapRef.current
+    if (!map) return
+    const initial = initialCenterRef.current
+    if (center.lat === initial.lat && center.lng === initial.lng) return
+    initialCenterRef.current = center
+    map.setView([center.lat, center.lng], map.getZoom())
+  }, [center])
 
   // (Re)dibujar los marcadores cuando cambia la lista.
   useEffect(() => {
