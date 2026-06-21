@@ -82,7 +82,7 @@ export default function LocationPicker({ value, onChange }: Props) {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-2xl ring-1 ring-neutral-800">
+    <div className="relative isolate overflow-hidden rounded-2xl ring-1 ring-neutral-800">
       <div ref={containerRef} className="h-56 w-full bg-neutral-900" />
       <button
         type="button"

@@ -48,7 +48,10 @@ export default function LocationMap({ point, seed }: Props) {
   }, [point, seed])
 
   return (
-    <div className="overflow-hidden rounded-2xl ring-1 ring-neutral-800">
+    // isolate: crea un contexto de apilamiento propio para que los z-index
+    // internos de Leaflet (panes/controles, hasta ~1000) no se escapen por
+    // encima de overlays como el visor de fotos a pantalla completa.
+    <div className="isolate overflow-hidden rounded-2xl ring-1 ring-neutral-800">
       <div ref={containerRef} className="h-44 w-full bg-neutral-900" />
     </div>
   )

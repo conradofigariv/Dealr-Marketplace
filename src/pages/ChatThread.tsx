@@ -195,8 +195,19 @@ export default function ChatThread() {
         .single()
       if (error || !data) throw error
       setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]))
-    } catch {
-      setSendError('No se pudo enviar la foto. Probá de nuevo.')
+    } catch (err) {
+      // Mostramos la causa real: si falta la migración 00013 (columna
+      // image_path / body nullable), el insert falla y conviene saberlo.
+      const e = err as { message?: string; details?: string; hint?: string; code?: string } | null
+      const message = e?.message ?? (err instanceof Error ? err.message : '')
+      const full = [e?.message, e?.details, e?.hint, e?.code].filter(Boolean).join(' · ') || JSON.stringify(err)
+      setSendError(
+        /network|fetch/i.test(message)
+          ? 'Problema de conexión. Probá de nuevo.'
+          : /could not find|schema cache|column .* does not exist|violates not-null|messages_body_check|messages_content_check/i.test(message)
+            ? `Falta aplicar la migración 00013 en Supabase: ${full}`
+            : `No se pudo enviar la foto: ${full}`,
+      )
     } finally {
       setSending(false)
       setUploadingPreview(null)
