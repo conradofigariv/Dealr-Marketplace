@@ -9,6 +9,8 @@ import ListingRail from '../components/ListingRail'
 import AuctionRail from '../components/AuctionRail'
 import FeedFilters, { EMPTY_FILTERS, countActiveFilters, filterableFields, type FeedFilterValues } from '../components/FeedFilters'
 import Modal from '../components/Modal'
+import ActionMenu from '../components/ActionMenu'
+import { vibrate } from '../lib/notify'
 import {
   getCachedBuyerLocation,
   requestBuyerLocation,
@@ -100,7 +102,8 @@ export default function Home() {
   const [buyerLoc, setBuyerLoc] = useState<LatLng | null>(getCachedBuyerLocation())
   const [buyerLabel, setBuyerLabel] = useState<string | null>(getCachedBuyerLabel())
   const [locating, setLocating] = useState(false)
-  const [zoneMenuOpen, setZoneMenuOpen] = useState(false)
+  const [zoneMenuRect, setZoneMenuRect] = useState<DOMRect | null>(null)
+  const zoneButtonRef = useRef<HTMLButtonElement>(null)
   const [pickingOnMap, setPickingOnMap] = useState(false)
   const [mapPick, setMapPick] = useState<LatLng | null>(null)
   const [mapPickLabel, setMapPickLabel] = useState<string | undefined>(undefined)
@@ -295,7 +298,7 @@ export default function Home() {
 
   // Pill de ubicación: pide geolocalización y geocodifica para mostrar la zona.
   async function useCurrentLocation() {
-    setZoneMenuOpen(false)
+    setZoneMenuRect(null)
     setLocating(true)
     try {
       const loc = await requestBuyerLocation()
@@ -312,7 +315,7 @@ export default function Home() {
   }
 
   function openMapPicker() {
-    setZoneMenuOpen(false)
+    setZoneMenuRect(null)
     setMapPick(buyerLoc)
     setMapPickLabel(undefined)
     setPickingOnMap(true)
@@ -389,14 +392,24 @@ export default function Home() {
   const [pull, setPull] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const pullStart = useRef<number | null>(null)
+  const pullVibrated = useRef(false)
 
   function onTouchStart(e: ReactTouchEvent) {
     pullStart.current = window.scrollY <= 0 && !refreshing ? e.touches[0].clientY : null
+    pullVibrated.current = false
   }
   function onTouchMove(e: ReactTouchEvent) {
     if (pullStart.current === null) return
     const delta = e.touches[0].clientY - pullStart.current
-    setPull(delta > 0 && window.scrollY <= 0 ? Math.min(delta * 0.5, 90) : 0)
+    const next = delta > 0 && window.scrollY <= 0 ? Math.min(delta * 0.5, 90) : 0
+    // Toque sutil al cruzar el umbral de "soltá para actualizar" (una vez por gesto).
+    if (next >= 60 && !pullVibrated.current) {
+      pullVibrated.current = true
+      vibrate(12)
+    } else if (next < 60) {
+      pullVibrated.current = false
+    }
+    setPull(next)
   }
   async function onTouchEnd() {
     if (pullStart.current === null) return
@@ -473,7 +486,8 @@ export default function Home() {
         </div>
         {/* Pill de ubicación: define la zona de referencia para la cercanía */}
         <button
-          onClick={() => setZoneMenuOpen(true)}
+          ref={zoneButtonRef}
+          onClick={() => setZoneMenuRect(zoneButtonRef.current!.getBoundingClientRect())}
           disabled={locating}
           className="mt-1 flex items-center gap-1.5 text-xs font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
         >
@@ -488,31 +502,24 @@ export default function Home() {
           {locating ? 'Buscando ubicación…' : buyerLabel ?? 'Definí tu zona'}
         </button>
 
-        {zoneMenuOpen && (
-          <Modal title="Tu zona" onClose={() => setZoneMenuOpen(false)}>
-            <div className="flex flex-col gap-2">
-              <button
-                onClick={useCurrentLocation}
-                className="surface flex items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-white transition active:scale-[0.98]"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3" />
-                  <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-                </svg>
-                Ubicación actual
-              </button>
-              <button
-                onClick={openMapPicker}
-                className="surface flex items-center gap-3 px-4 py-3.5 text-left text-sm font-medium text-white transition active:scale-[0.98]"
-              >
-                <svg viewBox="0 0 24 24" className="h-5 w-5 shrink-0 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {zoneMenuRect && (
+          <ActionMenu
+            rect={zoneMenuRect}
+            onClose={() => setZoneMenuRect(null)}
+            anchor={
+              <span className="flex h-full items-center gap-1.5 text-xs font-medium text-white">
+                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
                   <circle cx="12" cy="10" r="3" />
                 </svg>
-                Seleccionar del mapa
-              </button>
-            </div>
-          </Modal>
+                {buyerLabel ?? 'Definí tu zona'}
+              </span>
+            }
+            actions={[
+              { label: 'Ubicación actual', onClick: useCurrentLocation },
+              { label: 'Seleccionar del mapa', onClick: openMapPicker },
+            ]}
+          />
         )}
 
         {pickingOnMap && (

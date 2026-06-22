@@ -5,8 +5,10 @@ import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatPrice, isOnline, lastSeenLabel } from '../lib/format'
 import { compressPhoto, mirrorImage } from '../lib/images'
+import { vibrate } from '../lib/notify'
 import type { Conversation, Message } from '../lib/types'
 import Modal from '../components/Modal'
+import ActionMenu, { type MenuAction } from '../components/ActionMenu'
 import { useToast } from '../components/Toast'
 import RatingForm from '../components/RatingForm'
 import Avatar from '../components/Avatar'
@@ -20,15 +22,9 @@ const QUICK_REPLIES = [
   '¿Por qué zona estás para coordinar?',
 ]
 
-interface ContextAction {
-  label: string
-  onClick: () => void
-  destructive?: boolean
-}
-
 // Menú contextual estilo iOS: clona el mensaje tocado en su posición exacta
-// (queda nítido, con un pop elástico al aparecer) y difumina todo lo demás
-// detrás, con un popup chico al lado en vez de una hoja que ocupe la pantalla.
+// (queda nítido, sin selección de texto, con un pop elástico al aparecer) y
+// difumina todo lo demás detrás, con un popup chico al lado.
 function MessageContextMenu({
   message,
   rect,
@@ -39,31 +35,17 @@ function MessageContextMenu({
   message: Message
   rect: DOMRect
   mine: boolean
-  actions: ContextAction[]
+  actions: MenuAction[]
   onClose: () => void
 }) {
-  const rowHeight = 46
-  const menuHeight = actions.length * rowHeight + 8
-  const menuWidth = 168
-  const gap = 8
-  const spaceBelow = window.innerHeight - rect.bottom
-  const placeAbove = spaceBelow < menuHeight + gap + 24
-  const menuTop = placeAbove ? Math.max(8, rect.top - menuHeight - gap) : rect.bottom + gap
-  const alignRight = rect.right > window.innerWidth / 2
-  const menuLeft = alignRight
-    ? Math.max(8, rect.right - menuWidth)
-    : Math.min(window.innerWidth - menuWidth - 8, rect.left)
-
   return (
-    <div className="fixed inset-0 z-[600]" onClick={onClose}>
-      <div className="overlay-in absolute inset-0 bg-black/55 backdrop-blur-md" />
-      <div
-        className="ctx-pop-in absolute"
-        style={{ top: rect.top, left: rect.left, width: rect.width, height: rect.height }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {message.image_path ? (
-          <img src={photoUrl(message.image_path)} alt="" className="h-full w-full rounded-2xl object-cover" />
+    <ActionMenu
+      rect={rect}
+      actions={actions}
+      onClose={onClose}
+      anchor={
+        message.image_path ? (
+          <img src={photoUrl(message.image_path)} alt="" className="h-full w-full rounded-2xl object-cover" draggable={false} />
         ) : (
           <div
             className={`flex h-full w-full items-center rounded-3xl px-4 py-2.5 text-[15px] ${
@@ -72,26 +54,9 @@ function MessageContextMenu({
           >
             {message.body}
           </div>
-        )}
-      </div>
-      <div
-        className="ctx-pop-in absolute w-[168px] overflow-hidden rounded-2xl bg-neutral-800/95 shadow-xl ring-1 ring-white/10"
-        style={{ top: menuTop, left: menuLeft, animationDelay: '0.03s' }}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {actions.map((action, i) => (
-          <button
-            key={action.label}
-            onClick={action.onClick}
-            className={`block w-full px-4 py-3 text-left text-[15px] font-medium transition active:bg-white/10 ${
-              action.destructive ? 'text-red-400' : 'text-white'
-            } ${i > 0 ? 'border-t border-white/10' : ''}`}
-          >
-            {action.label}
-          </button>
-        ))}
-      </div>
-    </div>
+        )
+      }
+    />
   )
 }
 
@@ -343,7 +308,10 @@ export default function ChatThread() {
     setPressingId(m.id)
     longPressTimer.current = setTimeout(() => {
       setPressingId(null)
-      if (!longPressMoved.current) setContextMenu({ message: m, rect: el.getBoundingClientRect() })
+      if (!longPressMoved.current) {
+        vibrate(12)
+        setContextMenu({ message: m, rect: el.getBoundingClientRect() })
+      }
     }, 450)
   }
 
@@ -705,7 +673,7 @@ export default function ChatThread() {
         (() => {
           const m = contextMenu.message
           const mine = m.sender_id === myId
-          const actions: ContextAction[] = []
+          const actions: MenuAction[] = []
           if (m.body) actions.push({ label: 'Copiar', onClick: () => copyMessage(m) })
           if (mine && !m.image_path) actions.push({ label: 'Editar', onClick: () => startEdit(m) })
           if (mine)
