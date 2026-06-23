@@ -19,11 +19,18 @@ self.addEventListener('push', (event) => {
     renotify: Boolean(data.tag || data.link),
   }
   event.waitUntil(self.registration.showNotification(title, options))
+
+  // Badge: mostrar que hay notificaciones sin leer
+  if ('setAppBadge' in navigator) navigator.setAppBadge(1)
 })
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close()
   const link = (event.notification.data && event.notification.data.link) || '/'
+
+  // Badge: limpiar cuando el usuario abre la notificación
+  if ('clearAppBadge' in navigator) navigator.clearAppBadge()
+
   event.waitUntil(
     self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients) => {
       // Si ya hay una pestaña abierta, la enfocamos y navegamos.

@@ -148,6 +148,8 @@ export default function App() {
   // La app cargó bien: re-armar la recarga automática para el próximo deploy
   useEffect(() => {
     sessionStorage.removeItem('chunk-reload')
+    // Limpiar el badge de notificaciones al abrir la app
+    if ('clearAppBadge' in navigator) navigator.clearAppBadge()
   }, [])
   if (!supabaseConfigured || supabaseUrlInvalid) return <SetupNotice />
   return (
