@@ -83,11 +83,22 @@ export default function Feedback() {
   }
 
   async function loadSuggestions() {
-    const { data } = await supabase
+    let { data, error } = await supabase
       .from('feature_suggestions')
       .select('*, author:profiles(*)')
       .order('vote_count', { ascending: false })
       .order('created_at', { ascending: false })
+    // Si el embed con profiles no resuelve, caemos a la query sin autor para
+    // que las ideas igual se muestren (el autor queda como "Usuario").
+    if (error) {
+      const res = await supabase
+        .from('feature_suggestions')
+        .select('*')
+        .order('vote_count', { ascending: false })
+        .order('created_at', { ascending: false })
+      data = res.data as FeatureSuggestion[] | null
+      if (res.error) toast(res.error.message)
+    }
     setSuggestions(data ?? [])
     if (session) {
       const { data: votes } = await supabase
