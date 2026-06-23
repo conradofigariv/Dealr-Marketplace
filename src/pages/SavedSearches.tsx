@@ -66,6 +66,7 @@ export default function SavedSearches() {
         conditions: s.conditions ?? [],
         radiusKm: null,
         fields: {},
+        fieldRanges: {},
       },
     })
     navigate('/')

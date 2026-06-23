@@ -12,6 +12,9 @@ export interface FeedFilterValues {
   // Filtros por campo de categoría (select/boolean). key -> valor elegido
   // ('true' para boolean, la opción para select). Vacío = sin filtro.
   fields: Record<string, string>
+  // Filtros por rango numérico (Año, Kilómetros, Superficie…). key del campo ->
+  // columna generada a comparar + mín/máx (strings del input, '' = sin tope).
+  fieldRanges: Record<string, { column: string; min: string; max: string }>
 }
 
 export const EMPTY_FILTERS: FeedFilterValues = {
@@ -21,6 +24,7 @@ export const EMPTY_FILTERS: FeedFilterValues = {
   conditions: [],
   radiusKm: null,
   fields: {},
+  fieldRanges: {},
 }
 
 export function countActiveFilters(f: FeedFilterValues): number {
@@ -30,13 +34,15 @@ export function countActiveFilters(f: FeedFilterValues): number {
     (f.currency !== 'all' ? 1 : 0) +
     (f.conditions.length ? 1 : 0) +
     (f.radiusKm ? 1 : 0) +
-    Object.keys(f.fields).length
+    Object.keys(f.fields).length +
+    Object.values(f.fieldRanges).filter((r) => r.min || r.max).length
   )
 }
 
-// Solo son buenos filtros los campos de opciones cerradas (no texto libre).
+// Son buenos filtros los campos de opciones cerradas (select/boolean) y los
+// numéricos con rango (filterRange). El texto libre no se ofrece como filtro.
 export function filterableFields(fields: FieldDef[] | undefined): FieldDef[] {
-  return (fields ?? []).filter((f) => f.type === 'select' || f.type === 'boolean')
+  return (fields ?? []).filter((f) => f.type === 'select' || f.type === 'boolean' || Boolean(f.filterRange))
 }
 
 const RADII = [2, 5, 10, 25] as const
@@ -70,6 +76,18 @@ export default function FeedFilters({ value, onApply, ensureLocation, categoryFi
       if (value === null) delete fields[key]
       else fields[key] = value
       return { ...d, fields }
+    })
+  }
+
+  // Setea el mín/máx de un filtro de rango. Si ambos quedan vacíos, lo limpia.
+  function setFieldRange(key: string, column: string, part: 'min' | 'max', value: string) {
+    setDraft((d) => {
+      const fieldRanges = { ...d.fieldRanges }
+      const prev = fieldRanges[key] ?? { column, min: '', max: '' }
+      const next = { ...prev, column, [part]: value }
+      if (!next.min && !next.max) delete fieldRanges[key]
+      else fieldRanges[key] = next
+      return { ...d, fieldRanges }
     })
   }
 
@@ -160,11 +178,33 @@ export default function FeedFilters({ value, onApply, ensureLocation, categoryFi
           )}
         </div>
 
-        {/* Filtros propios de la categoría elegida (select / boolean) */}
+        {/* Filtros propios de la categoría elegida (rango / select / boolean) */}
         {(categoryFields ?? []).map((f) => (
           <div key={f.key}>
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-neutral-500">{f.label}</p>
-            {f.type === 'boolean' ? (
+            {f.filterRange ? (
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  value={draft.fieldRanges[f.key]?.min ?? ''}
+                  onChange={(e) => setFieldRange(f.key, f.filterRange!.column, 'min', e.target.value)}
+                  placeholder="Mín"
+                  className="input-line text-base"
+                />
+                <span className="text-neutral-600">—</span>
+                <input
+                  type="number"
+                  inputMode="numeric"
+                  min="0"
+                  value={draft.fieldRanges[f.key]?.max ?? ''}
+                  onChange={(e) => setFieldRange(f.key, f.filterRange!.column, 'max', e.target.value)}
+                  placeholder="Máx"
+                  className="input-line text-base"
+                />
+              </div>
+            ) : f.type === 'boolean' ? (
               <div className="flex gap-1.5">
                 <button onClick={() => setFieldFilter(f.key, null)} className={chip(draft.fields[f.key] === undefined)}>
                   Cualquiera

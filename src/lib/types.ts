@@ -26,6 +26,11 @@ export interface FieldDef {
   type: 'text' | 'boolean' | 'select' | 'multiselect'
   required: boolean
   options?: string[]
+  // Si está presente, el campo ofrece un filtro por rango numérico en el feed
+  // (ej. Año, Kilómetros, Superficie). La comparación se hace contra esta
+  // columna generada de `listings` (numérica e indexada), no contra el jsonb,
+  // para comparar como número y no como texto.
+  filterRange?: { column: string; unit?: string }
 }
 
 export interface Category {

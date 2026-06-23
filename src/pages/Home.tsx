@@ -194,6 +194,14 @@ export default function Home() {
     for (const [key, val] of Object.entries(filters.fields)) {
       query = query.eq(`structured_fields->>${key}`, val)
     }
+    // Filtros por rango numérico (Año, Km, Superficie): comparan contra la
+    // columna generada (numérica e indexada), no el jsonb, para ordenar bien.
+    for (const range of Object.values(filters.fieldRanges)) {
+      const min = Number(range.min)
+      const max = Number(range.max)
+      if (range.min && !Number.isNaN(min)) query = query.gte(range.column, min)
+      if (range.max && !Number.isNaN(max)) query = query.lte(range.column, max)
+    }
     return query
   }, [search, categoryId, onlyVerified, onlyAuctions, filters, order])
 
@@ -362,7 +370,11 @@ export default function Home() {
       firstCat.current = false
       return
     }
-    setFilters((f) => (Object.keys(f.fields).length ? { ...f, fields: {} } : f))
+    setFilters((f) =>
+      Object.keys(f.fields).length || Object.keys(f.fieldRanges).length
+        ? { ...f, fields: {}, fieldRanges: {} }
+        : f,
+    )
   }, [categoryId])
 
   const activeFilters = countActiveFilters(filters)
