@@ -32,6 +32,24 @@ export default function Profile() {
   const [zoneDraft, setZoneDraft] = useState('')
   const [uploadingAvatar, setUploadingAvatar] = useState(false)
   const [verifyOpen, setVerifyOpen] = useState(false)
+  const [verifying, setVerifying] = useState(false)
+  const [verifyError, setVerifyError] = useState('')
+
+  // Inicia la verificación de identidad: crea la sesión en Didit (Edge Function)
+  // y manda al usuario a la URL. El resultado lo recibe el webhook didit-webhook.
+  async function startVerification() {
+    setVerifying(true)
+    setVerifyError('')
+    const { data, error } = await supabase.functions.invoke('create-verification-session', {
+      body: { redirectUrl: `${window.location.origin}/perfil` },
+    })
+    setVerifying(false)
+    if (error || !data?.url) {
+      setVerifyError('La verificación todavía no está disponible. Te avisamos cuando puedas hacerla.')
+      return
+    }
+    window.location.href = data.url as string
+  }
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -429,12 +447,22 @@ export default function Profile() {
               Tus fotos y datos del documento <strong className="text-white">no se guardan en Dealr</strong>;
               solo el resultado de la verificación.
             </p>
-            <p className="rounded-xl bg-neutral-900 p-3.5 text-xs text-neutral-400 ring-1 ring-neutral-800">
-              La verificación estará disponible muy pronto. Te avisamos cuando puedas hacerla.
-            </p>
-            <button onClick={() => setVerifyOpen(false)} className="btn-primary">
-              Entendido
-            </button>
+            {verifyError && (
+              <p className="rounded-xl bg-neutral-900 p-3.5 text-xs text-neutral-400 ring-1 ring-neutral-800">
+                {verifyError}
+              </p>
+            )}
+            <div className="flex gap-3 pt-1">
+              <button
+                onClick={() => setVerifyOpen(false)}
+                className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700"
+              >
+                Ahora no
+              </button>
+              <button onClick={startVerification} disabled={verifying} className="btn-primary flex-1 disabled:opacity-60">
+                {verifying ? 'Abriendo…' : 'Verificar ahora'}
+              </button>
+            </div>
           </div>
         </Modal>
       )}
