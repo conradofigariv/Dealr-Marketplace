@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
+import { useAuth } from '../hooks/useAuth'
 import type { Listing, Profile } from '../lib/types'
 import Avatar from '../components/Avatar'
 import SellerBadges from '../components/SellerBadges'
 import StarRating from '../components/StarRating'
 import ListingCard from '../components/ListingCard'
+import ReportButton from '../components/ReportButton'
 import { lastSeenLabel } from '../lib/format'
 
 // Lo que ve un comprador antes de decidir: reputación, antigüedad,
@@ -13,6 +15,7 @@ import { lastSeenLabel } from '../lib/format'
 export default function PublicProfile() {
   const { username } = useParams()
   const navigate = useNavigate()
+  const { session } = useAuth()
   const [profile, setProfile] = useState<Profile | null>(null)
   const [listings, setListings] = useState<Listing[]>([])
   const [notFound, setNotFound] = useState(false)
@@ -65,6 +68,11 @@ export default function PublicProfile() {
             <path d="M15 18 9 12l6-6" />
           </svg>
         </button>
+        {session && session.user.id !== profile.id && (
+          <div className="absolute right-3 top-[max(1.5rem,env(safe-area-inset-top))]">
+            <ReportButton targetType="user" targetId={profile.id} variant="icon" />
+          </div>
+        )}
         <div className="mx-auto mb-4 w-fit">
           <Avatar profile={profile} size="lg" />
         </div>

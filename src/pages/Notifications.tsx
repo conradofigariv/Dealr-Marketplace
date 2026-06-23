@@ -54,6 +54,11 @@ const icons: Record<NotificationType, ReactElement> = {
       <circle cx="12" cy="12" r="10" />
     </>
   ),
+  report: (
+    <>
+      <path d="M4 22V4a1 1 0 0 1 1-1h13l-2.5 4L18 11H5" />
+    </>
+  ),
 }
 
 // Color por tipo: `badge` = fondo sólido del badge chico (con ícono blanco),
@@ -69,6 +74,7 @@ const typeStyles: Record<NotificationType, { badge: string; soft: string }> = {
   bid: { badge: 'bg-amber-500', soft: 'bg-amber-500/15 text-amber-400' },
   outbid: { badge: 'bg-orange-500', soft: 'bg-orange-500/15 text-orange-400' },
   auction_won: { badge: 'bg-amber-500', soft: 'bg-amber-500/15 text-amber-400' },
+  report: { badge: 'bg-red-500', soft: 'bg-red-500/15 text-red-400' },
 }
 
 type GroupedNotification = AppNotification & { count: number; hasUnread: boolean }

@@ -68,6 +68,7 @@ const Notifications = lazy(() => import('./pages/Notifications'))
 const Explorar = lazy(() => import('./pages/Explorar'))
 const SavedSearches = lazy(() => import('./pages/SavedSearches'))
 const MapView = lazy(() => import('./pages/MapView'))
+const Admin = lazy(() => import('./pages/Admin'))
 
 // Captura un $pageview en cada cambio de ruta (PostHog no lo hace solo en SPA).
 function PageviewTracker() {
@@ -194,6 +195,7 @@ export default function App() {
             <Route path="/explorar" element={<Explorar />} />
             <Route path="/busquedas" element={<SavedSearches />} />
             <Route path="/mapa" element={<MapView />} />
+            <Route path="/admin" element={<Admin />} />
           </Route>
         </Routes>
         </BrowserRouter>

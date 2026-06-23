@@ -17,6 +17,7 @@ export interface Profile {
   lat: number | null
   lng: number | null
   last_seen_at: string | null
+  is_admin: boolean
   created_at: string
 }
 
@@ -139,6 +140,7 @@ export type NotificationType =
   | 'bid'
   | 'outbid'
   | 'auction_won'
+  | 'report'
 
 export interface AppNotification {
   id: string
@@ -165,6 +167,19 @@ export interface SavedSearch {
   currency: Currency | null
   conditions: ListingCondition[] | null
   created_at: string
+}
+
+export type ReportTargetType = 'question' | 'listing' | 'user' | 'message' | 'review' | 'suggestion'
+
+export interface Report {
+  id: string
+  reporter_id: string
+  target_type: ReportTargetType
+  target_id: string
+  reason: string
+  resolved: boolean
+  created_at: string
+  reporter?: Pick<Profile, 'id' | 'username' | 'avatar_url'> | null
 }
 
 export type SuggestionStatus = 'open' | 'planned' | 'in_progress' | 'done' | 'declined'

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
+import ReportButton from '../components/ReportButton'
 import { capture } from '../lib/analytics'
 import { timeAgo } from '../lib/format'
 import type { AppReview, FeatureSuggestion, SuggestionStatus } from '../lib/types'
@@ -50,8 +51,9 @@ function Stars({ value, onChange, size = 'h-5 w-5' }: { value: number; onChange?
 
 export default function Feedback() {
   const navigate = useNavigate()
-  const { session } = useAuth()
+  const { session, profile } = useAuth()
   const toast = useToast()
+  const isAdmin = Boolean(profile?.is_admin)
   const [tab, setTab] = useState<Tab>('opiniones')
 
   const [reviews, setReviews] = useState<AppReview[]>([])
@@ -180,6 +182,22 @@ export default function Feedback() {
     }
   }
 
+  async function deleteReview(id: string) {
+    if (!confirm('¿Borrar esta opinión?')) return
+    const { error } = await supabase.from('app_reviews').delete().eq('id', id)
+    if (error) return toast(error.message)
+    toast('Opinión borrada')
+    loadReviews()
+  }
+
+  async function deleteIdea(id: string) {
+    if (!confirm('¿Borrar esta idea?')) return
+    const { error } = await supabase.from('feature_suggestions').delete().eq('id', id)
+    if (error) return toast(error.message)
+    toast('Idea borrada')
+    loadSuggestions()
+  }
+
   return (
     <div className="pb-28">
       <header className="flex items-center gap-3 px-4 pb-2 pt-[max(1rem,env(safe-area-inset-top))]">
@@ -250,7 +268,19 @@ export default function Feedback() {
                   <Stars value={r.rating} size="h-3.5 w-3.5" />
                 </div>
                 {r.body && <p className="mt-2 text-sm text-neutral-300">{r.body}</p>}
-                <p className="mt-2 text-xs text-neutral-600">{timeAgo(r.updated_at)}</p>
+                <div className="mt-2 flex items-center justify-between">
+                  <p className="text-xs text-neutral-600">{timeAgo(r.updated_at)}</p>
+                  <div className="flex items-center gap-3">
+                    {session && r.user_id !== session.user.id && (
+                      <ReportButton targetType="review" targetId={r.id} />
+                    )}
+                    {isAdmin && (
+                      <button onClick={() => deleteReview(r.id)} className="text-xs font-semibold text-red-400">
+                        Borrar
+                      </button>
+                    )}
+                  </div>
+                </div>
               </li>
             ))}
           </ul>
@@ -313,9 +343,21 @@ export default function Feedback() {
                         </span>
                       </div>
                       {s.body && <p className="mt-1 text-sm text-neutral-400">{s.body}</p>}
-                      <p className="mt-1.5 text-xs text-neutral-600">
-                        {s.author?.username ?? 'Usuario'} · {timeAgo(s.created_at)}
-                      </p>
+                      <div className="mt-1.5 flex items-center justify-between">
+                        <p className="text-xs text-neutral-600">
+                          {s.author?.username ?? 'Usuario'} · {timeAgo(s.created_at)}
+                        </p>
+                        <div className="flex items-center gap-3">
+                          {session && s.user_id !== session.user.id && (
+                            <ReportButton targetType="suggestion" targetId={s.id} />
+                          )}
+                          {isAdmin && (
+                            <button onClick={() => deleteIdea(s.id)} className="text-xs font-semibold text-red-400">
+                              Borrar
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </li>
                 )

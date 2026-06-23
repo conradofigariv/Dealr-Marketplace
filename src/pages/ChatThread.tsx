@@ -63,8 +63,9 @@ function MessageContextMenu({
 export default function ChatThread() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { session, loading } = useAuth()
+  const { session, profile, loading } = useAuth()
   const toast = useToast()
+  const isAdmin = Boolean(profile?.is_admin)
 
   const [conversation, setConversation] = useState<Conversation | null>(null)
   const [messages, setMessages] = useState<Message[]>([])
@@ -86,6 +87,8 @@ export default function ChatThread() {
   const [contextMenu, setContextMenu] = useState<{ message: Message; rect: DOMRect } | null>(null)
   const [pressingId, setPressingId] = useState<string | null>(null)
   const [editingId, setEditingId] = useState<string | null>(null)
+  const [reportingMsg, setReportingMsg] = useState<Message | null>(null)
+  const [reportReason, setReportReason] = useState('')
   const [pendingPhoto, setPendingPhoto] = useState<{ file: File; preview: string; mirrored: boolean } | null>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
   const didInitialScroll = useRef(false)
@@ -295,11 +298,33 @@ export default function ChatThread() {
     setMessages((prev) => prev.map((m) => (m.id === (data as Message).id ? (data as Message) : m)))
   }
 
-  // Mensaje propio: copiar/editar/borrar. Mensaje ajeno: solo copiar (si
-  // tiene texto). Si no hay ninguna acción posible, ni abrimos el menú.
+  // Mensaje propio: copiar/editar/borrar. Mensaje ajeno: copiar (si tiene
+  // texto), reportar y —si sos admin— borrar. Si no hay sesión, no hay menú.
   function hasMenu(m: Message): boolean {
     if (m.deleted_at) return false
-    return m.sender_id === myId || Boolean(m.body)
+    return m.sender_id === myId || Boolean(session)
+  }
+
+  async function submitReport() {
+    if (!reportingMsg || reportReason.trim().length < 1) return
+    const { error } = await supabase.from('reports').insert({
+      reporter_id: myId,
+      target_type: 'message',
+      target_id: reportingMsg.id,
+      reason: reportReason.trim(),
+    })
+    setReportingMsg(null)
+    setReportReason('')
+    toast(error ? (error.code === '23505' ? 'Ya reportaste este mensaje.' : error.message) : 'Gracias. Recibimos tu reporte.')
+  }
+
+  // Borrado de moderación (admin): hard delete vía RLS, no el RPC de borrado
+  // propio. Realtime puede no avisar el DELETE, así que lo sacamos local.
+  async function adminDeleteMessage(messageId: string) {
+    const { error } = await supabase.from('messages').delete().eq('id', messageId)
+    if (error) return toast(error.message)
+    setMessages((prev) => prev.filter((m) => m.id !== messageId))
+    toast('Mensaje borrado')
   }
 
   function startLongPress(m: Message, el: HTMLElement) {
@@ -685,6 +710,23 @@ export default function ChatThread() {
                 setContextMenu(null)
               },
             })
+          if (!mine)
+            actions.push({
+              label: 'Reportar',
+              onClick: () => {
+                setReportingMsg(m)
+                setContextMenu(null)
+              },
+            })
+          if (!mine && isAdmin)
+            actions.push({
+              label: 'Borrar (admin)',
+              destructive: true,
+              onClick: () => {
+                adminDeleteMessage(m.id)
+                setContextMenu(null)
+              },
+            })
           return (
             <MessageContextMenu
               message={m}
@@ -695,6 +737,42 @@ export default function ChatThread() {
             />
           )
         })()}
+
+      {reportingMsg && (
+        <Modal title="Reportar mensaje" onClose={() => setReportingMsg(null)}>
+          <div className="space-y-4">
+            <p className="text-sm text-neutral-400">Contanos qué pasa. Lo revisa el equipo de Dealr.</p>
+            <div className="flex flex-wrap gap-1.5">
+              {['Acoso o insultos', 'Spam', 'Contenido inapropiado', 'Otro'].map((r) => (
+                <button
+                  key={r}
+                  onClick={() => setReportReason(r)}
+                  className={`rounded-full px-3.5 py-1.5 text-xs font-semibold transition ${
+                    reportReason === r ? 'bg-white text-black' : 'text-neutral-300 ring-1 ring-neutral-700'
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+            <textarea
+              rows={3}
+              value={reportReason}
+              onChange={(e) => setReportReason(e.target.value)}
+              maxLength={500}
+              placeholder="Detalle (opcional si elegiste un motivo)"
+              className="input-line resize-none text-sm"
+            />
+            <button
+              onClick={submitReport}
+              disabled={reportReason.trim().length < 1}
+              className="btn-primary w-full py-3 text-sm disabled:opacity-50"
+            >
+              Enviar reporte
+            </button>
+          </div>
+        </Modal>
+      )}
 
       {pendingPhoto && (
         <Modal

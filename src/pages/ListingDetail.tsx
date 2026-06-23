@@ -15,6 +15,7 @@ import LocationMap from '../components/LocationMap'
 import ListingRail from '../components/ListingRail'
 import PhotoViewer from '../components/PhotoViewer'
 import SmartImage from '../components/SmartImage'
+import ReportButton from '../components/ReportButton'
 import { useToast } from '../components/Toast'
 import { getCachedBuyerLocation, haversineKm, formatDistance, pushRecentlyViewed } from '../lib/geo'
 import { invalidateFeedCache } from './Home'
@@ -22,7 +23,7 @@ import { invalidateFeedCache } from './Home'
 export default function ListingDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { session } = useAuth()
+  const { session, profile } = useAuth()
   const { isFavorite, toggle } = useFavorites()
   const toast = useToast()
 
@@ -52,6 +53,7 @@ export default function ListingDetail() {
   const closedOnce = useRef(false)
 
   const isOwner = session?.user.id === listing?.seller_id
+  const isAdmin = Boolean(profile?.is_admin)
 
   async function load() {
     const { data } = await supabase
@@ -533,6 +535,17 @@ export default function ListingDetail() {
         </Link>
 
         {!isOwner && <ListingRail title="Más de este vendedor" listings={sellerItems} />}
+
+        {!isOwner && (
+          <div className="flex items-center justify-between px-1">
+            <ReportButton targetType="listing" targetId={listing.id} />
+            {isAdmin && (
+              <button onClick={() => setDeleteOpen(true)} className="text-xs font-semibold text-red-400">
+                Borrar (admin)
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Acciones del dueño */}
         {isOwner && (
