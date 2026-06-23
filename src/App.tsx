@@ -1,4 +1,4 @@
-import { lazy, Suspense, Component, useEffect, type ReactNode } from 'react'
+import { lazy, Suspense, Component, useEffect, useState, type ReactNode } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useLocation, useNavigationType, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { FavoritesProvider } from './hooks/useFavorites'
@@ -6,9 +6,11 @@ import { NotificationsProvider } from './hooks/useNotifications'
 import { UnreadChatsProvider } from './hooks/useUnreadChats'
 import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import { hasSeenWelcome } from './lib/welcome'
+import { hasSeenIntro } from './lib/intro'
 import { capturePageview } from './lib/analytics'
 import BottomNav from './components/BottomNav'
 import UpdatePrompt from './components/UpdatePrompt'
+import IntroSlides from './components/IntroSlides'
 import { ToastProvider } from './components/Toast'
 import Home from './pages/Home'
 
@@ -83,6 +85,12 @@ function Shell() {
   const location = useLocation()
   const navType = useNavigationType()
   const { profile, session } = useAuth()
+  const [showIntro, setShowIntro] = useState(false)
+
+  // Onboarding de funciones (3 slides): una vez, apenas hay sesión.
+  useEffect(() => {
+    if (session && !hasSeenIntro()) setShowIntro(true)
+  }, [session])
 
   // Primera apertura de la app: la bienvenida/login es lo primero que se ve,
   // pero no es obligatoria. Solo intercepta el feed ("/"); los deep links a
@@ -109,6 +117,7 @@ function Shell() {
         </div>
       </Suspense>
       {!hideNav && <BottomNav />}
+      {showIntro && <IntroSlides onDone={() => setShowIntro(false)} />}
     </div>
   )
 }
