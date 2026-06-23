@@ -23,10 +23,8 @@ export default function UpdatePrompt() {
   if (!needRefresh) return null
 
   function handleUpdate() {
-    // El SW nuevo + el reload tardan un toque: mostramos un spinner para que
-    // se note que el toque tuvo efecto y no quede la sensación de "no pasó nada".
     setUpdating(true)
-    updateServiceWorker(true)
+    setTimeout(() => updateServiceWorker(true), 3000)
   }
 
   return (
