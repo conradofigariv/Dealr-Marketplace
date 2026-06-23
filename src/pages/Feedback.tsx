@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useToast } from '../components/Toast'
 import { capture } from '../lib/analytics'
 import { timeAgo } from '../lib/format'
 import type { AppReview, FeatureSuggestion, SuggestionStatus } from '../lib/types'
@@ -50,6 +51,7 @@ function Stars({ value, onChange, size = 'h-5 w-5' }: { value: number; onChange?
 export default function Feedback() {
   const navigate = useNavigate()
   const { session } = useAuth()
+  const toast = useToast()
   const [tab, setTab] = useState<Tab>('opiniones')
 
   const [reviews, setReviews] = useState<AppReview[]>([])
@@ -114,10 +116,13 @@ export default function Feedback() {
       { onConflict: 'user_id' },
     )
     setReviewBusy(false)
-    if (!error) {
-      capture('app_review_submitted', { rating: myRating })
-      loadReviews()
+    if (error) {
+      toast(error.message)
+      return
     }
+    capture('app_review_submitted', { rating: myRating })
+    toast('¡Gracias por tu opinión!')
+    loadReviews()
   }
 
   async function submitIdea(e: FormEvent) {
@@ -129,12 +134,15 @@ export default function Feedback() {
       .from('feature_suggestions')
       .insert({ user_id: session.user.id, title: ideaTitle.trim(), body: ideaBody.trim() || null })
     setIdeaBusy(false)
-    if (!error) {
-      capture('suggestion_created')
-      setIdeaTitle('')
-      setIdeaBody('')
-      loadSuggestions()
+    if (error) {
+      toast(error.message)
+      return
     }
+    capture('suggestion_created')
+    setIdeaTitle('')
+    setIdeaBody('')
+    toast('¡Idea enviada!')
+    loadSuggestions()
   }
 
   async function toggleVote(s: FeatureSuggestion) {
@@ -154,6 +162,7 @@ export default function Feedback() {
       ? await supabase.from('feature_votes').delete().eq('suggestion_id', s.id).eq('user_id', session.user.id)
       : await supabase.from('feature_votes').insert({ suggestion_id: s.id, user_id: session.user.id })
     if (error) {
+      toast(error.message)
       loadSuggestions() // revertir al estado real
     } else if (!voted) {
       capture('suggestion_voted', { suggestion_id: s.id })
