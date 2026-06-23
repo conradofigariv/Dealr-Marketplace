@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import ReportButton from '../components/ReportButton'
+import LongPressActions from '../components/LongPressActions'
 import { capture } from '../lib/analytics'
 import { timeAgo } from '../lib/format'
 import type { AppReview, FeatureSuggestion, SuggestionStatus } from '../lib/types'
@@ -263,24 +264,21 @@ export default function Feedback() {
           <ul className="space-y-4">
             {reviews.map((r) => (
               <li key={r.id} className="surface p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-semibold text-white">{r.author?.username ?? 'Usuario'}</span>
-                  <Stars value={r.rating} size="h-3.5 w-3.5" />
-                </div>
-                {r.body && <p className="mt-2 text-sm text-neutral-300">{r.body}</p>}
-                <div className="mt-2 flex items-center justify-between">
-                  <p className="text-xs text-neutral-600">{timeAgo(r.updated_at)}</p>
-                  <div className="flex items-center gap-3">
+                <LongPressActions
+                  actions={isAdmin ? [{ label: 'Borrar', destructive: true, onClick: () => deleteReview(r.id) }] : []}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-semibold text-white">{r.author?.username ?? 'Usuario'}</span>
+                    <Stars value={r.rating} size="h-3.5 w-3.5" />
+                  </div>
+                  {r.body && <p className="mt-2 text-sm text-neutral-300">{r.body}</p>}
+                  <div className="mt-2 flex items-center justify-between">
+                    <p className="text-xs text-neutral-600">{timeAgo(r.updated_at)}</p>
                     {session && r.user_id !== session.user.id && (
                       <ReportButton targetType="review" targetId={r.id} />
                     )}
-                    {isAdmin && (
-                      <button onClick={() => deleteReview(r.id)} className="text-xs font-semibold text-red-400">
-                        Borrar
-                      </button>
-                    )}
                   </div>
-                </div>
+                </LongPressActions>
               </li>
             ))}
           </ul>
@@ -336,28 +334,25 @@ export default function Feedback() {
                       {s.vote_count}
                     </button>
                     <div className="min-w-0 flex-1">
-                      <div className="flex items-start justify-between gap-2">
-                        <p className="text-sm font-semibold text-white">{s.title}</p>
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${statusClass[s.status]}`}>
-                          {statusLabel[s.status]}
-                        </span>
-                      </div>
-                      {s.body && <p className="mt-1 text-sm text-neutral-400">{s.body}</p>}
-                      <div className="mt-1.5 flex items-center justify-between">
-                        <p className="text-xs text-neutral-600">
-                          {s.author?.username ?? 'Usuario'} · {timeAgo(s.created_at)}
-                        </p>
-                        <div className="flex items-center gap-3">
+                      <LongPressActions
+                        actions={isAdmin ? [{ label: 'Borrar', destructive: true, onClick: () => deleteIdea(s.id) }] : []}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <p className="text-sm font-semibold text-white">{s.title}</p>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-medium ring-1 ${statusClass[s.status]}`}>
+                            {statusLabel[s.status]}
+                          </span>
+                        </div>
+                        {s.body && <p className="mt-1 text-sm text-neutral-400">{s.body}</p>}
+                        <div className="mt-1.5 flex items-center justify-between">
+                          <p className="text-xs text-neutral-600">
+                            {s.author?.username ?? 'Usuario'} · {timeAgo(s.created_at)}
+                          </p>
                           {session && s.user_id !== session.user.id && (
                             <ReportButton targetType="suggestion" targetId={s.id} />
                           )}
-                          {isAdmin && (
-                            <button onClick={() => deleteIdea(s.id)} className="text-xs font-semibold text-red-400">
-                              Borrar
-                            </button>
-                          )}
                         </div>
-                      </div>
+                      </LongPressActions>
                     </div>
                   </li>
                 )

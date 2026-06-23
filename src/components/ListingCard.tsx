@@ -1,11 +1,15 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useState, type MouseEvent } from 'react'
 import type { Listing } from '../lib/types'
-import { photoUrl } from '../lib/supabase'
+import { photoUrl, supabase } from '../lib/supabase'
 import { formatPrice, priceDropPct, isRecentlyPosted, timeAgo, timeLeftLabel } from '../lib/format'
 import { formatDistance } from '../lib/geo'
 import { useAuth } from '../hooks/useAuth'
 import { useFavorites } from '../hooks/useFavorites'
+import { useToast } from './Toast'
+import LongPressActions from './LongPressActions'
+import type { MenuAction } from './ActionMenu'
+import { invalidateFeedCache } from '../pages/Home'
 
 // Card estilo Savee: la foto es todo. Solo un precio discreto encima.
 export default function ListingCard({ listing, distanceKm }: { listing: Listing; distanceKm?: number }) {
@@ -15,10 +19,12 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
   const auction = listing.is_auction
   const auctionPrice = listing.current_bid ?? listing.price
   const navigate = useNavigate()
-  const { session } = useAuth()
+  const { session, profile } = useAuth()
   const { isFavorite, toggle } = useFavorites()
+  const toast = useToast()
   const saved = isFavorite(listing.id)
   const [imgLoaded, setImgLoaded] = useState(false)
+  const [hidden, setHidden] = useState(false)
 
   function onSave(e: MouseEvent) {
     e.preventDefault()
@@ -30,7 +36,27 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
     toggle(listing.id)
   }
 
+  // Acciones de moderación (long-press), solo admin.
+  async function adminDelete() {
+    if (!confirm(`¿Borrar "${listing.title}"? No se puede deshacer.`)) return
+    const { error } = await supabase.from('listings').delete().eq('id', listing.id)
+    if (error) return toast(error.message)
+    invalidateFeedCache()
+    setHidden(true)
+    toast('Publicación borrada')
+  }
+
+  const adminActions: MenuAction[] = profile?.is_admin
+    ? [
+        { label: 'Editar', onClick: () => navigate(`/publicar/${listing.id}`) },
+        { label: 'Borrar', destructive: true, onClick: adminDelete },
+      ]
+    : []
+
+  if (hidden) return null
+
   return (
+    <LongPressActions actions={adminActions} className="break-inside-avoid">
     <Link
       to={`/p/${listing.id}`}
       className="relative mb-0.5 block w-full overflow-hidden bg-neutral-900 transition active:opacity-80"
@@ -119,5 +145,6 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
         ) : null}
       </div>
     </Link>
+    </LongPressActions>
   )
 }

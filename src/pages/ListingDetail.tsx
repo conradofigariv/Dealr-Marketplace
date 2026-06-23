@@ -16,6 +16,8 @@ import ListingRail from '../components/ListingRail'
 import PhotoViewer from '../components/PhotoViewer'
 import SmartImage from '../components/SmartImage'
 import ReportButton from '../components/ReportButton'
+import LongPressActions from '../components/LongPressActions'
+import type { MenuAction } from '../components/ActionMenu'
 import { useToast } from '../components/Toast'
 import { getCachedBuyerLocation, haversineKm, formatDistance, pushRecentlyViewed } from '../lib/geo'
 import { invalidateFeedCache } from './Home'
@@ -54,6 +56,14 @@ export default function ListingDetail() {
 
   const isOwner = session?.user.id === listing?.seller_id
   const isAdmin = Boolean(profile?.is_admin)
+  // Moderación del admin sobre la publicación, vía long-press (estilo chat).
+  const adminListingActions: MenuAction[] =
+    isAdmin && !isOwner
+      ? [
+          { label: 'Editar', onClick: () => navigate(`/publicar/${listing!.id}`) },
+          { label: 'Borrar', destructive: true, onClick: () => setDeleteOpen(true) },
+        ]
+      : []
 
   async function load() {
     const { data } = await supabase
@@ -211,6 +221,15 @@ export default function ListingDetail() {
         ? 'No pudimos enviar el reporte. Probá de nuevo.'
         : 'Reporte enviado. Gracias por ayudar a mantener Dealr.',
     )
+  }
+
+  // Moderación del admin (long-press sobre la pregunta).
+  async function deleteQuestion(questionId: string) {
+    if (!confirm('¿Borrar esta pregunta?')) return
+    const { error } = await supabase.from('questions').delete().eq('id', questionId)
+    if (error) return toast(error.message)
+    setQuestions((prev) => prev.filter((x) => x.id !== questionId))
+    toast('Pregunta borrada')
   }
 
   async function sendOffer(e: FormEvent) {
@@ -453,7 +472,9 @@ export default function ListingDetail() {
               )}
             </div>
           )}
-          <h1 className="mt-1.5 text-lg leading-snug text-neutral-200">{listing.title}</h1>
+          <LongPressActions actions={adminListingActions}>
+            <h1 className="mt-1.5 text-lg leading-snug text-neutral-200">{listing.title}</h1>
+          </LongPressActions>
           <p className="mt-2 text-sm text-neutral-500">
             {conditionLabels[listing.condition]} · publicado {timeAgo(listing.created_at)}
             {listing.favorites_count > 0 &&
@@ -537,13 +558,8 @@ export default function ListingDetail() {
         {!isOwner && <ListingRail title="Más de este vendedor" listings={sellerItems} />}
 
         {!isOwner && (
-          <div className="flex items-center justify-between px-1">
+          <div className="px-1">
             <ReportButton targetType="listing" targetId={listing.id} />
-            {isAdmin && (
-              <button onClick={() => setDeleteOpen(true)} className="text-xs font-semibold text-red-400">
-                Borrar (admin)
-              </button>
-            )}
           </div>
         )}
 
@@ -647,6 +663,9 @@ export default function ListingDetail() {
             <ul className="space-y-5">
               {questions.map((q) => (
                 <li key={q.id} className="text-sm">
+                  <LongPressActions
+                    actions={isAdmin ? [{ label: 'Borrar', destructive: true, onClick: () => deleteQuestion(q.id) }] : []}
+                  >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-neutral-200">{q.body}</p>
                     {q.is_public && session && q.asker_id !== session.user.id && !isOwner && (
@@ -675,6 +694,7 @@ export default function ListingDetail() {
                   ) : (
                     <p className="mt-1 text-xs italic text-neutral-600">Esperando respuesta del vendedor…</p>
                   )}
+                  </LongPressActions>
                 </li>
               ))}
             </ul>
