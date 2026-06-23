@@ -31,7 +31,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     }
     const { data } = await supabase
       .from('notifications')
-      .select('*')
+      .select('*, actor:profiles!notifications_actor_id_fkey(id, username, avatar_url)')
       .order('created_at', { ascending: false })
       .limit(50)
     setItems((data as AppNotification[]) ?? [])
@@ -49,12 +49,22 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       .on(
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
-        (payload) => {
+        async (payload) => {
           const n = payload.new as AppNotification
           if (!alertedRef.current.has(n.id)) {
             alertedRef.current.add(n.id)
             // Sonido + vibración + globo (si la pestaña no está visible).
             alertIncoming(n.title, n.body, n.link)
+          }
+          // El payload de Realtime no trae el embed: buscamos el avatar del
+          // actor aparte para mostrarlo en vivo (no solo al recargar).
+          if (n.actor_id) {
+            const { data } = await supabase
+              .from('profiles')
+              .select('id, username, avatar_url')
+              .eq('id', n.actor_id)
+              .maybeSingle()
+            if (data) n.actor = data
           }
           setItems((prev) => (prev.some((p) => p.id === n.id) ? prev : [n, ...prev]))
         },

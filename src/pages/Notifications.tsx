@@ -2,6 +2,7 @@ import { useEffect, type ReactElement } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../hooks/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
+import { photoUrl } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
 import type { AppNotification, NotificationType } from '../lib/types'
 import EmptyState from '../components/EmptyState'
@@ -55,6 +56,21 @@ const icons: Record<NotificationType, ReactElement> = {
   ),
 }
 
+// Color por tipo: `badge` = fondo sólido del badge chico (con ícono blanco),
+// `soft` = círculo tenue cuando no hay avatar (sistema / anónimas).
+const typeStyles: Record<NotificationType, { badge: string; soft: string }> = {
+  message: { badge: 'bg-blue-500', soft: 'bg-blue-500/15 text-blue-400' },
+  offer: { badge: 'bg-emerald-500', soft: 'bg-emerald-500/15 text-emerald-400' },
+  offer_accepted: { badge: 'bg-emerald-500', soft: 'bg-emerald-500/15 text-emerald-400' },
+  sale_confirmed: { badge: 'bg-amber-500', soft: 'bg-amber-500/15 text-amber-400' },
+  question_answered: { badge: 'bg-violet-500', soft: 'bg-violet-500/15 text-violet-400' },
+  price_drop: { badge: 'bg-rose-500', soft: 'bg-rose-500/15 text-rose-400' },
+  saved_search: { badge: 'bg-sky-500', soft: 'bg-sky-500/15 text-sky-400' },
+  bid: { badge: 'bg-amber-500', soft: 'bg-amber-500/15 text-amber-400' },
+  outbid: { badge: 'bg-orange-500', soft: 'bg-orange-500/15 text-orange-400' },
+  auction_won: { badge: 'bg-amber-500', soft: 'bg-amber-500/15 text-amber-400' },
+}
+
 type GroupedNotification = AppNotification & { count: number; hasUnread: boolean }
 
 function groupNotifications(items: AppNotification[]): GroupedNotification[] {
@@ -72,17 +88,57 @@ function groupNotifications(items: AppNotification[]): GroupedNotification[] {
   }, [])
 }
 
+// Círculo principal: avatar del que la envía + badge del tipo encima. Si no
+// hay actor (subastas anónimas / sistema), el círculo es el ícono del tipo.
+function NotificationIcon({ n }: { n: AppNotification }) {
+  const style = typeStyles[n.type]
+  const badge = (
+    <span
+      className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-black ${style.badge}`}
+    >
+      <svg viewBox="0 0 24 24" className="h-3 w-3 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+        {icons[n.type]}
+      </svg>
+    </span>
+  )
+
+  if (n.actor) {
+    return (
+      <div className="relative shrink-0">
+        <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-neutral-900 text-base font-bold text-white ring-1 ring-neutral-800">
+          {n.actor.avatar_url ? (
+            <img src={photoUrl(n.actor.avatar_url)} alt={n.actor.username} className="h-full w-full object-cover" />
+          ) : (
+            n.actor.username.slice(0, 1).toUpperCase()
+          )}
+        </div>
+        {badge}
+      </div>
+    )
+  }
+
+  return (
+    <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${style.soft}`}>
+      <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        {icons[n.type]}
+      </svg>
+    </span>
+  )
+}
+
 export default function Notifications() {
   const navigate = useNavigate()
   const { session, loading } = useAuth()
-  const { items, markAllRead } = useNotifications()
+  const { items, markAllRead, refresh } = useNotifications()
 
   useEffect(() => {
     if (!loading && !session) navigate('/auth', { state: { from: '/notificaciones', back: '/' } })
   }, [loading, session, navigate])
 
-  // Al abrir el centro, todo lo visto queda leído.
+  // Al abrir el centro: refrescamos (para traer el avatar del actor de las que
+  // llegaron por Realtime) y marcamos todo como leído.
   useEffect(() => {
+    refresh()
     markAllRead()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
@@ -106,11 +162,9 @@ export default function Notifications() {
             const isUnread = n.hasUnread
             const content = (
               <div className={`flex items-start gap-3.5 px-5 py-3.5 ${isUnread ? 'bg-neutral-900/40' : ''}`}>
-                <span className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-neutral-900 text-white ring-1 ring-neutral-800">
-                  <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                    {icons[n.type]}
-                  </svg>
-                </span>
+                <div className="mt-0.5">
+                  <NotificationIcon n={n} />
+                </div>
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-semibold text-white">{n.title}</p>
                   {n.count > 1 ? (

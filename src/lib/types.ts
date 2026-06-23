@@ -149,6 +149,10 @@ export interface AppNotification {
   link: string | null
   read_at: string | null
   created_at: string
+  // Quién disparó la notificación (NULL para anónimas como pujas de subasta).
+  // El embed fija la FK porque hay dos FKs a profiles (user_id y actor_id).
+  actor_id: string | null
+  actor?: Pick<Profile, 'id' | 'username' | 'avatar_url'> | null
 }
 
 export interface SavedSearch {
