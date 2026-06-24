@@ -52,6 +52,7 @@ export default function Profile() {
     window.location.href = data.url as string
   }
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [myListingsOpen, setMyListingsOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [sellTarget, setSellTarget] = useState<Listing | null>(null)
@@ -325,54 +326,6 @@ export default function Profile() {
           )}
         </div>
 
-        {/* Mis publicaciones */}
-        <div>
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-white">Mis publicaciones</h2>
-            <Link to="/publicar" className="text-xs font-semibold text-neutral-400">+ Vender algo</Link>
-          </div>
-          {listings.length === 0 ? (
-            <p className="py-2 text-sm text-neutral-600">Todavía no publicaste nada.</p>
-          ) : (
-            <ul className="space-y-4">
-              {listings.map((l) => (
-                <li key={l.id} className="flex gap-4">
-                  <Link to={`/p/${l.id}`} className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-neutral-900">
-                    {l.photos[0] && <img src={photoUrl(l.photos[0])} alt="" className="h-full w-full object-cover" />}
-                  </Link>
-                  <div className="min-w-0 flex-1">
-                    <Link to={`/p/${l.id}`} className="block truncate text-sm font-semibold text-white">{l.title}</Link>
-                    <p className="text-xs text-neutral-500">
-                      {formatPrice(l.price, l.currency)} ·{' '}
-                      <span className={l.status === 'active' ? 'text-white' : ''}>{statusLabels[l.status]}</span>
-                      {l.status === 'active' && ` · renovada ${timeAgo(l.last_renewed_at)}`}
-                    </p>
-                    <div className="mt-1.5 flex flex-wrap gap-2">
-                      {l.status === 'active' ? (
-                        <>
-                          <button onClick={() => setStatus(l.id, 'active', true)} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black">
-                            Sigue disponible
-                          </button>
-                          <button onClick={() => setSellTarget(l)} className="rounded-full px-3 py-1 text-[11px] font-semibold text-neutral-400 ring-1 ring-neutral-700">
-                            Ya lo vendí
-                          </button>
-                        </>
-                      ) : (
-                        <button onClick={() => setStatus(l.id, 'active', true)} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black">
-                          Reactivar
-                        </button>
-                      )}
-                      <button onClick={() => setDeleteTarget(l)} className="rounded-full px-3 py-1 text-[11px] font-semibold text-red-400/90 ring-1 ring-red-500/30">
-                        Eliminar
-                      </button>
-                    </div>
-                  </div>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
-
         <div className="space-y-2">
           <InstallButton />
           <Link
@@ -404,11 +357,83 @@ export default function Profile() {
               <path d="m9 18 6-6-6-6" />
             </svg>
           </Link>
+          <div className="overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-neutral-800">
+            <button
+              onClick={() => setMyListingsOpen((v) => !v)}
+              className="flex w-full items-center justify-between px-4 py-3.5"
+            >
+              <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+                <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
+                  <circle cx="7" cy="7" r="1" fill="currentColor" stroke="none" />
+                </svg>
+                Mis publicaciones
+                {listings.length > 0 && (
+                  <span className="text-xs font-normal text-neutral-500">({listings.length})</span>
+                )}
+              </span>
+              <svg viewBox="0 0 24 24" className={`h-5 w-5 text-neutral-500 transition ${myListingsOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+            {myListingsOpen && (
+              <div className="border-t border-neutral-800 px-4 py-4">
+                <div className="mb-3 flex items-center justify-end">
+                  <Link to="/publicar" className="text-xs font-semibold text-neutral-400">+ Vender algo</Link>
+                </div>
+                {listings.length === 0 ? (
+                  <p className="py-2 text-sm text-neutral-600">Todavía no publicaste nada.</p>
+                ) : (
+                  <ul className="space-y-4">
+                    {listings.map((l) => (
+                      <li key={l.id} className="flex gap-4">
+                        <Link to={`/p/${l.id}`} className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-neutral-800">
+                          {l.photos[0] && <img src={photoUrl(l.photos[0])} alt="" className="h-full w-full object-cover" />}
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <Link to={`/p/${l.id}`} className="block truncate text-sm font-semibold text-white">{l.title}</Link>
+                          <p className="text-xs text-neutral-500">
+                            {formatPrice(l.price, l.currency)} ·{' '}
+                            <span className={l.status === 'active' ? 'text-white' : ''}>{statusLabels[l.status]}</span>
+                            {l.status === 'active' && ` · renovada ${timeAgo(l.last_renewed_at)}`}
+                          </p>
+                          <div className="mt-1.5 flex flex-wrap gap-2">
+                            {l.status === 'active' ? (
+                              <>
+                                <button onClick={() => setStatus(l.id, 'active', true)} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black">
+                                  Sigue disponible
+                                </button>
+                                <button onClick={() => setSellTarget(l)} className="rounded-full px-3 py-1 text-[11px] font-semibold text-neutral-400 ring-1 ring-neutral-700">
+                                  Ya lo vendí
+                                </button>
+                              </>
+                            ) : (
+                              <button onClick={() => setStatus(l.id, 'active', true)} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black">
+                                Reactivar
+                              </button>
+                            )}
+                            <button onClick={() => setDeleteTarget(l)} className="rounded-full px-3 py-1 text-[11px] font-semibold text-red-400/90 ring-1 ring-red-500/30">
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
           <Link
             to="/opiniones"
             className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
           >
-            <span className="text-sm font-medium text-white">Opiniones y mejoras</span>
+            <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+              <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
+              </svg>
+              Opiniones y mejoras
+            </span>
             <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m9 18 6-6-6-6" />
             </svg>
