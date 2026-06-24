@@ -424,12 +424,18 @@ export default function Home() {
   // interfiere con scroll/taps).
   const [pull, setPull] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
+  const [dragging, setDragging] = useState(false)
+  const [settling, setSettling] = useState(false)
   const pullStart = useRef<number | null>(null)
   const pullVibrated = useRef(false)
 
   function onTouchStart(e: ReactTouchEvent) {
     pullStart.current = window.scrollY <= 0 && !refreshing ? e.touches[0].clientY : null
     pullVibrated.current = false
+    if (pullStart.current !== null) {
+      setDragging(true)
+      setSettling(false)
+    }
   }
   function onTouchMove(e: ReactTouchEvent) {
     if (pullStart.current === null) return
@@ -445,15 +451,38 @@ export default function Home() {
     setPull(next)
   }
   async function onTouchEnd() {
-    if (pullStart.current === null) return
+    const pulled = pull
+    const armed = pullStart.current !== null
     pullStart.current = null
-    if (pull >= 60) {
+    setDragging(false)
+    if (!armed) return
+    if (pulled >= 60) {
+      // Queda "sostenido" mostrando el spinner. Aunque la recarga sea
+      // instantánea, lo mantenemos al menos 2s; luego vuelve con spring (iOS).
       setRefreshing(true)
-      await loadFirst()
+      setPull(0)
+      await Promise.all([loadFirst(), new Promise((r) => setTimeout(r, 2000))])
       setRefreshing(false)
+      setSettling(true)
+    } else if (pulled > 0) {
+      setPull(0)
+      setSettling(true)
     }
-    setPull(0)
   }
+
+  // El contenido se desplaza con el gesto. Solo aplicamos transform cuando hace
+  // falta (arrastre / sostenido / regreso) para no crear un containing block que
+  // rompa el posicionamiento `fixed` de los overlays (menús y modales).
+  const REFRESH_HOLD = 64
+  const pullOffset = dragging ? pull : refreshing ? REFRESH_HOLD : 0
+  const pullStyle =
+    dragging || refreshing || settling
+      ? {
+          transform: `translateY(${pullOffset}px)`,
+          transition: dragging ? 'none' : 'transform 0.4s cubic-bezier(0.22, 0.61, 0.36, 1)',
+          willChange: 'transform',
+        }
+      : undefined
 
   const showSkeleton = loading && listings.length === 0
 
@@ -470,6 +499,7 @@ export default function Home() {
           />
         </div>
       )}
+      <div style={pullStyle} onTransitionEnd={() => setSettling(false)}>
       <header className="px-4 pb-1 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight text-white">Dealr</h1>
@@ -535,42 +565,6 @@ export default function Home() {
           {locating ? 'Buscando ubicación…' : buyerLabel ?? 'Definí tu zona'}
         </button>
 
-        {zoneMenuRect && (
-          <ActionMenu
-            rect={zoneMenuRect}
-            onClose={() => setZoneMenuRect(null)}
-            anchor={
-              <span className="flex h-full items-center gap-1.5 text-xs font-medium text-white">
-                <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
-                  <circle cx="12" cy="10" r="3" />
-                </svg>
-                {buyerLabel ?? 'Definí tu zona'}
-              </span>
-            }
-            actions={[
-              { label: 'Ubicación actual', onClick: useCurrentLocation },
-              { label: 'Seleccionar del mapa', onClick: openMapPicker },
-            ]}
-          />
-        )}
-
-        {pickingOnMap && (
-          <Modal title="Seleccioná tu zona" onClose={() => setPickingOnMap(false)}>
-            <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl bg-neutral-900" />}>
-              <LocationPicker
-                value={mapPick}
-                onChange={(loc, label) => {
-                  setMapPick(loc)
-                  if (label) setMapPickLabel(label)
-                }}
-              />
-            </Suspense>
-            <button onClick={confirmMapPick} disabled={!mapPick} className="btn-primary mt-4 disabled:opacity-40">
-              Confirmar
-            </button>
-          </Modal>
-        )}
         {searchOpen && (
           <input
             autoFocus
@@ -712,6 +706,46 @@ export default function Home() {
         <div ref={sentinelRef} className="flex justify-center py-8">
           {loadingMore && <span className="h-2 w-2 animate-pulse rounded-full bg-white" />}
         </div>
+      )}
+      </div>
+
+      {/* Overlays fuera del wrapper que se desplaza: su transform crearía un
+          containing block y rompería el posicionamiento `fixed` de menús/modales. */}
+      {zoneMenuRect && (
+        <ActionMenu
+          rect={zoneMenuRect}
+          onClose={() => setZoneMenuRect(null)}
+          anchor={
+            <span className="flex h-full items-center gap-1.5 text-xs font-medium text-white">
+              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+              {buyerLabel ?? 'Definí tu zona'}
+            </span>
+          }
+          actions={[
+            { label: 'Ubicación actual', onClick: useCurrentLocation },
+            { label: 'Seleccionar del mapa', onClick: openMapPicker },
+          ]}
+        />
+      )}
+
+      {pickingOnMap && (
+        <Modal title="Seleccioná tu zona" onClose={() => setPickingOnMap(false)}>
+          <Suspense fallback={<div className="h-56 animate-pulse rounded-2xl bg-neutral-900" />}>
+            <LocationPicker
+              value={mapPick}
+              onChange={(loc, label) => {
+                setMapPick(loc)
+                if (label) setMapPickLabel(label)
+              }}
+            />
+          </Suspense>
+          <button onClick={confirmMapPick} disabled={!mapPick} className="btn-primary mt-4 disabled:opacity-40">
+            Confirmar
+          </button>
+        </Modal>
       )}
 
       {filtersOpen && (

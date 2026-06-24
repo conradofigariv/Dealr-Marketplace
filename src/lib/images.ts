@@ -115,7 +115,7 @@ export async function mirrorImage(file: File): Promise<File> {
 }
 
 // Compresión client-side antes de subir: max 1920px lado mayor,
-// calidad 85%, objetivo ~0,4-1MB por foto. Nítida en pantallas modernas
+// calidad 90%, objetivo ~1,3MB por foto. Más nítida en pantallas modernas
 // sin llegar a pesar como el original de cámara. Corrige orientación EXIF.
 export async function compressPhoto(file: File): Promise<File> {
   const orientation = await getExifOrientation(file)
@@ -124,9 +124,9 @@ export async function compressPhoto(file: File): Promise<File> {
     processedFile = await rotateImageByOrientation(file, orientation)
   }
   return imageCompression(processedFile, {
-    maxSizeMB: 1,
+    maxSizeMB: 1.3,
     maxWidthOrHeight: 1920,
-    initialQuality: 0.85,
+    initialQuality: 0.9,
     fileType: 'image/webp',
     useWebWorker: true,
   })
