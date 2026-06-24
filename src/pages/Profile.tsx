@@ -377,7 +377,7 @@ export default function Profile() {
               </svg>
             </button>
             {myListingsOpen && (
-              <div className="border-t border-neutral-800 px-4 py-4">
+              <div className="sheet-in border-t border-neutral-800 px-4 py-4">
                 <div className="mb-3 flex items-center justify-end">
                   <Link to="/publicar" className="text-xs font-semibold text-neutral-400">+ Vender algo</Link>
                 </div>
