@@ -14,19 +14,19 @@ const SLIDES: Slide[] = [
   {
     title: 'Un marketplace seguro',
     body: 'Con gente verificada. Validamos identidades para que compres y vendas con más confianza.',
-    image: '/onboarding/1.jpg',
+    image: '/onboarding/Comprasegura.jpg',
     fallback: 'from-emerald-900 via-neutral-950 to-black',
   },
   {
     title: 'Comprá y vendé a tu manera',
     body: 'Con subastas, ofertas o mensajes directos con el dueño. El trato se cierra como vos quieras.',
-    image: '/onboarding/2.jpg',
+    image: '/onboarding/Subasta.jpg',
     fallback: 'from-amber-900 via-neutral-950 to-black',
   },
   {
     title: 'Descubrí cerca tuyo',
     body: 'Fijate qué hay de interesante cerca tuyo con el mapa.',
-    image: '/onboarding/3.jpg',
+    image: '/onboarding/CompraMapa.jpg',
     fallback: 'from-sky-900 via-neutral-950 to-black',
   },
 ]

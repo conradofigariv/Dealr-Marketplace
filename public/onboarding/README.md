@@ -11,9 +11,9 @@ Nombres EXACTOS (los usa `src/components/IntroSlides.tsx`):
 
 | Archivo | Pantalla | Idea de foto |
 |---------|----------|--------------|
-| `1.jpg` | "Un marketplace seguro" | Personas reales / un apretón de manos / alguien con su DNI; transmite confianza. |
-| `2.jpg` | "Comprá y vendé a tu manera" | Una feria/mercado de usados, objetos lindos, una entrega en mano. |
-| `3.jpg` | "Descubrí cerca tuyo" | Una vista de Córdoba / un mapa con pines / un barrio reconocible. |
+| `Comprasegura.jpg` | "Un marketplace seguro" | Personas reales / un apretón de manos / alguien con su DNI; transmite confianza. |
+| `Subasta.jpg` | "Comprá y vendé a tu manera" | Una feria/mercado de usados, objetos lindos, una entrega en mano. |
+| `CompraMapa.jpg` | "Descubrí cerca tuyo" | Una vista de Córdoba / un mapa con pines / un barrio reconocible. |
 
 Si falta alguna, esa pantalla cae a un degradado de color (queda prolijo igual),
 así que podés ir agregándolas de a una.
