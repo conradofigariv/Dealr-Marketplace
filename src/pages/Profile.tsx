@@ -145,8 +145,10 @@ export default function Profile() {
 
   async function deleteListing(listing: Listing) {
     setDeleting(true)
-    // Borramos primero las fotos del storage (best-effort); las filas
-    // relacionadas (preguntas, ofertas, chats) caen por el cascade del FK.
+    // Borramos primero las fotos del storage (best-effort); las preguntas y
+    // ofertas caen por el cascade del FK. Los chats NO: su FK es `on delete
+    // set null` (00027), así que la conversación sobrevive con la publicación
+    // marcada como eliminada.
     if (listing.photos.length) {
       await supabase.storage.from('listing-photos').remove(listing.photos)
     }
@@ -499,8 +501,8 @@ export default function Profile() {
           <div className="space-y-5 text-sm text-neutral-400">
             <p>
               Vas a eliminar <strong className="text-white">{deleteTarget.title}</strong> de forma
-              permanente. También se borran sus preguntas, ofertas y chats. Esta acción no se puede
-              deshacer.
+              permanente. También se borran sus preguntas y ofertas. Los chats se conservan (sin la
+              publicación). Esta acción no se puede deshacer.
             </p>
             <p className="text-xs text-neutral-600">
               Si solo querés que deje de aparecer, mejor usá <strong className="text-neutral-400">Pausar</strong> o <strong className="text-neutral-400">Ya lo vendí</strong>.

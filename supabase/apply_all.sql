@@ -1001,3 +1001,19 @@ as $$
 $$;
 
 grant execute on function public.recommended_listings(double precision, double precision, integer, integer) to anon, authenticated;
+
+
+-- ============================================================
+-- 00027: la conversación sobrevive al borrado de la publicación.
+-- FK conversations.listing_id: cascade → set null (+ nullable).
+-- ============================================================
+
+alter table public.conversations
+  drop constraint conversations_listing_id_fkey;
+
+alter table public.conversations
+  alter column listing_id drop not null;
+
+alter table public.conversations
+  add constraint conversations_listing_id_fkey
+  foreign key (listing_id) references public.listings (id) on delete set null;

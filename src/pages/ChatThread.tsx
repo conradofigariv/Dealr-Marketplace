@@ -374,7 +374,7 @@ export default function ChatThread() {
 
   async function sendOffer(e: FormEvent) {
     e.preventDefault()
-    if (!myId || !conversation) return
+    if (!myId || !conversation || !conversation.listing_id) return
     setOfferBusy(true)
     setOfferError('')
     const { error } = await supabase.from('offers').insert({
@@ -392,7 +392,9 @@ export default function ChatThread() {
 
   if (!conversation) return <div className="p-5 text-sm text-neutral-600">Cargando…</div>
 
-  const listing = conversation.listing!
+  // La publicación puede no existir si el vendedor la borró: la conversación
+  // sobrevive (00027), pero `listing` queda null y la UI lo refleja.
+  const listing = conversation.listing
 
   return (
     <div className="flex h-dvh flex-col bg-black">
@@ -435,27 +437,39 @@ export default function ChatThread() {
             </button>
           )}
         </div>
-        {/* Contexto: de qué publicación hablan (tappable a la publicación) */}
-        <Link to={`/p/${listing.id}`} className="mt-2 flex items-center gap-2.5 rounded-xl bg-neutral-900/70 px-2 py-1.5 transition active:bg-neutral-800">
-          <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-neutral-800">
-            {listing.photos?.[0] && (
-              <img src={photoUrl(listing.photos[0])} alt="" className="h-full w-full object-cover" />
-            )}
+        {/* Contexto: de qué publicación hablan (tappable a la publicación).
+            Si la borraron, no hay link: solo un cartel "Publicación eliminada". */}
+        {listing ? (
+          <Link to={`/p/${listing.id}`} className="mt-2 flex items-center gap-2.5 rounded-xl bg-neutral-900/70 px-2 py-1.5 transition active:bg-neutral-800">
+            <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-neutral-800">
+              {listing.photos?.[0] && (
+                <img src={photoUrl(listing.photos[0])} alt="" className="h-full w-full object-cover" />
+              )}
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-medium text-neutral-200">{listing.title}</p>
+              <p className="text-[11px] text-neutral-500">
+                {formatPrice(listing.price, listing.currency)}
+                {listing.status === 'sold' && ' · vendido'}
+                {listing.status === 'reserved' && ' · reservado'}
+              </p>
+            </div>
+            <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m9 18 6-6-6-6" />
+            </svg>
+          </Link>
+        ) : (
+          <div className="mt-2 flex items-center gap-2.5 rounded-xl bg-neutral-900/70 px-2 py-1.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-800 text-neutral-600">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M3 3l18 18M10.5 5.5A9 9 0 0 1 21 12a9 9 0 0 1-1.6 2.6M6.6 6.6A9 9 0 0 0 3 12a9 9 0 0 0 9 9 9 9 0 0 0 5.4-1.8" />
+              </svg>
+            </div>
+            <p className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-500">Publicación eliminada</p>
           </div>
-          <div className="min-w-0 flex-1">
-            <p className="truncate text-xs font-medium text-neutral-200">{listing.title}</p>
-            <p className="text-[11px] text-neutral-500">
-              {formatPrice(listing.price, listing.currency)}
-              {listing.status === 'sold' && ' · vendido'}
-              {listing.status === 'reserved' && ' · reservado'}
-            </p>
-          </div>
-          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="m9 18 6-6-6-6" />
-          </svg>
-        </Link>
+        )}
         {/* Acción contextual: el vendedor cierra la venta, el comprador ofrece */}
-        {listing.status === 'active' && (
+        {listing?.status === 'active' && (
           <div className="mt-2">
             {iAmSeller ? (
               <button
@@ -818,7 +832,7 @@ export default function ChatThread() {
 
       {viewerPhoto && <PhotoViewer photos={[viewerPhoto]} onClose={() => setViewerPhoto(null)} />}
 
-      {sellOpen && (
+      {sellOpen && conversation.listing_id && (
         <SellFlowModal
           listingId={conversation.listing_id}
           sellerId={conversation.seller_id}
@@ -837,10 +851,10 @@ export default function ChatThread() {
           ) : (
             <form onSubmit={sendOffer} className="space-y-6">
               <p className="text-sm text-neutral-400">
-                Precio publicado: <strong className="text-white">{formatPrice(listing.price, listing.currency)}</strong>
+                Precio publicado: <strong className="text-white">{formatPrice(listing?.price ?? 0, listing?.currency ?? 'ARS')}</strong>
               </p>
               <div className="flex items-end gap-2">
-                <span className="pb-2.5 font-semibold text-neutral-500">{listing.currency === 'USD' ? 'US$' : '$'}</span>
+                <span className="pb-2.5 font-semibold text-neutral-500">{listing?.currency === 'USD' ? 'US$' : '$'}</span>
                 <input
                   type="number"
                   min="1"

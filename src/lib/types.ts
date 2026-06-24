@@ -93,12 +93,12 @@ export interface Question {
 
 export interface Conversation {
   id: string
-  listing_id: string
+  listing_id: string | null
   buyer_id: string
   seller_id: string
   created_at: string
   last_message_at: string
-  listing?: Listing
+  listing?: Listing | null
   buyer?: Profile
   seller?: Profile
 }
