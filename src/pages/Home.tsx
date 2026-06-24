@@ -657,6 +657,15 @@ export default function Home() {
         </div>
       )}
 
+      {/* Encabezado de la grilla en la vista por defecto ("Todo"): el chip
+          sigue diciendo "Todo", pero acá, donde arrancan las publicaciones,
+          el feed se presenta como recomendación. */}
+      {defaultView && !showSkeleton && withDistance.length > 0 && (
+        <div className="px-4 pb-2 pt-1">
+          <h2 className="text-sm font-semibold text-white">Recomendado para vos</h2>
+        </div>
+      )}
+
       {showSkeleton ? (
         <div className="columns-2 gap-0.5 px-0">
           {[280, 200, 240, 320, 180, 260].map((h, i) => (
