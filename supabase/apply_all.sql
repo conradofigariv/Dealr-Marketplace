@@ -928,3 +928,76 @@ begin
 end;
 $$;
 grant execute on function public.place_bid(uuid, numeric) to authenticated;
+
+-- =============================================================
+-- 00026 — Recomendaciones del feed ("Recomendado para vos")
+-- =============================================================
+-- Ranking personalizado sin tabla de eventos nueva: afinidad por categoría
+-- derivada de favorites + listing_views, más prueba social, recencia y
+-- cercanía. Devuelve setof listings (el front la consume con el mismo embed).
+create index if not exists listing_views_viewer_idx on public.listing_views (viewer_id);
+
+create or replace function public.recommended_listings(
+  p_lat double precision default null,
+  p_lng double precision default null,
+  p_limit integer default 24,
+  p_offset integer default 0
+)
+returns setof public.listings
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  with uid as (select auth.uid() as id),
+  cat_affinity as (
+    select category_id, sum(w) as affinity
+    from (
+      select l.category_id,
+             3.0 * exp(-extract(epoch from now() - f.created_at) / (86400 * 30)) as w
+      from public.favorites f
+      join public.listings l on l.id = f.listing_id
+      where f.user_id = (select id from uid)
+      union all
+      select l.category_id,
+             1.0 * exp(-extract(epoch from now() - v.created_at) / (86400 * 30)) as w
+      from public.listing_views v
+      join public.listings l on l.id = v.listing_id
+      where v.viewer_id = (select id from uid)
+    ) s
+    group by category_id
+  ),
+  max_aff as (select coalesce(max(affinity), 0) as m from cat_affinity)
+  select l.*
+  from public.listings l
+  left join cat_affinity ca on ca.category_id = l.category_id
+  cross join max_aff
+  where l.status = 'active'
+    and ((select id from uid) is null or l.seller_id <> (select id from uid))
+  order by (
+    coalesce(ca.affinity / nullif(max_aff.m, 0), 0) * 3.0
+    + ln(1 + l.favorites_count) * 0.6
+    + ln(1 + l.views_count) * 0.2
+    + (1.0 / (1 + extract(epoch from now() - l.last_renewed_at) / (86400 * 7))) * 1.5
+    + (case
+         when p_lat is null or l.lat is null then 0
+         else 1.0 / (1 + (
+           6371 * acos(least(1, greatest(-1,
+             cos(radians(p_lat)) * cos(radians(l.lat)) * cos(radians(l.lng) - radians(p_lng))
+             + sin(radians(p_lat)) * sin(radians(l.lat))
+           ))) / 10.0)
+         )
+       end) * 1.0
+    - (case when (select id from uid) is not null
+              and exists (select 1 from public.listing_views v
+                          where v.listing_id = l.id and v.viewer_id = (select id from uid))
+            then 1.0 else 0 end)
+    - (case when (select id from uid) is not null
+              and exists (select 1 from public.favorites f
+                          where f.listing_id = l.id and f.user_id = (select id from uid))
+            then 2.0 else 0 end)
+  ) desc, l.last_renewed_at desc, l.id desc
+  limit greatest(p_limit, 0) offset greatest(p_offset, 0);
+$$;
+
+grant execute on function public.recommended_listings(double precision, double precision, integer, integer) to anon, authenticated;

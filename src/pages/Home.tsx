@@ -205,10 +205,32 @@ export default function Home() {
     return query
   }, [search, categoryId, onlyVerified, onlyAuctions, filters, order])
 
+  // Trae una página del feed. En la vista por defecto ("Recomendado para vos")
+  // usa la RPC de recomendaciones (afinidad por categoría desde vistas+favoritos
+  // + prueba social + recencia + cercanía). Con búsqueda/categoría/filtros usa la
+  // query normal. Si la RPC todavía no está aplicada en la DB, cae a esa query.
+  const fetchPage = useCallback(
+    async (page: number): Promise<Listing[]> => {
+      if (defaultView) {
+        const { data, error } = await supabase
+          .rpc('recommended_listings', {
+            p_lat: buyerLoc?.lat ?? null,
+            p_lng: buyerLoc?.lng ?? null,
+            p_limit: PAGE_SIZE,
+            p_offset: page * PAGE_SIZE,
+          })
+          .select(`${SELECT}(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count)`)
+        if (!error) return (data as Listing[]) ?? []
+      }
+      const { data } = await buildQuery().range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+      return (data as Listing[]) ?? []
+    },
+    [defaultView, buildQuery, buyerLoc],
+  )
+
   // Primera página (reset): reemplaza la lista.
   const loadFirst = useCallback(async () => {
-    const { data } = await buildQuery().range(0, PAGE_SIZE - 1)
-    const batch = (data as Listing[]) ?? []
+    const batch = await fetchPage(0)
     pageRef.current = 0
     setListings(batch)
     setHasMore(batch.length === PAGE_SIZE)
@@ -225,15 +247,14 @@ export default function Home() {
       order,
       scrollY: feedCache?.scrollY ?? 0,
     }
-  }, [buildQuery, search, categoryId, onlyVerified, onlyAuctions, filters, order])
+  }, [fetchPage, search, categoryId, onlyVerified, onlyAuctions, filters, order])
 
   // Página siguiente (scroll infinito): agrega al final.
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || loading) return
     setLoadingMore(true)
     const next = pageRef.current + 1
-    const { data } = await buildQuery().range(next * PAGE_SIZE, next * PAGE_SIZE + PAGE_SIZE - 1)
-    const batch = (data as Listing[]) ?? []
+    const batch = await fetchPage(next)
     pageRef.current = next
     setListings((prev) => {
       const merged = [...prev, ...batch]
@@ -246,7 +267,7 @@ export default function Home() {
     })
     setHasMore(batch.length === PAGE_SIZE)
     setLoadingMore(false)
-  }, [buildQuery, loadingMore, hasMore, loading])
+  }, [fetchPage, loadingMore, hasMore, loading])
 
   // Carga inicial / refetch con debounce ante cambios de filtros. En el primer
   // render con caché (volvimos de un detalle) no recargamos: preservamos las
