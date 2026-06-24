@@ -1017,3 +1017,29 @@ alter table public.conversations
 alter table public.conversations
   add constraint conversations_listing_id_fkey
   foreign key (listing_id) references public.listings (id) on delete set null;
+
+
+-- ============================================================
+-- 00028: Celulares — "Tipo" (Teléfono/Accesorio) con campos condicionales.
+-- marca/modelo/almacenamiento/salud_bateria pasan a `showIf` tipo=Teléfono.
+-- ============================================================
+
+update public.categories
+set required_fields = (
+  select coalesce(jsonb_agg(elem order by ord), '[]'::jsonb)
+  from jsonb_array_elements(required_fields) with ordinality as t(elem, ord)
+  where elem->>'key' not in ('tipo', 'marca', 'modelo', 'almacenamiento', 'salud_bateria')
+)
+|| '[
+  {"key": "tipo", "label": "Tipo", "type": "select", "required": true, "options": ["Teléfono", "Accesorio"]},
+  {"key": "marca", "label": "Marca", "type": "text", "required": true, "showIf": {"key": "tipo", "in": ["Teléfono"]}},
+  {"key": "modelo", "label": "Modelo", "type": "text", "required": true, "showIf": {"key": "tipo", "in": ["Teléfono"]}},
+  {"key": "almacenamiento", "label": "Almacenamiento", "type": "select", "required": true, "options": ["32 GB", "64 GB", "128 GB", "256 GB", "512 GB", "1 TB"], "showIf": {"key": "tipo", "in": ["Teléfono"]}},
+  {"key": "salud_bateria", "label": "Salud de batería (%)", "type": "text", "required": false, "showIf": {"key": "tipo", "in": ["Teléfono"]}}
+]'::jsonb
+where slug = 'celulares';
+
+update public.listings
+set structured_fields = coalesce(structured_fields, '{}'::jsonb) || '{"tipo": "Teléfono"}'::jsonb
+where category_id = (select id from public.categories where slug = 'celulares')
+  and not (coalesce(structured_fields, '{}'::jsonb) ? 'tipo');

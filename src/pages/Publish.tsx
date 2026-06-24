@@ -12,6 +12,15 @@ import { invalidateFeedCache } from './Home'
 
 const MAX_PHOTOS = 6
 
+// Un campo con `showIf` solo aplica cuando otro campo tiene cierto valor
+// (ej. marca/modelo de Celulares solo si "Tipo" = Teléfono). Sin `showIf`,
+// siempre visible.
+function fieldVisible(def: FieldDef, values: Record<string, unknown>): boolean {
+  if (!def.showIf) return true
+  const v = values[def.showIf.key]
+  return typeof v === 'string' && def.showIf.in.includes(v)
+}
+
 const WIZARD_STEPS = [
   { name: 'Fotos', title: 'Mostrá tu producto', subtitle: 'Subí hasta 6 fotos. La primera es la portada.' },
   { name: 'Detalles', title: 'Contá los detalles', subtitle: 'Categoría, condición y una buena descripción.' },
@@ -56,6 +65,8 @@ export default function Publish() {
     [categories, categoryId],
   )
   const fieldDefs: FieldDef[] = category?.required_fields ?? []
+  // Solo los campos que aplican según el valor actual (resuelve los `showIf`).
+  const visibleFieldDefs = fieldDefs.filter((def) => fieldVisible(def, fields))
 
   useEffect(() => {
     if (!loading && !session) navigate('/auth', { state: { from: id ? `/publicar/${id}` : '/publicar', back: '/' } })
@@ -133,7 +144,7 @@ export default function Publish() {
   }
 
   function validateFields(): string | null {
-    for (const def of fieldDefs) {
+    for (const def of visibleFieldDefs) {
       if (!def.required) continue
       const value = fields[def.key]
       const empty =
@@ -207,6 +218,15 @@ export default function Publish() {
         paths.push(path)
       }
 
+      // No guardamos los campos ocultos por `showIf` (ej. si el Tipo pasó de
+      // Teléfono a Accesorio, no persistimos marca/modelo del estado viejo).
+      const cleanedFields = Object.fromEntries(
+        Object.entries(fields).filter(([key]) => {
+          const def = fieldDefs.find((d) => d.key === key)
+          return !def || fieldVisible(def, fields)
+        }),
+      )
+
       const payload = {
         title: title.trim(),
         description: description.trim(),
@@ -214,7 +234,7 @@ export default function Publish() {
         currency,
         category_id: categoryId,
         condition,
-        structured_fields: fields,
+        structured_fields: cleanedFields,
         photos: paths,
         lat: location?.lat ?? null,
         lng: location?.lng ?? null,
@@ -486,7 +506,7 @@ export default function Publish() {
           </div>
 
           {/* Campos estructurados obligatorios por categoría */}
-          {fieldDefs.map((def) => (
+          {visibleFieldDefs.map((def) => (
             <div key={def.key}>
               <label className={labelClass}>
                 {def.label}
@@ -738,7 +758,7 @@ export default function Publish() {
                 </div>
               </div>
 
-              {fieldDefs.map((def) => (
+              {visibleFieldDefs.map((def) => (
                 <div key={def.key}>
                   <label className={labelClass}>
                     {def.label}

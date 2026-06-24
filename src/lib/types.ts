@@ -34,6 +34,12 @@ export interface FieldDef {
   // columna generada de `listings` (numérica e indexada), no contra el jsonb,
   // para comparar como número y no como texto.
   filterRange?: { column: string; unit?: string }
+  // Si está presente, el campo solo se muestra (y se exige/guarda) cuando el
+  // valor del campo `key` cae dentro de `in`. Permite campos condicionados por
+  // otro (ej. en Celulares: marca/modelo/almacenamiento solo aplican si
+  // "Tipo" = Teléfono; un accesorio no los pide). La validación y la poda al
+  // guardar respetan esto; en el feed (sin contexto) el filtro los ignora.
+  showIf?: { key: string; in: string[] }
 }
 
 export interface Category {
