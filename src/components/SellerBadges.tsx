@@ -1,4 +1,5 @@
 import type { Profile } from '../lib/types'
+import VerifiedSeal from './VerifiedSeal'
 
 function Check() {
   return (
@@ -14,8 +15,8 @@ export default function SellerBadges({ profile }: { profile: Profile }) {
   return (
     <div className="flex flex-wrap gap-1.5">
       {profile.identity_verified && (
-        <span className="inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-black">
-          <Check /> Identidad verificada
+        <span className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-sky-500/15 to-blue-600/15 px-2.5 py-1 text-xs font-semibold text-sky-300 ring-1 ring-inset ring-sky-400/30">
+          <VerifiedSeal className="h-4 w-4" /> Identidad verificada
         </span>
       )}
       {profile.phone_verified && (

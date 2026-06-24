@@ -9,6 +9,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import Avatar from '../components/Avatar'
 import StarRating from '../components/StarRating'
 import SellerBadges from '../components/SellerBadges'
+import VerifiedSeal from '../components/VerifiedSeal'
 import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
 import LocationMap from '../components/LocationMap'
@@ -944,7 +945,12 @@ function OwnerOffers({ listingId, currency }: { listingId: string; currency: Lis
                 {o.buyer?.username}
                 {/* El buyer_score visible para el vendedor: elegí al de mejor reputación */}
                 {o.buyer?.buyer_score != null && ` · ★ ${o.buyer.buyer_score.toFixed(1)} comprador`}
-                {o.buyer?.identity_verified && ' · ✓ verificado'}
+                {o.buyer?.identity_verified && (
+                  <span className="inline-flex items-center gap-0.5 align-middle">
+                    {' · '}
+                    <VerifiedSeal className="inline h-3.5 w-3.5" /> verificado
+                  </span>
+                )}
               </p>
             </div>
             {o.status === 'pending' ? (

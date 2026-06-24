@@ -8,6 +8,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useFavorites } from '../hooks/useFavorites'
 import { useToast } from './Toast'
 import LongPressActions from './LongPressActions'
+import VerifiedSeal from './VerifiedSeal'
 import type { MenuAction } from './ActionMenu'
 import { invalidateFeedCache } from '../pages/Home'
 
@@ -132,10 +133,8 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
           <span className="glow-badge rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-black">Subasta</span>
         )}
         {listing.seller?.identity_verified && (
-          <span className="rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm" title="Vendedor verificado">
-            <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20 6 9 17l-5-5" />
-            </svg>
+          <span className="rounded-full bg-black/60 p-1 backdrop-blur-sm" title="Vendedor verificado">
+            <VerifiedSeal className="h-4 w-4" />
           </span>
         )}
         {dropPct != null ? (
