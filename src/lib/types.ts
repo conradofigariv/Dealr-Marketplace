@@ -18,6 +18,8 @@ export interface Profile {
   lng: number | null
   last_seen_at: string | null
   is_admin: boolean
+  auction_strikes: number
+  auction_banned_until: string | null
   created_at: string
 }
 
@@ -69,6 +71,10 @@ export interface Listing {
   bids_count: number
   auction_closed: boolean
   auction_cascade: boolean
+  buyer_confirmed_pickup: boolean
+  seller_confirmed_pickup: boolean
+  seller_reported_no_show: boolean
+  pickup_disputed: boolean
   created_at: string
   last_renewed_at: string
   seller?: Profile

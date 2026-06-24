@@ -7,6 +7,7 @@ import { UnreadChatsProvider } from './hooks/useUnreadChats'
 import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import { hasSeenWelcome } from './lib/welcome'
 import { hasSeenIntro } from './lib/intro'
+import './lib/pwaInstall' // registra el listener de instalación temprano
 import { capturePageview } from './lib/analytics'
 import BottomNav from './components/BottomNav'
 import UpdatePrompt from './components/UpdatePrompt'

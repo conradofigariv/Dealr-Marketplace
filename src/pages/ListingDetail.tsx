@@ -223,6 +223,24 @@ export default function ListingDetail() {
     )
   }
 
+  // Subasta ganada: doble confirmación de retiro.
+  async function confirmPickup() {
+    const { data, error } = await supabase.rpc('confirm_auction_pickup', { p_listing: listing!.id })
+    if (error) return toast(error.message)
+    if (data) return toast(data as string)
+    toast('Confirmaste el retiro')
+    load()
+  }
+
+  async function reportNoShow() {
+    if (!confirm('¿Marcar que el comprador NO retiró? Si no confirmó el retiro, queda sin participar de subastas por un tiempo (escala con la reincidencia).')) return
+    const { data, error } = await supabase.rpc('report_auction_no_show', { p_listing: listing!.id })
+    if (error) return toast(error.message)
+    if (data) return toast(data as string)
+    toast('Reporte registrado')
+    load()
+  }
+
   // Moderación del admin (long-press sobre la pregunta).
   async function deleteQuestion(questionId: string) {
     if (!confirm('¿Borrar esta pregunta?')) return
@@ -554,6 +572,45 @@ export default function ListingDetail() {
             <SellerBadges profile={seller} />
           </div>
         </Link>
+
+        {listing.is_auction &&
+          listing.status === 'sold' &&
+          listing.sold_to &&
+          (isOwner || session?.user.id === listing.sold_to) && (
+            <div className="surface space-y-3 p-4">
+              <h2 className="text-sm font-semibold text-white">Confirmá la entrega</h2>
+              {listing.pickup_disputed ? (
+                <p className="text-xs text-amber-400">Hay reportes en conflicto. Lo está revisando el equipo de Dealr.</p>
+              ) : listing.buyer_confirmed_pickup && listing.seller_confirmed_pickup ? (
+                <p className="text-xs text-emerald-400">Entrega confirmada por ambos ✓</p>
+              ) : isOwner ? (
+                listing.seller_confirmed_pickup ? (
+                  <p className="text-xs text-emerald-400">Confirmaste que retiró. Falta que lo confirme el comprador.</p>
+                ) : listing.seller_reported_no_show ? (
+                  <p className="text-xs text-neutral-400">Reportaste que el comprador no retiró.</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    <button onClick={confirmPickup} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
+                      El comprador retiró
+                    </button>
+                    <button onClick={reportNoShow} className="rounded-full px-4 py-2 text-xs font-semibold text-red-400 ring-1 ring-red-500/30">
+                      No retiró
+                    </button>
+                  </div>
+                )
+              ) : listing.buyer_confirmed_pickup ? (
+                <p className="text-xs text-emerald-400">Confirmaste que retiraste. Falta que lo confirme el vendedor.</p>
+              ) : (
+                <button onClick={confirmPickup} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
+                  Sí, retiré
+                </button>
+              )}
+              <p className="text-[11px] leading-relaxed text-neutral-600">
+                Los dos confirman el retiro para cerrar la operación. Si ganás una subasta y no retirás, quedás sin
+                participar de subastas por un tiempo.
+              </p>
+            </div>
+          )}
 
         {!isOwner && <ListingRail title="Más de este vendedor" listings={sellerItems} />}
 

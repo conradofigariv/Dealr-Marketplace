@@ -11,6 +11,7 @@ import StarRating from '../components/StarRating'
 import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
 import NotificationSettings from '../components/NotificationSettings'
+import InstallButton from '../components/InstallButton'
 import { invalidateFeedCache } from './Home'
 
 const statusLabels: Record<Listing['status'], string> = {
@@ -373,6 +374,7 @@ export default function Profile() {
         </div>
 
         <div className="space-y-2">
+          <InstallButton />
           <Link
             to="/guardados"
             className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
