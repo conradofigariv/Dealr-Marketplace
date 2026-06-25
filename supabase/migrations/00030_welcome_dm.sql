@@ -1,0 +1,133 @@
+-- 00030: mensaje de bienvenida por chat (DM de admin a usuarios nuevos).
+--
+-- Permite que un admin le mande un chat de bienvenida a un usuario (agradecer +
+-- dar info útil). Reusa la infra de chat que ya existe (conversations +
+-- messages): el trigger notify_new_message (00023) ya le avisa al destinatario
+-- (push incluido si lo tiene configurado), así que no hay que tocar nada más.
+--
+-- La conversación queda con listing_id = null (no hay publicación de por medio).
+-- El front (ChatThread/Chats, 00027) tolera el listing null, pero MUESTRA
+-- "Publicación eliminada" en el encabezado del chat y un círculo sin foto en la
+-- lista. Es esperado: es un DM sin publicación.
+--
+-- El usuario nuevo entra como buyer_id y el admin como seller_id, así
+-- notify_new_message calcula recipient = el usuario nuevo (le llega a él).
+
+create or replace function public.send_welcome_dm(p_to uuid, p_body text)
+returns uuid
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_admin uuid;
+  v_conv uuid;
+  v_msg uuid;
+begin
+  -- Emisor = un admin. Con sesión (RPC) usa auth.uid(); desde el SQL Editor
+  -- (sin sesión) cae al admin más antiguo. El guard de abajo impide que un
+  -- no-admin la use vía RPC (ahí auth.uid() es él y no pasa is_admin).
+  v_admin := coalesce(
+    auth.uid(),
+    (select id from public.profiles where is_admin order by created_at limit 1)
+  );
+
+  if v_admin is null or not exists (
+    select 1 from public.profiles where id = v_admin and is_admin
+  ) then
+    raise exception 'Solo un admin puede enviar el mensaje de bienvenida';
+  end if;
+
+  if p_to is null or not exists (select 1 from public.profiles where id = p_to) then
+    raise exception 'El usuario destino no existe';
+  end if;
+
+  if p_to = v_admin then
+    raise exception 'No te podés escribir a vos mismo';
+  end if;
+
+  -- Reusar la conversación admin->usuario sin publicación si ya existe, para no
+  -- duplicar. El unique(listing_id, buyer_id) no protege con listing_id null
+  -- (en Postgres los NULL no colisionan), por eso el chequeo explícito.
+  select id into v_conv
+  from public.conversations
+  where buyer_id = p_to and seller_id = v_admin and listing_id is null
+  order by created_at
+  limit 1;
+
+  if v_conv is null then
+    insert into public.conversations (listing_id, buyer_id, seller_id)
+    values (null, p_to, v_admin)
+    returning id into v_conv;
+  end if;
+
+  insert into public.messages (conversation_id, sender_id, body)
+  values (v_conv, v_admin, p_body)
+  returning id into v_msg;
+
+  return v_msg;
+end;
+$$;
+
+revoke all on function public.send_welcome_dm(uuid, text) from public, anon;
+grant execute on function public.send_welcome_dm(uuid, text) to authenticated;
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- USO MANUAL (desde Supabase → SQL Editor)
+--
+-- Por email (lo más práctico para un registro reciente con Google):
+--
+--   select public.send_welcome_dm(
+--     (select id from auth.users where email = 'persona@gmail.com'),
+--     '¡Hola! Gracias por sumarte a Dealr 👋 ...'
+--   );
+--
+-- Por username:
+--
+--   select public.send_welcome_dm(
+--     (select id from public.profiles where username = 'usuario_xxxxxxxx'),
+--     '¡Hola! ...'
+--   );
+-- ─────────────────────────────────────────────────────────────────────────────
+
+
+-- ─────────────────────────────────────────────────────────────────────────────
+-- OPCIONAL: bienvenida AUTOMÁTICA a cada usuario nuevo.
+--
+-- Descomentá este bloque para que CADA perfil nuevo reciba el DM solo. Va
+-- envuelto en un exception handler que traga cualquier error: si algo falla
+-- (ej. todavía no hay admin), NO rompe el alta del usuario.
+--
+-- Editá el texto del mensaje a gusto.
+-- ─────────────────────────────────────────────────────────────────────────────
+--
+-- create or replace function public.auto_welcome_dm()
+-- returns trigger
+-- language plpgsql
+-- security definer
+-- set search_path = public
+-- as $$
+-- begin
+--   begin
+--     perform public.send_welcome_dm(
+--       new.id,
+--       '¡Hola! Te damos la bienvenida a Dealr 👋 Somos un marketplace de '
+--       || 'usados de Córdoba: te conectamos con la otra persona y el trato se '
+--       || 'cierra por fuera (WhatsApp o en persona), nosotros no manejamos pagos. '
+--       || 'Un par de tips: completá tu perfil y verificá tu identidad para '
+--       || 'generar más confianza, activá tu ubicación para ver lo que tenés cerca, '
+--       || 'y cuando quieras vender tocá el botón de publicar. Cualquier duda, '
+--       || 'respondé este mismo chat. ¡Que andes bien!'
+--     );
+--   exception when others then
+--     null; -- nunca bloquear el alta por el saludo
+--   end;
+--   return new;
+-- end;
+-- $$;
+--
+-- drop trigger if exists on_profile_welcome on public.profiles;
+-- create trigger on_profile_welcome
+--   after insert on public.profiles
+--   for each row execute function public.auto_welcome_dm();
