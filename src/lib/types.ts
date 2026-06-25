@@ -102,6 +102,10 @@ export interface Conversation {
   listing_id: string | null
   buyer_id: string
   seller_id: string
+  // Tipo de chat. 'welcome' = DM de bienvenida del admin (00030): el front
+  // muestra "Mensaje de bienvenida" en vez de "Publicación eliminada". null =
+  // chat normal de una publicación.
+  kind: 'welcome' | null
   created_at: string
   last_message_at: string
   listing?: Listing | null

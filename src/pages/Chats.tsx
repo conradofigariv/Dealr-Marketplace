@@ -120,6 +120,7 @@ export default function Chats() {
         <ul>
           {filtered.map((conv) => {
             const other = conv.buyer_id === session?.user.id ? conv.seller : conv.buyer
+            const isWelcome = conv.kind === 'welcome'
             const photo = conv.listing?.photos?.[0]
             const m = meta[conv.id]
             const unread = m?.unread ?? 0
@@ -131,8 +132,16 @@ export default function Chats() {
               <li key={conv.id}>
                 <Link to={`/chats/${conv.id}`} className="flex items-center gap-4 px-5 py-[1.1rem] transition active:bg-neutral-900">
                   <div className="relative h-[3.85rem] w-[3.85rem] shrink-0">
-                    <div className="h-full w-full overflow-hidden rounded-full bg-neutral-900 ring-1 ring-neutral-800">
-                      {photo && <img src={photoUrl(photo)} alt="" className="h-full w-full object-cover" />}
+                    <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-full bg-neutral-900 text-xl font-bold text-white ring-1 ring-neutral-800">
+                      {/* Bienvenida: no hay publicación, mostramos el avatar del otro
+                          (o su inicial) en vez de un círculo vacío. */}
+                      {photo ? (
+                        <img src={photoUrl(photo)} alt="" className="h-full w-full object-cover" />
+                      ) : isWelcome && other?.avatar_url ? (
+                        <img src={photoUrl(other.avatar_url)} alt="" className="h-full w-full object-cover" />
+                      ) : isWelcome ? (
+                        other?.username?.slice(0, 1).toUpperCase()
+                      ) : null}
                     </div>
                     {online && (
                       <span className="absolute bottom-0 right-0 h-4 w-4 rounded-full bg-emerald-500 ring-2 ring-black" />
@@ -142,9 +151,11 @@ export default function Chats() {
                     <div className="flex items-baseline gap-2">
                       <p className="min-w-0 flex-1 truncate text-base text-white">
                         <span className={unread > 0 ? 'font-bold' : 'font-semibold'}>{other?.username}</span>
-                        {conv.listing?.title && (
+                        {conv.listing?.title ? (
                           <span className="font-normal text-neutral-400"> · {conv.listing.title}</span>
-                        )}
+                        ) : isWelcome ? (
+                          <span className="font-normal text-neutral-400"> · Mensaje de bienvenida</span>
+                        ) : null}
                       </p>
                       <span className="shrink-0 text-sm text-neutral-500">{timeAgo(conv.last_message_at)}</span>
                     </div>

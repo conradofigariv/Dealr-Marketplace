@@ -12,6 +12,13 @@
 --
 -- El usuario nuevo entra como buyer_id y el admin como seller_id, así
 -- notify_new_message calcula recipient = el usuario nuevo (le llega a él).
+--
+-- conversations.kind marca el tipo de chat: 'welcome' para estos DMs. Sirve
+-- para que el front muestre "Mensaje de bienvenida" en vez de "Publicación
+-- eliminada" (que es lo que muestra para un listing_id null cualquiera) y para
+-- no confundirlo con un chat cuya publicación fue borrada.
+
+alter table public.conversations add column if not exists kind text;
 
 create or replace function public.send_welcome_dm(p_to uuid, p_body text)
 returns uuid
@@ -46,18 +53,18 @@ begin
     raise exception 'No te podés escribir a vos mismo';
   end if;
 
-  -- Reusar la conversación admin->usuario sin publicación si ya existe, para no
-  -- duplicar. El unique(listing_id, buyer_id) no protege con listing_id null
-  -- (en Postgres los NULL no colisionan), por eso el chequeo explícito.
+  -- Reusar el chat de bienvenida admin->usuario si ya existe, para no duplicar.
+  -- Matchea por kind='welcome' (no por listing_id null a secas) para no agarrar
+  -- por error un chat real cuya publicación fue borrada.
   select id into v_conv
   from public.conversations
-  where buyer_id = p_to and seller_id = v_admin and listing_id is null
+  where buyer_id = p_to and seller_id = v_admin and kind = 'welcome'
   order by created_at
   limit 1;
 
   if v_conv is null then
-    insert into public.conversations (listing_id, buyer_id, seller_id)
-    values (null, p_to, v_admin)
+    insert into public.conversations (listing_id, buyer_id, seller_id, kind)
+    values (null, p_to, v_admin, 'welcome')
     returning id into v_conv;
   end if;
 

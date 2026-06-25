@@ -458,6 +458,16 @@ export default function ChatThread() {
               <path d="m9 18 6-6-6-6" />
             </svg>
           </Link>
+        ) : conversation.kind === 'welcome' ? (
+          <div className="mt-2 flex items-center gap-2.5 rounded-xl bg-neutral-900/70 px-2 py-1.5">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-800 text-neutral-300">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+            </div>
+            <p className="min-w-0 flex-1 truncate text-xs font-medium text-neutral-300">Mensaje de bienvenida</p>
+          </div>
         ) : (
           <div className="mt-2 flex items-center gap-2.5 rounded-xl bg-neutral-900/70 px-2 py-1.5">
             <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-neutral-800 text-neutral-600">
