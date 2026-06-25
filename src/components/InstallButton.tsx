@@ -3,19 +3,16 @@ import { getInstallPrompt, promptInstall, onInstallChange, isStandalone, isIOS }
 
 // Botón "Agregar a inicio". En Android/desktop Chrome dispara el instalador
 // nativo. En iOS no se puede por código: muestra el instructivo (Compartir →
-// Agregar a inicio, solo desde Safari). Si ya está instalada, no renderiza nada.
+// Agregar a inicio, solo desde Safari). Si ya está instalada, queda en gris
+// (deshabilitado) en vez de desaparecer, como confirmación visual.
 export default function InstallButton() {
   const [canPrompt, setCanPrompt] = useState(Boolean(getInstallPrompt()))
   const [showIosHint, setShowIosHint] = useState(false)
 
   useEffect(() => onInstallChange(() => setCanPrompt(Boolean(getInstallPrompt()))), [])
 
-  if (isStandalone()) return null
-
+  const installed = isStandalone()
   const ios = isIOS()
-  // Sin prompt nativo y sin ser iOS no hay nada que ofrecer (ej. ya instalada
-  // en desktop, o navegador no soportado).
-  if (!canPrompt && !ios) return null
 
   const Icon = (
     <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -23,6 +20,24 @@ export default function InstallButton() {
       <path d="M4 17v2a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-2" />
     </svg>
   )
+
+  if (installed) {
+    return (
+      <div className="flex w-full items-center justify-between rounded-2xl bg-neutral-900/50 px-4 py-3.5 ring-1 ring-neutral-800">
+        <span className="flex items-center gap-2.5 text-sm font-medium text-neutral-500">
+          {Icon}
+          Dealr instalada
+        </span>
+        <svg viewBox="0 0 24 24" className="h-4 w-4 text-neutral-600" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M20 6 9 17l-5-5" />
+        </svg>
+      </div>
+    )
+  }
+
+  // Sin prompt nativo y sin ser iOS no hay nada que ofrecer (ej. navegador no
+  // soportado, ya pasó el evento sin guardarse).
+  if (!canPrompt && !ios) return null
 
   if (ios) {
     return (
