@@ -100,41 +100,49 @@ grant execute on function public.send_welcome_dm(uuid, text) to authenticated;
 
 
 -- ─────────────────────────────────────────────────────────────────────────────
--- OPCIONAL: bienvenida AUTOMÁTICA a cada usuario nuevo.
+-- Bienvenida AUTOMÁTICA a cada usuario nuevo.
 --
--- Descomentá este bloque para que CADA perfil nuevo reciba el DM solo. Va
--- envuelto en un exception handler que traga cualquier error: si algo falla
--- (ej. todavía no hay admin), NO rompe el alta del usuario.
+-- Cada perfil nuevo recibe el DM de bienvenida solo. Va envuelto en un
+-- exception handler que traga cualquier error: si algo falla (ej. todavía no
+-- hay admin), NO rompe el alta del usuario.
 --
--- Editá el texto del mensaje a gusto.
+-- Para DESACTIVARlo: drop trigger on_profile_welcome on public.profiles;
+-- Para cambiar el texto: editá el mensaje de abajo y re-corré este bloque.
 -- ─────────────────────────────────────────────────────────────────────────────
---
--- create or replace function public.auto_welcome_dm()
--- returns trigger
--- language plpgsql
--- security definer
--- set search_path = public
--- as $$
--- begin
---   begin
---     perform public.send_welcome_dm(
---       new.id,
---       '¡Hola! Te damos la bienvenida a Dealr 👋 Somos un marketplace de '
---       || 'usados de Córdoba: te conectamos con la otra persona y el trato se '
---       || 'cierra por fuera (WhatsApp o en persona), nosotros no manejamos pagos. '
---       || 'Un par de tips: completá tu perfil y verificá tu identidad para '
---       || 'generar más confianza, activá tu ubicación para ver lo que tenés cerca, '
---       || 'y cuando quieras vender tocá el botón de publicar. Cualquier duda, '
---       || 'respondé este mismo chat. ¡Que andes bien!'
---     );
---   exception when others then
---     null; -- nunca bloquear el alta por el saludo
---   end;
---   return new;
--- end;
--- $$;
---
--- drop trigger if exists on_profile_welcome on public.profiles;
--- create trigger on_profile_welcome
---   after insert on public.profiles
---   for each row execute function public.auto_welcome_dm();
+
+create or replace function public.auto_welcome_dm()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  begin
+    perform public.send_welcome_dm(
+      new.id,
+      '¡Hola! Te damos la bienvenida a Dealr 👋
+
+Somos el marketplace de usados de Córdoba. Te conectamos con la otra persona y el trato se cierra por fuera (WhatsApp o en persona): nosotros no manejamos pagos.
+
+Algunas cosas que podés hacer:
+🛒 Publicar y vender en minutos, con fotos.
+🔨 Sumarte a subastas, hacer ofertas o cerrar por chat directo con el dueño.
+📍 Ver lo que hay cerca tuyo en el mapa.
+✅ Verificar tu identidad para generar más confianza.
+🔔 Guardar búsquedas y favoritos para que te avisemos.
+
+💡 Consejo: instalá Dealr en tu teléfono (en el menú del navegador, "Agregar a la pantalla de inicio") para una mejor experiencia: más rápida y con notificaciones.
+
+Cualquier duda, respondé este mismo chat. ¡Que andes bien!'
+    );
+  exception when others then
+    null; -- nunca bloquear el alta por el saludo
+  end;
+  return new;
+end;
+$$;
+
+drop trigger if exists on_profile_welcome on public.profiles;
+create trigger on_profile_welcome
+  after insert on public.profiles
+  for each row execute function public.auto_welcome_dm();

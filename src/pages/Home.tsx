@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useNotifications } from '../hooks/useNotifications'
+import { useDragScroll } from '../hooks/useDragScroll'
 import type { Category, Listing } from '../lib/types'
 import ListingCard from '../components/ListingCard'
 import ListingRail from '../components/ListingRail'
@@ -116,6 +117,9 @@ export default function Home() {
   const restoredScroll = useRef(false)
   const firstLoad = useRef(true)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // Arrastrar la fila de categorías con el mouse (desktop); en touch el scroll
+  // nativo ya hace el arrastre con momentum estilo iOS.
+  const catScrollRef = useDragScroll<HTMLDivElement>()
 
   // Restaurar scroll una sola vez, antes del primer paint
   useLayoutEffect(() => {
@@ -576,8 +580,12 @@ export default function Home() {
         )}
       </header>
 
-      {/* Filtros como tabs de texto, no pills de color */}
-      <div className="no-scrollbar flex items-center gap-5 overflow-x-auto px-4 py-3">
+      {/* Filtros como tabs de texto, no pills de color. Se arrastra de lado
+          (touch nativo + mouse-drag por useDragScroll). */}
+      <div
+        ref={catScrollRef}
+        className="no-scrollbar flex touch-pan-x select-none items-center gap-5 overflow-x-auto px-4 py-3 md:cursor-grab md:active:cursor-grabbing"
+      >
         <button
           onClick={() => {
             setCategoryId(null)

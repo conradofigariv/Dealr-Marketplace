@@ -14,6 +14,10 @@ function normalize(value: string) {
     .slice(0, 30)
 }
 
+// Encuesta r\u00e1pida de atribuci\u00f3n: de d\u00f3nde nos conoci\u00f3. Se guarda en
+// signup_surveys (00031). Opcional: no bloquea el alta.
+const SURVEY_SOURCES = ['Instagram', 'TikTok', 'Un amigo', 'Google', 'Facebook', 'Otro']
+
 // Primer ingreso: elegir nombre de usuario antes de usar la app.
 // Reemplaza el "usuario_a1b2c3" autogenerado en el registro.
 export default function Onboarding() {
@@ -29,6 +33,8 @@ export default function Onboarding() {
   const [zone, setZone] = useState('')
   const [loc, setLoc] = useState<LatLng | null>(null)
   const [locating, setLocating] = useState(false)
+  const [source, setSource] = useState('')
+  const [sourceDetail, setSourceDetail] = useState('')
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
 
@@ -61,8 +67,8 @@ export default function Onboarding() {
         ...(loc ? { lat: loc.lat, lng: loc.lng } : {}),
       })
       .eq('id', session.user.id)
-    setBusy(false)
     if (err) {
+      setBusy(false)
       setError(
         err.code === '23505' || /unique|duplicate/i.test(err.message)
           ? 'Ese nombre ya está en uso. Probá con otro.'
@@ -70,6 +76,15 @@ export default function Onboarding() {
       )
       return
     }
+    // Encuesta de atribución (opcional): no bloquea el alta si falla.
+    if (source) {
+      await supabase.from('signup_surveys').insert({
+        user_id: session.user.id,
+        source,
+        detail: source === 'Otro' ? sourceDetail.trim() || null : null,
+      })
+    }
+    setBusy(false)
     await refreshProfile()
     navigate('/', { replace: true })
   }
@@ -125,6 +140,35 @@ export default function Onboarding() {
             <p className="mt-2 text-xs text-neutral-600">
               Sirve para mostrarte lo que está cerca. Se usa de forma aproximada.
             </p>
+          </div>
+
+          <div>
+            <label className="mb-3 block text-xs font-medium uppercase tracking-wider text-neutral-500">
+              ¿Cómo nos conociste? <span className="normal-case text-neutral-700">(opcional)</span>
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {SURVEY_SOURCES.map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setSource(source === s ? '' : s)}
+                  className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                    source === s ? 'bg-white text-black' : 'text-neutral-300 ring-1 ring-neutral-700'
+                  }`}
+                >
+                  {s}
+                </button>
+              ))}
+            </div>
+            {source === 'Otro' && (
+              <input
+                value={sourceDetail}
+                onChange={(e) => setSourceDetail(e.target.value)}
+                placeholder="Contanos dónde"
+                maxLength={80}
+                className="input-line mt-3 text-sm"
+              />
+            )}
           </div>
 
           <button disabled={busy || !valid} className="btn-primary">
