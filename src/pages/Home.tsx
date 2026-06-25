@@ -425,38 +425,48 @@ export default function Home() {
 
   // Pull-to-refresh: si arrancás el gesto con el feed arriba de todo y tirás
   // hacia abajo más allá del umbral, recarga. No usa preventDefault (no
-  // interfiere con scroll/taps). Si el gesto resulta horizontal (ej. arrastrar
-  // la fila de categorías, que también arranca con scrollY 0) lo soltamos
-  // apenas se nota: re-renderizar en cada touchmove compite con el scroll
-  // nativo de esa fila y le come el momentum aunque no haya preventDefault de
-  // por medio (quedaba "trabado" a los pocos swipes).
+  // interfiere con scroll/taps). CLAVE: no tocamos NINGÚN estado en touchStart.
+  // Recién "enganchamos" (setDragging → aplica transform + willChange al
+  // contenedor) cuando confirmamos en touchMove que el gesto es vertical hacia
+  // abajo. Si engancháramos en touchStart, ese transform/willChange rearma el
+  // layer de la fila de categorías y le mata el scroll horizontal nativo —por
+  // eso antes "solo andaba" mientras refrescaba (ahí los handlers ya quedan
+  // inertes). Un swipe horizontal ahora no dispara un solo re-render.
   const [pull, setPull] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [settling, setSettling] = useState(false)
   const pullStart = useRef<{ x: number; y: number } | null>(null)
   const pullLocked = useRef(false)
+  const pullEngaged = useRef(false)
   const pullVibrated = useRef(false)
 
   function onTouchStart(e: ReactTouchEvent) {
     const armed = window.scrollY <= 0 && !refreshing
     pullStart.current = armed ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null
     pullLocked.current = false
+    pullEngaged.current = false
     pullVibrated.current = false
-    if (pullStart.current !== null) {
-      setDragging(true)
-      setSettling(false)
-    }
+    // OJO: no hay setState acá a propósito (ver comentario de arriba).
   }
   function onTouchMove(e: ReactTouchEvent) {
     if (pullStart.current === null || pullLocked.current) return
     const dx = e.touches[0].clientX - pullStart.current.x
     const dy = e.touches[0].clientY - pullStart.current.y
-    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
-      pullLocked.current = true
-      setDragging(false)
-      setPull(0)
-      return
+    if (!pullEngaged.current) {
+      // Esperamos movimiento real antes de decidir la dirección.
+      if (Math.abs(dx) < 6 && Math.abs(dy) < 6) return
+      // Horizontal-dominante (fila de categorías) o hacia arriba (scroll
+      // normal): soltamos el gesto y no tocamos estado, así no competimos con
+      // el scroll nativo.
+      if (Math.abs(dx) >= Math.abs(dy) || dy <= 0) {
+        pullLocked.current = true
+        return
+      }
+      // Tirón vertical hacia abajo desde arriba de todo: recién acá enganchamos.
+      pullEngaged.current = true
+      setDragging(true)
+      setSettling(false)
     }
     const next = dy > 0 && window.scrollY <= 0 ? Math.min(dy * 0.5, 90) : 0
     // Toque sutil al cruzar el umbral de "soltá para actualizar" (una vez por gesto).
@@ -470,10 +480,11 @@ export default function Home() {
   }
   async function onTouchEnd() {
     const pulled = pull
-    const armed = pullStart.current !== null && !pullLocked.current
+    const engaged = pullEngaged.current
     pullStart.current = null
+    pullEngaged.current = false
+    if (!engaged) return
     setDragging(false)
-    if (!armed) return
     if (pulled >= 60) {
       // Queda "sostenido" mostrando el spinner. Aunque la recarga sea
       // instantánea, lo mantenemos al menos 2s; luego vuelve con spring (iOS).
