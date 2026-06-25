@@ -1043,3 +1043,11 @@ update public.listings
 set structured_fields = coalesce(structured_fields, '{}'::jsonb) || '{"tipo": "Teléfono"}'::jsonb
 where category_id = (select id from public.categories where slug = 'celulares')
   and not (coalesce(structured_fields, '{}'::jsonb) ? 'tipo');
+
+
+-- ============================================================
+-- 00029: "Ayuda y soporte" → bandeja de reportes del admin.
+-- Nuevo valor de enum 'support' (el front lo usa como target_type).
+-- ============================================================
+
+alter type public.report_target add value if not exists 'support';

@@ -14,6 +14,7 @@ const typeLabel: Record<ReportTargetType, string> = {
   review: 'Opinión',
   suggestion: 'Idea',
   question: 'Pregunta',
+  support: 'Soporte',
 }
 
 // Tabla a la que pertenece cada tipo (para borrar el contenido). Los usuarios
@@ -55,6 +56,12 @@ export default function Admin() {
   }, [profile, load])
 
   async function view(r: Report) {
+    // Soporte: no hay contenido que ver, vamos al perfil de quien escribió.
+    if (r.target_type === 'support') {
+      if (r.reporter?.username) navigate(`/u/${r.reporter.username}`)
+      else toast('El usuario ya no existe')
+      return
+    }
     if (r.target_type === 'listing') return navigate(`/p/${r.target_id}`)
     if (r.target_type === 'suggestion' || r.target_type === 'review') return navigate('/opiniones')
     if (r.target_type === 'user') {
@@ -139,7 +146,7 @@ export default function Admin() {
               </div>
               <p className="mt-2 text-sm text-white">{r.reason}</p>
               <p className="mt-1 text-xs text-neutral-500">
-                Reportado por {r.reporter?.username ?? 'usuario'}
+                {r.target_type === 'support' ? 'Enviado por' : 'Reportado por'} {r.reporter?.username ?? 'usuario'}
               </p>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button onClick={() => view(r)} className="rounded-full px-3 py-1.5 text-xs font-semibold text-white ring-1 ring-neutral-700">

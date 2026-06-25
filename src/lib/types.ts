@@ -181,7 +181,7 @@ export interface SavedSearch {
   created_at: string
 }
 
-export type ReportTargetType = 'question' | 'listing' | 'user' | 'message' | 'review' | 'suggestion'
+export type ReportTargetType = 'question' | 'listing' | 'user' | 'message' | 'review' | 'suggestion' | 'support'
 
 export interface Report {
   id: string

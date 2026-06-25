@@ -6,8 +6,12 @@ import { useToast } from './Toast'
 import Modal from './Modal'
 import type { ReportTargetType } from '../lib/types'
 
+// 'support' no se reporta acá (lo maneja SupportModal): este botón es para
+// moderar contenido.
+type ReportableType = Exclude<ReportTargetType, 'support'>
+
 // Motivos sugeridos por tipo de contenido (el usuario igual puede escribir).
-const reasonsByType: Record<ReportTargetType, string[]> = {
+const reasonsByType: Record<ReportableType, string[]> = {
   listing: ['Estafa o engaño', 'Producto prohibido', 'Precio o info falsa', 'Duplicada', 'Otro'],
   user: ['Acoso o insultos', 'Spam', 'Suplantación de identidad', 'Otro'],
   message: ['Acoso o insultos', 'Spam', 'Contenido inapropiado', 'Otro'],
@@ -17,7 +21,7 @@ const reasonsByType: Record<ReportTargetType, string[]> = {
 }
 
 interface Props {
-  targetType: ReportTargetType
+  targetType: ReportableType
   targetId: string
   // Cómo se ve el disparador. 'text' = link chico; 'icon' = botón ícono.
   variant?: 'text' | 'icon'

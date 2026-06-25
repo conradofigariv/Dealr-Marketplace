@@ -12,6 +12,7 @@ import Modal from '../components/Modal'
 import SellFlowModal from '../components/SellFlowModal'
 import NotificationSettings from '../components/NotificationSettings'
 import InstallButton from '../components/InstallButton'
+import SupportModal from '../components/SupportModal'
 import { invalidateFeedCache } from './Home'
 
 const statusLabels: Record<Listing['status'], string> = {
@@ -52,6 +53,7 @@ export default function Profile() {
     window.location.href = data.url as string
   }
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [supportOpen, setSupportOpen] = useState(false)
   const [myListingsOpen, setMyListingsOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -544,10 +546,18 @@ export default function Profile() {
               <span className="text-neutral-300">Privacidad y datos</span>
               <span className="text-xs text-neutral-600">Próximamente</span>
             </div>
-            <div className="flex items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800">
+            <button
+              onClick={() => {
+                setSettingsOpen(false)
+                setSupportOpen(true)
+              }}
+              className="flex w-full items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 text-left ring-1 ring-neutral-800 transition hover:ring-neutral-700"
+            >
               <span className="text-neutral-300">Ayuda y soporte</span>
-              <span className="text-xs text-neutral-600">Próximamente</span>
-            </div>
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-neutral-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
             <button
               onClick={() => {
                 setSettingsOpen(false)
@@ -560,6 +570,8 @@ export default function Profile() {
           </div>
         </Modal>
       )}
+
+      {supportOpen && <SupportModal onClose={() => setSupportOpen(false)} />}
     </div>
   )
 }
