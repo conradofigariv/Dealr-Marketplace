@@ -425,16 +425,23 @@ export default function Home() {
 
   // Pull-to-refresh: si arrancás el gesto con el feed arriba de todo y tirás
   // hacia abajo más allá del umbral, recarga. No usa preventDefault (no
-  // interfiere con scroll/taps).
+  // interfiere con scroll/taps). Si el gesto resulta horizontal (ej. arrastrar
+  // la fila de categorías, que también arranca con scrollY 0) lo soltamos
+  // apenas se nota: re-renderizar en cada touchmove compite con el scroll
+  // nativo de esa fila y le come el momentum aunque no haya preventDefault de
+  // por medio (quedaba "trabado" a los pocos swipes).
   const [pull, setPull] = useState(0)
   const [refreshing, setRefreshing] = useState(false)
   const [dragging, setDragging] = useState(false)
   const [settling, setSettling] = useState(false)
-  const pullStart = useRef<number | null>(null)
+  const pullStart = useRef<{ x: number; y: number } | null>(null)
+  const pullLocked = useRef(false)
   const pullVibrated = useRef(false)
 
   function onTouchStart(e: ReactTouchEvent) {
-    pullStart.current = window.scrollY <= 0 && !refreshing ? e.touches[0].clientY : null
+    const armed = window.scrollY <= 0 && !refreshing
+    pullStart.current = armed ? { x: e.touches[0].clientX, y: e.touches[0].clientY } : null
+    pullLocked.current = false
     pullVibrated.current = false
     if (pullStart.current !== null) {
       setDragging(true)
@@ -442,9 +449,16 @@ export default function Home() {
     }
   }
   function onTouchMove(e: ReactTouchEvent) {
-    if (pullStart.current === null) return
-    const delta = e.touches[0].clientY - pullStart.current
-    const next = delta > 0 && window.scrollY <= 0 ? Math.min(delta * 0.5, 90) : 0
+    if (pullStart.current === null || pullLocked.current) return
+    const dx = e.touches[0].clientX - pullStart.current.x
+    const dy = e.touches[0].clientY - pullStart.current.y
+    if (Math.abs(dx) > Math.abs(dy) && Math.abs(dx) > 8) {
+      pullLocked.current = true
+      setDragging(false)
+      setPull(0)
+      return
+    }
+    const next = dy > 0 && window.scrollY <= 0 ? Math.min(dy * 0.5, 90) : 0
     // Toque sutil al cruzar el umbral de "soltá para actualizar" (una vez por gesto).
     if (next >= 60 && !pullVibrated.current) {
       pullVibrated.current = true
@@ -456,7 +470,7 @@ export default function Home() {
   }
   async function onTouchEnd() {
     const pulled = pull
-    const armed = pullStart.current !== null
+    const armed = pullStart.current !== null && !pullLocked.current
     pullStart.current = null
     setDragging(false)
     if (!armed) return
