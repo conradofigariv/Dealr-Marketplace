@@ -11,7 +11,7 @@ import AuctionRail from '../components/AuctionRail'
 import FeedFilters, { EMPTY_FILTERS, countActiveFilters, filterableFields, type FeedFilterValues } from '../components/FeedFilters'
 import Modal from '../components/Modal'
 import ActionMenu from '../components/ActionMenu'
-import { vibrate } from '../lib/notify'
+import { vibrate, haptic, playSound } from '../lib/notify'
 import {
   getCachedBuyerLocation,
   requestBuyerLocation,
@@ -490,6 +490,9 @@ export default function Home() {
       // instantánea, lo mantenemos al menos 2s; luego vuelve con spring (iOS).
       setRefreshing(true)
       setPull(0)
+      // Se soltó el cajón y arranca a actualizar: confirmación sutil.
+      haptic('tap')
+      playSound('pop')
       await Promise.all([loadFirst(), new Promise((r) => setTimeout(r, 2000))])
       setRefreshing(false)
       setSettling(true)

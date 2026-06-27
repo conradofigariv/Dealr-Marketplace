@@ -8,6 +8,8 @@ import { conditionLabels, formatPrice } from '../lib/format'
 import type { Category, FieldDef, ListingCondition, Currency } from '../lib/types'
 import type { LatLng } from '../lib/geo'
 import LocationPicker from '../components/LocationPicker'
+import { playSound, haptic } from '../lib/notify'
+import { burstConfetti } from '../lib/confetti'
 import { invalidateFeedCache } from './Home'
 
 const MAX_PHOTOS = 6
@@ -273,6 +275,10 @@ export default function Publish() {
         capture('listing_published', { category_id: categoryId, currency })
         window.scrollTo(0, 0)
         setPublishedId(data.id)
+        // Celebración: confeti + fanfarria + vibración de éxito.
+        burstConfetti()
+        playSound('win')
+        haptic('success')
       }
     } catch (err) {
       // Los errores de Supabase son objetos {message, details, hint, code},

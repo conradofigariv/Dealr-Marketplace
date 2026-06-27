@@ -4,7 +4,10 @@ import {
   requestNotificationPermission,
   soundEnabled,
   setSoundEnabled,
+  hapticsEnabled,
+  setHapticsEnabled,
   playChime,
+  haptic,
 } from '../lib/notify'
 import { pushSupported, subscribeToPush, unsubscribeFromPush } from '../lib/push'
 import { useToast } from './Toast'
@@ -29,6 +32,7 @@ export default function NotificationSettings() {
   const toast = useToast()
   const [perm, setPerm] = useState<NotificationPermission | 'unsupported'>(notificationPermission())
   const [sound, setSound] = useState(soundEnabled())
+  const [haptics, setHaptics] = useState(hapticsEnabled())
   const [working, setWorking] = useState(false)
 
   // Si el permiso ya está dado, intentamos asegurar la suscripción a push.
@@ -55,6 +59,13 @@ export default function NotificationSettings() {
     setSound(next)
     setSoundEnabled(next)
     if (next) playChime()
+  }
+
+  function toggleHaptics() {
+    const next = !haptics
+    setHaptics(next)
+    setHapticsEnabled(next)
+    if (next) haptic('success') // hay que setear el valor antes de vibrar
   }
 
   return (
@@ -95,6 +106,12 @@ export default function NotificationSettings() {
       <div className="flex items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800">
         <span className="text-neutral-300">Sonido</span>
         <Toggle on={sound} onChange={toggleSound} label="Sonido de notificaciones" />
+      </div>
+
+      {/* Vibración */}
+      <div className="flex items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800">
+        <span className="text-neutral-300">Vibración</span>
+        <Toggle on={haptics} onChange={toggleHaptics} label="Vibración háptica" />
       </div>
 
       {perm === 'granted' && pushSupported() && (

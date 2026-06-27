@@ -21,6 +21,8 @@ import LongPressActions from '../components/LongPressActions'
 import type { MenuAction } from '../components/ActionMenu'
 import { useToast } from '../components/Toast'
 import { getCachedBuyerLocation, haversineKm, formatDistance, pushRecentlyViewed } from '../lib/geo'
+import { haptic, playSound } from '../lib/notify'
+import { burstConfetti } from '../lib/confetti'
 import { invalidateFeedCache } from './Home'
 
 export default function ListingDetail() {
@@ -52,8 +54,18 @@ export default function ListingDetail() {
   const [bidAmount, setBidAmount] = useState('')
   const [bidBusy, setBidBusy] = useState(false)
   const [now, setNow] = useState(Date.now())
+  const [outbid, setOutbid] = useState(false) // me superaron la oferta (en vivo)
+  const [extended, setExtended] = useState(false) // el reloj se extendió (anti-snipe)
+  const [watchers, setWatchers] = useState(0) // cuántos miran la subasta ahora
   const countedView = useRef(false)
   const closedOnce = useRef(false)
+  // Estado de la subasta para detectar cambios en vivo:
+  const myBidRef = useRef<number | null>(null) // mi última oferta
+  const iWasWinningRef = useRef(false) // yo era el mejor postor
+  const prevEndsRef = useRef<number | null>(null) // auction_ends_at previo
+  const celebratedWin = useRef(false) // ya festejé esta victoria
+  // Clave estable para presencia (no expone identidad: id de sesión o aleatoria).
+  const viewerKey = useRef(session?.user.id ?? `anon-${Math.random().toString(36).slice(2)}`)
 
   const isOwner = session?.user.id === listing?.seller_id
   const isAdmin = Boolean(profile?.is_admin)
@@ -130,12 +142,22 @@ export default function ListingDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing?.id])
 
-  // Cuenta regresiva en vivo (solo si es subasta abierta).
+  // Cuenta regresiva en vivo (solo si es subasta abierta). En los últimos 10s
+  // late: heartbeat + tick por segundo (el clásico "going once, going twice").
   useEffect(() => {
-    if (!listing?.is_auction || listing.auction_closed) return
-    const t = setInterval(() => setNow(Date.now()), 1000)
+    if (!listing?.is_auction || listing.auction_closed || !listing.auction_ends_at) return
+    const endsAt = new Date(listing.auction_ends_at).getTime()
+    const t = setInterval(() => {
+      const t0 = Date.now()
+      setNow(t0)
+      const remaining = Math.ceil((endsAt - t0) / 1000)
+      if (remaining > 0 && remaining <= 10 && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        haptic('heartbeat')
+        playSound('tick')
+      }
+    }, 1000)
     return () => clearInterval(t)
-  }, [listing?.is_auction, listing?.auction_closed])
+  }, [listing?.is_auction, listing?.auction_closed, listing?.auction_ends_at])
 
   // Subasta vencida sin cerrar: la cierra al abrir (crea el chat ganador↔vendedor).
   useEffect(() => {
@@ -146,18 +168,63 @@ export default function ListingDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing?.id, listing?.auction_closed, listing?.auction_ends_at])
 
-  // Realtime: oferta actual / cantidad en vivo.
+  // Realtime: oferta actual / cantidad en vivo + presencia ("N mirando ahora").
   useEffect(() => {
     if (!listing?.is_auction || !id) return
-    const channel = supabase
-      .channel(`listing-${id}`)
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'listings', filter: `id=eq.${id}` }, () => load())
-      .subscribe()
+    const channel = supabase.channel(`listing-${id}`, {
+      config: { presence: { key: viewerKey.current } },
+    })
+    channel
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'listings', filter: `id=eq.${id}` }, (payload) => {
+        const next = payload.new as Listing
+        // ¿Me superaron? Yo era el mejor postor y la oferta subió por encima de la mía.
+        if (
+          iWasWinningRef.current &&
+          next.current_bid != null &&
+          myBidRef.current != null &&
+          next.current_bid > myBidRef.current
+        ) {
+          iWasWinningRef.current = false
+          setOutbid(true)
+          haptic('heavy')
+          playSound('outbid')
+        }
+        // Anti-snipe: el reloj se extendió respecto al valor previo.
+        const nextEnds = next.auction_ends_at ? new Date(next.auction_ends_at).getTime() : null
+        if (prevEndsRef.current != null && nextEnds != null && nextEnds > prevEndsRef.current + 1000) {
+          setExtended(true)
+          haptic('tap')
+          window.setTimeout(() => setExtended(false), 2800)
+        }
+        prevEndsRef.current = nextEnds
+        load()
+      })
+      .on('presence', { event: 'sync' }, () => {
+        setWatchers(Object.keys(channel.presenceState()).length)
+      })
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') await channel.track({ at: Date.now() })
+      })
     return () => {
       supabase.removeChannel(channel)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing?.is_auction, id])
+
+  // Mantiene sincronizado el auction_ends_at previo (para detectar extensiones)
+  // y festeja si ganaste la subasta (confeti + fanfarria, una sola vez).
+  useEffect(() => {
+    if (!listing?.is_auction) return
+    if (prevEndsRef.current == null && listing.auction_ends_at) {
+      prevEndsRef.current = new Date(listing.auction_ends_at).getTime()
+    }
+    if (listing.auction_closed && !celebratedWin.current && session?.user.id && listing.sold_to === session.user.id) {
+      celebratedWin.current = true
+      burstConfetti()
+      playSound('win')
+      haptic('success')
+    }
+  }, [listing?.is_auction, listing?.auction_ends_at, listing?.auction_closed, listing?.sold_to, session?.user.id])
 
   async function placeBid(e: FormEvent) {
     e.preventDefault()
@@ -166,8 +233,17 @@ export default function ListingDetail() {
     const { data, error } = await supabase.rpc('place_bid', { p_listing: id, p_amount: Number(bidAmount) })
     setBidBusy(false)
     if (error) return toast('No pudimos registrar la oferta. Probá de nuevo.')
-    if (data) return toast(data as string) // mensaje de validación de la DB
+    if (data) {
+      haptic('error')
+      return toast(data as string) // mensaje de validación de la DB
+    }
+    // Quedé como mejor postor: registramos mi oferta para detectar si me superan.
+    myBidRef.current = Number(bidAmount)
+    iWasWinningRef.current = true
+    setOutbid(false)
     setBidAmount('')
+    playSound('pop')
+    haptic('success')
     toast('¡Oferta registrada! Sos el mejor postor.')
     load()
   }
@@ -369,6 +445,13 @@ export default function ListingDetail() {
   const auction = listing.is_auction
   const auctionEnded = auction && listing.auction_ends_at ? new Date(listing.auction_ends_at).getTime() <= now : false
   const iWon = auction && listing.auction_closed && session?.user.id === listing.sold_to
+  // Segundos restantes (para la urgencia visual del countdown).
+  const secondsLeft =
+    auction && listing.auction_ends_at && !auctionEnded
+      ? Math.max(0, Math.ceil((new Date(listing.auction_ends_at).getTime() - now) / 1000))
+      : null
+  const urgent = secondsLeft != null && secondsLeft <= 60 // último minuto
+  const critical = secondsLeft != null && secondsLeft <= 10 // últimos 10s
   const buyerLoc = getCachedBuyerLocation()
   const distanceKm =
     listing.lat != null && listing.lng != null && buyerLoc
@@ -473,9 +556,30 @@ export default function ListingDetail() {
                 <span className="glow-badge rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Subasta</span>
                 <span className="text-neutral-400">{listing.bids_count} {listing.bids_count === 1 ? 'oferta' : 'ofertas'}</span>
                 <span className="text-neutral-600">·</span>
-                <span className={auctionEnded ? 'text-neutral-500' : 'font-semibold text-white'}>
+                <span
+                  className={
+                    auctionEnded
+                      ? 'text-neutral-500'
+                      : critical
+                        ? 'font-bold text-red-400 [animation:glowBadge_1s_ease-in-out_infinite]'
+                        : urgent
+                          ? 'font-bold text-amber-400'
+                          : 'font-semibold text-white'
+                  }
+                >
                   {auctionEnded ? 'Finalizada' : `Termina en ${timeLeftLabel(listing.auction_ends_at!, now)}`}
                 </span>
+                {extended && (
+                  <span className="ctx-pop-in rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-black">
+                    ⏱ +30s
+                  </span>
+                )}
+                {watchers > 1 && !auctionEnded && (
+                  <span className="flex items-center gap-1 text-xs text-neutral-400">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:glowBadge_2s_ease-in-out_infinite]" />
+                    {watchers} mirando
+                  </span>
+                )}
               </div>
             </div>
           ) : (
@@ -787,24 +891,41 @@ export default function ListingDetail() {
               Subasta finalizada
             </p>
           ) : (
-            <form onSubmit={placeBid} className="flex items-center gap-2">
-              <div className="flex flex-1 items-center gap-1.5 rounded-full bg-neutral-900 px-4 ring-1 ring-neutral-700">
-                <span className="text-sm font-semibold text-neutral-500">{listing.currency === 'USD' ? 'US$' : '$'}</span>
-                <input
-                  type="number"
-                  min="0"
-                  step="any"
-                  required
-                  value={bidAmount}
-                  onChange={(e) => setBidAmount(e.target.value)}
-                  placeholder={String(listing.current_bid != null ? Math.floor(listing.current_bid + 1) : listing.price)}
-                  className="w-full bg-transparent py-3 text-sm font-semibold text-white outline-none"
-                />
-              </div>
-              <button disabled={bidBusy} className="shrink-0 rounded-full bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-50">
-                Ofertar
-              </button>
-            </form>
+            <>
+              {outbid && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    // Re-puja rápida: prellena con la oferta mínima para superar.
+                    const min = listing.current_bid != null ? Math.floor(listing.current_bid + 1) : listing.price
+                    setBidAmount(String(min))
+                    setOutbid(false)
+                    haptic('tap')
+                  }}
+                  className="ctx-pop-in mb-2 flex w-full items-center justify-center gap-1.5 rounded-full bg-red-500/15 py-2 text-sm font-bold text-red-400 ring-1 ring-red-500/30"
+                >
+                  Te superaron la oferta · Tocá para mejorar
+                </button>
+              )}
+              <form onSubmit={placeBid} className="flex items-center gap-2">
+                <div className={`flex flex-1 items-center gap-1.5 rounded-full bg-neutral-900 px-4 ring-1 ${outbid ? 'ring-red-500/50' : 'ring-neutral-700'}`}>
+                  <span className="text-sm font-semibold text-neutral-500">{listing.currency === 'USD' ? 'US$' : '$'}</span>
+                  <input
+                    type="number"
+                    min="0"
+                    step="any"
+                    required
+                    value={bidAmount}
+                    onChange={(e) => setBidAmount(e.target.value)}
+                    placeholder={String(listing.current_bid != null ? Math.floor(listing.current_bid + 1) : listing.price)}
+                    className="w-full bg-transparent py-3 text-sm font-semibold text-white outline-none"
+                  />
+                </div>
+                <button disabled={bidBusy} className="shrink-0 rounded-full bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-50">
+                  Ofertar
+                </button>
+              </form>
+            </>
           )}
         </div>
       )}

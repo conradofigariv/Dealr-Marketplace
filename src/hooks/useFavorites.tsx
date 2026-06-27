@@ -2,6 +2,7 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { supabase } from '../lib/supabase'
 import { useAuth } from './useAuth'
 import { capture } from '../lib/analytics'
+import { haptic } from '../lib/notify'
 
 interface FavoritesState {
   ids: Set<string>
@@ -35,6 +36,7 @@ export function FavoritesProvider({ children }: { children: ReactNode }) {
     async (listingId: string) => {
       if (!session) return null
       const has = ids.has(listingId)
+      if (!has) haptic('tap') // toque sutil solo al guardar, no al quitar
       // Optimista: actualizamos la UI y revertimos si la red falla.
       setIds((prev) => {
         const next = new Set(prev)

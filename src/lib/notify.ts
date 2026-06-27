@@ -3,6 +3,7 @@
 // segundo plano). El push real (app cerrada) vive en push.ts + el SW.
 
 const SOUND_KEY = 'dealr_sound' // 'on' | 'off' (default 'on')
+const HAPTICS_KEY = 'dealr_haptics' // 'on' | 'off' (default 'on')
 
 export function soundEnabled(): boolean {
   return localStorage.getItem(SOUND_KEY) !== 'off'
@@ -10,6 +11,22 @@ export function soundEnabled(): boolean {
 
 export function setSoundEnabled(on: boolean) {
   localStorage.setItem(SOUND_KEY, on ? 'on' : 'off')
+}
+
+export function hapticsEnabled(): boolean {
+  try {
+    return localStorage.getItem(HAPTICS_KEY) !== 'off'
+  } catch {
+    return true
+  }
+}
+
+export function setHapticsEnabled(on: boolean) {
+  try {
+    localStorage.setItem(HAPTICS_KEY, on ? 'on' : 'off')
+  } catch {
+    /* ignorar */
+  }
 }
 
 // --- Sonido sintetizado (no necesita asset) -------------------------------
@@ -37,31 +54,85 @@ if (typeof window !== 'undefined') {
   window.addEventListener('keydown', unlock)
 }
 
-// Chime corto de dos notas (sol5 → si5), suave, con fade de salida.
-export function playChime() {
+// Reproductor genérico: una secuencia de notas sinusoidales con fade de salida.
+// Cada nota = { freq, at (offset en s), dur, gain }. No necesita ningún asset.
+interface Note {
+  freq: number
+  at: number
+  dur: number
+  gain?: number
+  type?: OscillatorType
+}
+
+function playNotes(notes: Note[]) {
   if (!soundEnabled()) return
   const ac = getCtx()
   if (!ac) return
   if (ac.state === 'suspended') ac.resume()
   const now = ac.currentTime
-  const notes = [784, 988] // G5, B5
-  notes.forEach((freq, i) => {
+  for (const n of notes) {
     const osc = ac.createOscillator()
     const gain = ac.createGain()
-    osc.type = 'sine'
-    osc.frequency.value = freq
-    const start = now + i * 0.12
-    const end = start + 0.18
+    osc.type = n.type ?? 'sine'
+    osc.frequency.value = n.freq
+    const start = now + n.at
+    const end = start + n.dur
+    const peak = n.gain ?? 0.18
     gain.gain.setValueAtTime(0, start)
-    gain.gain.linearRampToValueAtTime(0.18, start + 0.02)
+    gain.gain.linearRampToValueAtTime(peak, start + 0.02)
     gain.gain.exponentialRampToValueAtTime(0.0001, end)
     osc.connect(gain).connect(ac.destination)
     osc.start(start)
     osc.stop(end + 0.02)
-  })
+  }
 }
 
+// Paleta de sonidos con nombre (todos sintetizados).
+const SOUNDS: Record<string, Note[]> = {
+  // Chime corto de dos notas (sol5 → si5): el de las notificaciones.
+  chime: [
+    { freq: 784, at: 0, dur: 0.18 },
+    { freq: 988, at: 0.12, dur: 0.18 },
+  ],
+  // Acorde ascendente alegre: publicar con éxito, acción confirmada.
+  success: [
+    { freq: 523, at: 0, dur: 0.16 }, // C5
+    { freq: 659, at: 0.09, dur: 0.16 }, // E5
+    { freq: 784, at: 0.18, dur: 0.22 }, // G5
+  ],
+  // Blip corto: puja registrada / tap positivo.
+  pop: [{ freq: 660, at: 0, dur: 0.12, gain: 0.16 }],
+  // Descendente "uh-oh": te superaron la oferta.
+  outbid: [
+    { freq: 659, at: 0, dur: 0.14 }, // E5
+    { freq: 523, at: 0.1, dur: 0.14 }, // C5
+    { freq: 440, at: 0.2, dur: 0.2 }, // A4
+  ],
+  // Fanfarria: ganaste la subasta.
+  win: [
+    { freq: 523, at: 0, dur: 0.14 }, // C5
+    { freq: 659, at: 0.12, dur: 0.14 }, // E5
+    { freq: 784, at: 0.24, dur: 0.14 }, // G5
+    { freq: 1047, at: 0.36, dur: 0.3 }, // C6
+  ],
+  // Clic muy corto y agudo: tick del countdown.
+  tick: [{ freq: 1200, at: 0, dur: 0.04, gain: 0.1 }],
+}
+
+export type SoundKind = keyof typeof SOUNDS
+
+export function playSound(kind: SoundKind) {
+  playNotes(SOUNDS[kind])
+}
+
+// Alias histórico (lo usan NotificationSettings y alertIncoming).
+export function playChime() {
+  playSound('chime')
+}
+
+// Vibración cruda, respetando el toggle de hápticos del usuario.
 export function vibrate(pattern: number | number[] = [40, 30, 40]) {
+  if (!hapticsEnabled()) return
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     try {
       navigator.vibrate(pattern)
@@ -69,6 +140,22 @@ export function vibrate(pattern: number | number[] = [40, 30, 40]) {
       /* algunos navegadores lo bloquean sin gesto; lo ignoramos */
     }
   }
+}
+
+// Patrones hápticos con nombre, para no esparcir números mágicos por el código.
+const HAPTICS: Record<string, number | number[]> = {
+  tap: 12, // toque mínimo (long-press, favoritear)
+  tick: 8, // casi imperceptible (countdown)
+  success: [25, 30, 25, 30, 50], // confirmación alegre
+  heavy: 60, // golpe firme (te superaron, ganaste)
+  error: [40, 60, 40], // algo salió mal
+  heartbeat: [18, 80, 28], // lub-dub para los últimos segundos
+}
+
+export type HapticKind = keyof typeof HAPTICS
+
+export function haptic(kind: HapticKind) {
+  vibrate(HAPTICS[kind])
 }
 
 // --- Permiso + notificación del navegador ---------------------------------
