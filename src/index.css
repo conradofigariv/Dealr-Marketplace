@@ -306,19 +306,34 @@ textarea {
     text-shadow: 0 0 12px rgba(251, 191, 36, 0.85), 0 0 4px rgba(251, 191, 36, 0.9);
   }
 }
+/* El glow late variando opacity (compositor-only) en un pseudo-elemento, NO
+   box-shadow sobre el badge. Animar box-shadow repinta en cada frame y esa
+   región de repaint alcanzaba los tiles del mapa Leaflet del detalle, que
+   titilaba al ritmo del latido. Con opacity el latido se ve igual pero no
+   invalida nada alrededor. */
 @keyframes glowBadge {
   0%,
   100% {
-    box-shadow: 0 0 4px 0 rgba(245, 158, 11, 0.5);
+    opacity: 0.35;
   }
   50% {
-    box-shadow: 0 0 10px 3px rgba(245, 158, 11, 0.85);
+    opacity: 1;
   }
 }
 .glow-text {
   animation: glowText 2s ease-in-out infinite;
 }
 .glow-badge {
+  position: relative;
+}
+.glow-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 10px 3px rgba(245, 158, 11, 0.85);
+  opacity: 0;
+  pointer-events: none;
   animation: glowBadge 2s ease-in-out infinite;
 }
 
@@ -331,10 +346,13 @@ textarea {
   .sheet-in,
   .img-shimmer,
   .glow-text,
-  .glow-badge,
+  .glow-badge::after,
   .ctx-pop-in,
   .update-prompt-in {
     animation: none;
+  }
+  .glow-badge::after {
+    opacity: 0.6;
   }
   .msg-pressable {
     transition: none;
