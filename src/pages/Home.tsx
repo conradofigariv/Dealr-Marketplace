@@ -301,9 +301,16 @@ export default function Home() {
   }, [loadMore])
 
   // El feed se cura solo: al volver a la pestaña/app (foreground) recarga.
+  // `visibilitychange` y `focus` suelen dispararse casi juntos al volver: un
+  // dedupe por tiempo evita la doble recarga (dos round-trips + parpadeo).
   useEffect(() => {
+    let last = 0
     function refreshIfVisible() {
-      if (document.visibilityState === 'visible') loadFirst()
+      if (document.visibilityState !== 'visible') return
+      const t = Date.now()
+      if (t - last < 1500) return
+      last = t
+      loadFirst()
     }
     document.addEventListener('visibilitychange', refreshIfVisible)
     window.addEventListener('focus', refreshIfVisible)

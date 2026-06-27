@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
 import { setSwRegistration } from '../lib/swUpdate'
 
@@ -7,6 +7,7 @@ import { setSwRegistration } from '../lib/swUpdate'
 // updates cada 60s y al volver al foreground, así no hace falta cerrar todas
 // las pestañas para tomar la versión nueva.
 export default function UpdatePrompt() {
+  const [reg, setReg] = useState<ServiceWorkerRegistration | null>(null)
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
@@ -14,13 +15,25 @@ export default function UpdatePrompt() {
     onRegisteredSW(_url, r) {
       if (!r) return
       setSwRegistration(r) // para el botón manual "Chequear actualización"
-      setInterval(() => r.update(), 60_000)
-      document.addEventListener('visibilitychange', () => {
-        if (document.visibilityState === 'visible') r.update()
-      })
+      setReg(r)
     },
   })
   const [updating, setUpdating] = useState(false)
+
+  // Chequeo periódico de versión nueva + al volver al foreground. En un effect
+  // con cleanup para no acumular intervals/listeners si el SW se re-registra.
+  useEffect(() => {
+    if (!reg) return
+    const iv = setInterval(() => reg.update(), 60_000)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') reg.update()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      clearInterval(iv)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [reg])
 
   if (!needRefresh) return null
 

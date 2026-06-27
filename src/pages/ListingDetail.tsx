@@ -25,6 +25,30 @@ import { haptic, playSound } from '../lib/notify'
 import { burstConfetti } from '../lib/confetti'
 import { invalidateFeedCache } from './Home'
 
+// Mi última puja por subasta, guardada en localStorage para que la detección de
+// "me superaron" sobreviva a recargar/reabrir (las pujas son anónimas, no hay
+// forma server-side de saber si soy el mejor postor).
+function readMyBid(listingId: string): number | null {
+  try {
+    const v = localStorage.getItem(`dealr_mybid_${listingId}`)
+    return v == null ? null : Number(v)
+  } catch {
+    return null
+  }
+}
+
+function persistMyBid(listingId: string, amount: number) {
+  try {
+    localStorage.setItem(`dealr_mybid_${listingId}`, String(amount))
+  } catch {
+    /* ignorar */
+  }
+}
+
+function auctionEndedNow(l: Listing): boolean {
+  return l.auction_ends_at ? new Date(l.auction_ends_at).getTime() <= Date.now() : false
+}
+
 export default function ListingDetail() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -64,6 +88,8 @@ export default function ListingDetail() {
   const iWasWinningRef = useRef(false) // yo era el mejor postor
   const prevEndsRef = useRef<number | null>(null) // auction_ends_at previo
   const celebratedWin = useRef(false) // ya festejé esta victoria
+  const rehydratedBid = useRef(false) // ya rehidraté mi puja guardada
+  const lastTickRef = useRef(0) // último segundo que tickeó (evita doble tick)
   // Clave estable para presencia (no expone identidad: id de sesión o aleatoria).
   const viewerKey = useRef(session?.user.id ?? `anon-${Math.random().toString(36).slice(2)}`)
 
@@ -151,7 +177,16 @@ export default function ListingDetail() {
       const t0 = Date.now()
       setNow(t0)
       const remaining = Math.ceil((endsAt - t0) / 1000)
-      if (remaining > 0 && remaining <= 10 && typeof document !== 'undefined' && document.visibilityState === 'visible') {
+      // Una vez por segundo entero (el ref persiste aunque el effect se recree
+      // por un load() de Realtime → no late doble en el sprint final).
+      if (
+        remaining > 0 &&
+        remaining <= 10 &&
+        remaining !== lastTickRef.current &&
+        typeof document !== 'undefined' &&
+        document.visibilityState === 'visible'
+      ) {
+        lastTickRef.current = remaining
         haptic('heartbeat')
         playSound('tick')
       }
@@ -211,12 +246,27 @@ export default function ListingDetail() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [listing?.is_auction, id])
 
-  // Mantiene sincronizado el auction_ends_at previo (para detectar extensiones)
-  // y festeja si ganaste la subasta (confeti + fanfarria, una sola vez).
+  // Mantiene sincronizado el auction_ends_at previo (para detectar extensiones),
+  // rehidrata mi puja guardada (sobrevive recargar) y festeja si ganaste.
   useEffect(() => {
     if (!listing?.is_auction) return
     if (prevEndsRef.current == null && listing.auction_ends_at) {
       prevEndsRef.current = new Date(listing.auction_ends_at).getTime()
+    }
+    // Rehidratar: si mi puja guardada sigue siendo la más alta, soy el mejor
+    // postor; si la superaron mientras no estaba, muestro el aviso al volver.
+    if (!rehydratedBid.current && id && listing.current_bid != null) {
+      rehydratedBid.current = true
+      const mine = readMyBid(id)
+      if (mine != null) {
+        myBidRef.current = mine
+        if (listing.current_bid > mine) {
+          iWasWinningRef.current = false
+          if (!listing.auction_closed && !auctionEndedNow(listing)) setOutbid(true)
+        } else {
+          iWasWinningRef.current = true
+        }
+      }
     }
     if (listing.auction_closed && !celebratedWin.current && session?.user.id && listing.sold_to === session.user.id) {
       celebratedWin.current = true
@@ -229,17 +279,26 @@ export default function ListingDetail() {
   async function placeBid(e: FormEvent) {
     e.preventDefault()
     if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
-    setBidBusy(true)
-    const { data, error } = await supabase.rpc('place_bid', { p_listing: id, p_amount: Number(bidAmount) })
-    setBidBusy(false)
-    if (error) return toast('No pudimos registrar la oferta. Probá de nuevo.')
-    if (data) {
-      haptic('error')
-      return toast(data as string) // mensaje de validación de la DB
-    }
-    // Quedé como mejor postor: registramos mi oferta para detectar si me superan.
-    myBidRef.current = Number(bidAmount)
+    const amount = Number(bidAmount)
+    // Optimista: marco mi puja ANTES del await. Así, cuando llegue por Realtime
+    // el eco de mi propia oferta, myBidRef ya vale `amount` y no se confunde con
+    // "me superaron". Si la RPC falla o rebota validación, revierto.
+    const prevMyBid = myBidRef.current
+    const prevWinning = iWasWinningRef.current
+    myBidRef.current = amount
     iWasWinningRef.current = true
+    setBidBusy(true)
+    const { data, error } = await supabase.rpc('place_bid', { p_listing: id, p_amount: amount })
+    setBidBusy(false)
+    if (error || data) {
+      myBidRef.current = prevMyBid
+      iWasWinningRef.current = prevWinning
+      haptic('error')
+      // `data` = mensaje de validación de la DB; error = fallo de red.
+      return toast(error ? 'No pudimos registrar la oferta. Probá de nuevo.' : (data as string))
+    }
+    // Quedé como mejor postor: persisto la puja para sobrevivir recargar.
+    if (id) persistMyBid(id, amount)
     setOutbid(false)
     setBidAmount('')
     playSound('pop')
@@ -419,7 +478,12 @@ export default function ListingDetail() {
     }
     const { error } = await supabase.from('listings').delete().eq('id', listing.id)
     setDeleting(false)
-    if (error) return
+    if (error) {
+      setDeleteOpen(false)
+      toast('No pudimos eliminar la publicación. Probá de nuevo.')
+      return
+    }
+    invalidateFeedCache()
     navigate('/perfil')
   }
 

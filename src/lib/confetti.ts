@@ -15,8 +15,12 @@ interface Piece {
 
 const COLORS = ['#f59e0b', '#ffffff', '#34d399', '#60a5fa', '#f472b6', '#fbbf24']
 
+// Evita dos ráfagas (dos canvas + dos loops) si se llama seguido.
+let running = false
+
 export function burstConfetti(count = 120) {
   if (typeof window === 'undefined' || typeof document === 'undefined') return
+  if (running) return
   if (window.matchMedia?.('(prefers-reduced-motion: reduce)').matches) return
 
   const canvas = document.createElement('canvas')
@@ -33,6 +37,7 @@ export function burstConfetti(count = 120) {
     canvas.remove()
     return
   }
+  running = true
   ctx.scale(dpr, dpr)
 
   // Dos surtidores desde abajo, en diagonal hacia el centro (estilo "cañón").
@@ -82,6 +87,7 @@ export function burstConfetti(count = 120) {
       requestAnimationFrame(tick)
     } else {
       canvas.remove()
+      running = false
     }
   }
   requestAnimationFrame(tick)

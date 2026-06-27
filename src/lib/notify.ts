@@ -6,11 +6,19 @@ const SOUND_KEY = 'dealr_sound' // 'on' | 'off' (default 'on')
 const HAPTICS_KEY = 'dealr_haptics' // 'on' | 'off' (default 'on')
 
 export function soundEnabled(): boolean {
-  return localStorage.getItem(SOUND_KEY) !== 'off'
+  try {
+    return localStorage.getItem(SOUND_KEY) !== 'off'
+  } catch {
+    return true
+  }
 }
 
 export function setSoundEnabled(on: boolean) {
-  localStorage.setItem(SOUND_KEY, on ? 'on' : 'off')
+  try {
+    localStorage.setItem(SOUND_KEY, on ? 'on' : 'off')
+  } catch {
+    /* ignorar */
+  }
 }
 
 export function hapticsEnabled(): boolean {
