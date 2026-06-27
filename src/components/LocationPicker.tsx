@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type FormEvent } from 'react'
 import L from 'leaflet'
 import { TILE_URL, TILE_ATTRIBUTION } from './leafletSetup'
-import { CORDOBA, reverseGeocode, requestBuyerLocation, geocodeSearch, type LatLng, type GeocodeResult } from '../lib/geo'
+import { CORDOBA, reverseGeocode, requestBuyerLocation, geocodeSearch, getCachedBuyerLocation, type LatLng, type GeocodeResult } from '../lib/geo'
 
 // Mapa interactivo para elegir la ubicación al publicar: buscador de ciudad/
 // dirección, pin arrastrable, click para mover y botón "usar mi ubicación".
@@ -24,6 +24,13 @@ export default function LocationPicker({ value, onChange }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [searching, setSearching] = useState(false)
+  // Última etiqueta elegida: evita que el autocompletado vuelva a buscar el
+  // texto que acabamos de fijar al elegir un resultado.
+  const pickedRef = useRef('')
+  // Punto de referencia para ordenar por cercanía: el pin actual, si no la
+  // ubicación cacheada del usuario, si no el centro de Córdoba.
+  const nearRef = useRef<LatLng | null>(null)
+  nearRef.current = value ?? getCachedBuyerLocation() ?? CORDOBA
 
   function emit(loc: LatLng) {
     onChangeRef.current(loc)
@@ -80,6 +87,24 @@ export default function LocationPicker({ value, onChange }: Props) {
     mapRef.current.setView([value.lat, value.lng], mapRef.current.getZoom())
   }, [value])
 
+  // Autocompletado: busca con debounce mientras escribís y muestra las
+  // coincidencias ordenadas por cercanía (no hace falta apretar "Buscar").
+  useEffect(() => {
+    const q = query.trim()
+    if (q.length < 3 || q === pickedRef.current) {
+      setResults([])
+      setSearching(false)
+      return
+    }
+    setSearching(true)
+    const t = setTimeout(async () => {
+      const found = await geocodeSearch(q, nearRef.current)
+      setResults(found)
+      setSearching(false)
+    }, 350)
+    return () => clearTimeout(t)
+  }, [query])
+
   async function useMyLocation() {
     const loc = await requestBuyerLocation()
     if (loc) emit(loc)
@@ -87,9 +112,11 @@ export default function LocationPicker({ value, onChange }: Props) {
 
   async function search(e: FormEvent) {
     e.preventDefault()
-    if (query.trim().length < 3) return
+    const q = query.trim()
+    if (q.length < 3) return
+    // Búsqueda inmediata (sin esperar el debounce) al apretar Enter/Buscar.
     setSearching(true)
-    const found = await geocodeSearch(query)
+    const found = await geocodeSearch(q, nearRef.current)
     setResults(found)
     setSearching(false)
     // Una sola coincidencia: la aplicamos directo.
@@ -103,6 +130,7 @@ export default function LocationPicker({ value, onChange }: Props) {
     markerRef.current?.setLatLng([loc.lat, loc.lng])
     onChangeRef.current(loc, r.label)
     clearTimeout(geocodeTimer.current)
+    pickedRef.current = r.label // no re-buscar este texto en el autocompletado
     setResults([])
     setQuery(r.label)
   }

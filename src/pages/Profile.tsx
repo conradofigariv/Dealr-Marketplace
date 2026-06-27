@@ -13,6 +13,8 @@ import SellFlowModal from '../components/SellFlowModal'
 import NotificationSettings from '../components/NotificationSettings'
 import InstallButton from '../components/InstallButton'
 import SupportModal from '../components/SupportModal'
+import { useToast } from '../components/Toast'
+import { checkForUpdate } from '../lib/swUpdate'
 import { invalidateFeedCache } from './Home'
 
 const statusLabels: Record<Listing['status'], string> = {
@@ -58,7 +60,25 @@ export default function Profile() {
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [sellTarget, setSellTarget] = useState<Listing | null>(null)
+  const [checkingUpdate, setCheckingUpdate] = useState(false)
   const avatarInput = useRef<HTMLInputElement>(null)
+  const toast = useToast()
+
+  // Chequeo manual de versión nueva. Si la encuentra, UpdatePrompt muestra el
+  // aviso para actualizar; si no, avisamos que ya está al día.
+  async function checkUpdate() {
+    setCheckingUpdate(true)
+    const result = await checkForUpdate()
+    setCheckingUpdate(false)
+    if (result === true) {
+      setSettingsOpen(false)
+      toast('Hay una versión nueva. Tocá "Actualizar" para aplicarla.')
+    } else if (result === false) {
+      toast('Ya tenés la última versión.')
+    } else {
+      toast('No se pudo chequear (la app todavía no está instalada como PWA).')
+    }
+  }
 
   useEffect(() => {
     if (!loading && !session) navigate('/auth', { state: { from: '/perfil', back: '/' } })
@@ -546,6 +566,23 @@ export default function Profile() {
               <span className="text-neutral-300">Privacidad y datos</span>
               <span className="text-xs text-neutral-600">Próximamente</span>
             </div>
+            <button
+              onClick={checkUpdate}
+              disabled={checkingUpdate}
+              className="flex w-full items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 text-left ring-1 ring-neutral-800 transition hover:ring-neutral-700 disabled:opacity-60"
+            >
+              <span className="text-neutral-300">Chequear actualización</span>
+              {checkingUpdate ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-600 border-t-white" />
+              ) : (
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-neutral-600" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M3 12a9 9 0 0 1 15-6.7L21 8" />
+                  <path d="M21 3v5h-5" />
+                  <path d="M21 12a9 9 0 0 1-15 6.7L3 16" />
+                  <path d="M3 21v-5h5" />
+                </svg>
+              )}
+            </button>
             <button
               onClick={() => {
                 setSettingsOpen(false)

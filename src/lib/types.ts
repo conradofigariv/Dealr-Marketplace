@@ -157,6 +157,7 @@ export type NotificationType =
   | 'outbid'
   | 'auction_won'
   | 'report'
+  | 'question'
 
 export interface AppNotification {
   id: string

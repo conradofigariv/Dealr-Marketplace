@@ -54,6 +54,13 @@ const icons: Record<NotificationType, ReactElement> = {
       <circle cx="12" cy="12" r="10" />
     </>
   ),
+  question: (
+    <>
+      <path d="M21 11.5a8.5 8.5 0 0 1-12.3 7.6L3 21l1.9-5.7A8.5 8.5 0 1 1 21 11.5Z" />
+      <path d="M9.8 9.2a2.5 2.5 0 0 1 4.85.8c0 1.7-2.35 2.2-2.35 2.2" />
+      <path d="M12.3 15h.01" />
+    </>
+  ),
   report: (
     <>
       <path d="M4 22V4a1 1 0 0 1 1-1h13l-2.5 4L18 11H5" />
@@ -69,6 +76,7 @@ const typeStyles: Record<NotificationType, { badge: string; soft: string }> = {
   offer_accepted: { badge: 'bg-emerald-500', soft: 'bg-emerald-500/15 text-emerald-400' },
   sale_confirmed: { badge: 'bg-amber-500', soft: 'bg-amber-500/15 text-amber-400' },
   question_answered: { badge: 'bg-violet-500', soft: 'bg-violet-500/15 text-violet-400' },
+  question: { badge: 'bg-violet-500', soft: 'bg-violet-500/15 text-violet-400' },
   price_drop: { badge: 'bg-rose-500', soft: 'bg-rose-500/15 text-rose-400' },
   saved_search: { badge: 'bg-sky-500', soft: 'bg-sky-500/15 text-sky-400' },
   bid: { badge: 'bg-amber-500', soft: 'bg-amber-500/15 text-amber-400' },

@@ -90,21 +90,26 @@ export async function reverseGeocode({ lat, lng }: LatLng): Promise<string | nul
 }
 
 /**
- * Geocoding directo: busca una ciudad/dirección por texto y devuelve hasta 5
+ * Geocoding directo: busca una ciudad/dirección por texto y devuelve hasta 8
  * coincidencias (Nominatim, OSM). Sesgado a Argentina. Sirve para publicar algo
  * que no está donde estás parado (ej. un alquiler en otra ciudad).
+ *
+ * Si se pasa `near` (la ubicación actual del usuario o del pin), ordena los
+ * resultados por cercanía a ese punto: así al escribir "crisol 51" aparece
+ * primero la coincidencia más próxima (Córdoba, si estás ahí) antes que otras
+ * ciudades con la misma calle.
  */
 export interface GeocodeResult extends LatLng {
   label: string
 }
 
-export async function geocodeSearch(query: string): Promise<GeocodeResult[]> {
+export async function geocodeSearch(query: string, near?: LatLng | null): Promise<GeocodeResult[]> {
   const q = query.trim()
   if (q.length < 3) return []
   try {
     const res = await fetch(
       `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}` +
-        `&countrycodes=ar&accept-language=es&limit=5&addressdetails=1`,
+        `&countrycodes=ar&accept-language=es&limit=8&addressdetails=1`,
     )
     if (!res.ok) return []
     const data = (await res.json()) as Array<{
@@ -113,7 +118,7 @@ export async function geocodeSearch(query: string): Promise<GeocodeResult[]> {
       display_name: string
       address?: Record<string, string>
     }>
-    return data.map((d) => {
+    const results = data.map((d) => {
       const a = d.address ?? {}
       const local = a.suburb || a.neighbourhood || a.city_district || a.town || a.village || a.city || a.county
       const region = a.state || a.province
@@ -125,6 +130,9 @@ export async function geocodeSearch(query: string): Promise<GeocodeResult[]> {
         label: unique.length ? unique.join(', ') : d.display_name.split(',').slice(0, 2).join(',').trim(),
       }
     })
+    // Más cercano primero (si tenemos un punto de referencia).
+    if (near) results.sort((a, b) => haversineKm(near, a) - haversineKm(near, b))
+    return results
   } catch {
     return []
   }

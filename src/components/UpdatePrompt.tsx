@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import { useRegisterSW } from 'virtual:pwa-register/react'
+import { setSwRegistration } from '../lib/swUpdate'
 
 // Aviso "hay una versión nueva": aparece cuando el service worker detecta un
 // deploy. Tocar "Actualizar" activa el SW nuevo y recarga. Además chequea
@@ -12,6 +13,7 @@ export default function UpdatePrompt() {
   } = useRegisterSW({
     onRegisteredSW(_url, r) {
       if (!r) return
+      setSwRegistration(r) // para el botón manual "Chequear actualización"
       setInterval(() => r.update(), 60_000)
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'visible') r.update()
