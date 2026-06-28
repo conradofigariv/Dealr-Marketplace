@@ -122,14 +122,12 @@ begin
       new.id,
       '¡Hola! Te damos la bienvenida a Dealr 👋
 
-Somos el marketplace de usados de Córdoba. Te conectamos con la otra persona y el trato se cierra por fuera (WhatsApp o en persona): nosotros no manejamos pagos.
+El lugar para comprar y vender cosas usadas en Córdoba, con gente real y verificada ✅
 
 Algunas cosas que podés hacer:
-🛒 Publicar y vender en minutos, con fotos.
 🔨 Sumarte a subastas, hacer ofertas o cerrar por chat directo con el dueño.
 📍 Ver lo que hay cerca tuyo en el mapa.
-✅ Verificar tu identidad para generar más confianza.
-🔔 Guardar búsquedas y favoritos para que te avisemos.
+✅ Usuarios verificados por DNI para evitar estafas.
 
 💡 Consejo: instalá Dealr en tu teléfono (en el menú del navegador, "Agregar a la pantalla de inicio") para una mejor experiencia: más rápida y con notificaciones.
 
