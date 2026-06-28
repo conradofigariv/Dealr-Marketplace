@@ -91,6 +91,7 @@ export default function ChatThread() {
   const [reportReason, setReportReason] = useState('')
   const [pendingPhoto, setPendingPhoto] = useState<{ file: File; preview: string; mirrored: boolean } | null>(null)
   const scrollerRef = useRef<HTMLDivElement>(null)
+  const rootRef = useRef<HTMLDivElement>(null)
   const didInitialScroll = useRef(false)
   const cameraInputRef = useRef<HTMLInputElement>(null)
   const galleryInputRef = useRef<HTMLInputElement>(null)
@@ -99,6 +100,33 @@ export default function ChatThread() {
   const lastTypingSent = useRef(0)
   const longPressTimer = useRef<ReturnType<typeof setTimeout>>()
   const longPressMoved = useRef(false)
+
+  // El teclado no achica el `dvh` en iOS (PWA instalada), así que tapa el input
+  // y el navegador empuja todo hacia arriba. Seguimos el visualViewport para que
+  // el contenedor del chat use el alto VISIBLE (descontando el teclado) y la
+  // pantalla no se deslice. En Android lo respeta igual.
+  useEffect(() => {
+    const vv = window.visualViewport
+    const root = rootRef.current
+    if (!vv || !root) return
+    let raf = 0
+    const update = () => {
+      cancelAnimationFrame(raf)
+      raf = requestAnimationFrame(() => {
+        root.style.height = `${vv.height}px`
+        if (window.scrollY !== 0) window.scrollTo(0, 0) // no dejar que la página se corra
+      })
+    }
+    update()
+    vv.addEventListener('resize', update)
+    vv.addEventListener('scroll', update)
+    return () => {
+      cancelAnimationFrame(raf)
+      vv.removeEventListener('resize', update)
+      vv.removeEventListener('scroll', update)
+      root.style.height = ''
+    }
+  }, [])
 
   const myId = session?.user.id
   const iAmBuyer = conversation?.buyer_id === myId
@@ -397,7 +425,7 @@ export default function ChatThread() {
   const listing = conversation.listing
 
   return (
-    <div className="flex h-dvh flex-col bg-black">
+    <div ref={rootRef} className="flex h-dvh flex-col bg-black">
       {/* Encabezado: con quién hablás (tappable a su perfil) + la publicación */}
       <header className="border-b border-neutral-900 px-2 pb-2.5 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <div className="flex items-center gap-1.5">
@@ -666,6 +694,13 @@ export default function ChatThread() {
         <input
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
+          onFocus={() => {
+            // Al abrir el teclado, llevar el scroll al último mensaje.
+            requestAnimationFrame(() => {
+              const s = scrollerRef.current
+              if (s) s.scrollTop = s.scrollHeight
+            })
+          }}
           placeholder="Escribí un mensaje"
           className="w-full rounded-full bg-neutral-900 px-5 py-3 text-[15px] text-white placeholder-neutral-500 outline-none"
         />
