@@ -29,12 +29,25 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       setItems([])
       return
     }
-    const { data } = await supabase
+    // Con el embed del actor (FK de la 00023). Si esa migración no está aplicada,
+    // PostgREST no encuentra la FK y la consulta ENTERA falla → caería en cero
+    // notificaciones. Por eso, si el embed da error, reintentamos sin él (el
+    // panel funciona igual, solo sin el avatar del que la disparó).
+    const withActor = await supabase
       .from('notifications')
       .select('*, actor:profiles!notifications_actor_id_fkey(id, username, avatar_url)')
       .order('created_at', { ascending: false })
       .limit(50)
-    setItems((data as AppNotification[]) ?? [])
+    if (!withActor.error) {
+      setItems((withActor.data as AppNotification[]) ?? [])
+      return
+    }
+    const plain = await supabase
+      .from('notifications')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50)
+    if (!plain.error) setItems((plain.data as AppNotification[]) ?? [])
   }, [session])
 
   useEffect(() => {

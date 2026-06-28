@@ -104,14 +104,20 @@ function groupNotifications(items: AppNotification[]): GroupedNotification[] {
 
 // Círculo principal: avatar del que la envía + badge del tipo encima. Si no
 // hay actor (subastas anónimas / sistema), el círculo es el ícono del tipo.
+// Fallback para un tipo que el front todavía no conoce (ej. uno nuevo en la
+// base antes de actualizar el cliente): así nunca se cae el panel entero.
+const FALLBACK_STYLE = { badge: 'bg-neutral-500', soft: 'bg-neutral-500/15 text-neutral-400' }
+const FALLBACK_ICON = <circle cx="12" cy="12" r="9" />
+
 function NotificationIcon({ n }: { n: AppNotification }) {
-  const style = typeStyles[n.type]
+  const style = typeStyles[n.type] ?? FALLBACK_STYLE
+  const typeIcon = icons[n.type] ?? FALLBACK_ICON
   const badge = (
     <span
       className={`absolute -bottom-0.5 -right-0.5 flex h-5 w-5 items-center justify-center rounded-full ring-2 ring-black ${style.badge}`}
     >
       <svg viewBox="0 0 24 24" className="h-3 w-3 text-white" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-        {icons[n.type]}
+        {typeIcon}
       </svg>
     </span>
   )
@@ -134,7 +140,7 @@ function NotificationIcon({ n }: { n: AppNotification }) {
   return (
     <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${style.soft}`}>
       <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-        {icons[n.type]}
+        {typeIcon}
       </svg>
     </span>
   )
