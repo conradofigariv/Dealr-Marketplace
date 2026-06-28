@@ -120,20 +120,13 @@ begin
   begin
     perform public.send_welcome_dm(
       new.id,
-      '¡Hola! Te damos la bienvenida a Dealr 👋
+      '¡Bienvenido a Dealr 🙌!
 
-Somos el marketplace de usados de Córdoba. Te conectamos con la otra persona y el trato se cierra por fuera (WhatsApp o en persona): nosotros no manejamos pagos.
+El lugar para comprar y vender cosas usadas en Córdoba, con gente real y verificada ✅
 
-Algunas cosas que podés hacer:
-🛒 Publicar y vender en minutos, con fotos.
-🔨 Sumarte a subastas, hacer ofertas o cerrar por chat directo con el dueño.
-📍 Ver lo que hay cerca tuyo en el mapa.
-✅ Verificar tu identidad para generar más confianza.
-🔔 Guardar búsquedas y favoritos para que te avisemos.
+🔨 Participá en subastas en vivo y 📍 descubrí lo que hay cerca tuyo en el mapa. Vos cerrás el trato como quieras, sin comisiones.
 
-💡 Consejo: instalá Dealr en tu teléfono (en el menú del navegador, "Agregar a la pantalla de inicio") para una mejor experiencia: más rápida y con notificaciones.
-
-Cualquier duda, respondé este mismo chat. ¡Que andes bien!'
+Nos ayuda un montón que seas parte 💪 Si ves un error o algo que no funciona, reportalo 🐛 Y si se te ocurre una función nueva, proponela desde tu perfil 💡'
     );
   exception when others then
     null; -- nunca bloquear el alta por el saludo
