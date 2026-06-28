@@ -415,6 +415,21 @@ export default function Home() {
     )
   }, [categoryId])
 
+  // Desplaza la fila de categorías para que la seleccionada quede a la vista
+  // (ej. al llegar desde Explorar con "Inmuebles" preelegida, que está al final).
+  // Solo scrollea si el chip no está completamente visible (no molesta si ya lo está).
+  useEffect(() => {
+    const row = catScrollRef.current
+    if (!row || !categoryId) return
+    const chip = row.querySelector<HTMLElement>(`[data-cat-id="${categoryId}"]`)
+    if (!chip) return
+    const rowRect = row.getBoundingClientRect()
+    const chipRect = chip.getBoundingClientRect()
+    if (chipRect.left >= rowRect.left && chipRect.right <= rowRect.right) return // ya visible
+    const delta = chipRect.left - rowRect.left - row.clientWidth / 2 + chip.clientWidth / 2
+    row.scrollTo({ left: row.scrollLeft + delta, behavior: 'smooth' })
+  }, [categoryId, categories, catScrollRef])
+
   const activeFilters = countActiveFilters(filters)
   const canSaveSearch = Boolean(search.trim()) || activeFilters > 0 || categoryId !== null
 
@@ -650,6 +665,7 @@ export default function Home() {
           .map((cat) => (
             <button
               key={cat.id}
+              data-cat-id={cat.id}
               onClick={() => {
                 setCategoryId(categoryId === cat.id ? null : cat.id)
                 setOnlyAuctions(false)
