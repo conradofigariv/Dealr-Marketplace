@@ -137,19 +137,25 @@ export type SoundKind = keyof typeof SOUNDS
 // del kind (success/win/pop/outbid/tick/chime). Se decodifica una vez a un
 // AudioBuffer y se reutiliza (baja latencia, ideal en mobile).
 const fileBuffers = new Map<SoundKind, AudioBuffer | null>() // null = sin archivo
+// Preferimos mp3 (liviano y universal), pero aceptamos otros formatos por las
+// dudas: probamos en orden y usamos el primero que exista.
+const SOUND_EXTS = ['mp3', 'ogg', 'm4a', 'wav']
 
 async function loadSoundFile(kind: SoundKind): Promise<void> {
   if (fileBuffers.has(kind)) return // ya intentado (cargado o sin archivo)
   fileBuffers.set(kind, null) // marca "intentado" para no repetir el fetch
   const ac = getCtx()
   if (!ac) return
-  try {
-    const res = await fetch(`/sounds/${kind}.mp3`)
-    if (!res.ok) return // 404 → no hay archivo, queda el sintetizado
-    const buf = await ac.decodeAudioData(await res.arrayBuffer())
-    fileBuffers.set(kind, buf)
-  } catch {
-    /* sin archivo o formato no soportado → fallback sintetizado */
+  for (const ext of SOUND_EXTS) {
+    try {
+      const res = await fetch(`/sounds/${kind}.${ext}`)
+      if (!res.ok) continue // no existe ese formato → probar el siguiente
+      const buf = await ac.decodeAudioData(await res.arrayBuffer())
+      fileBuffers.set(kind, buf)
+      return
+    } catch {
+      /* formato no soportado / error → probar el siguiente */
+    }
   }
 }
 
