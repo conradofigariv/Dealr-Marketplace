@@ -62,10 +62,28 @@ interface Props {
   ensureLocation: () => Promise<boolean>
   // Campos filtrables de la categoría elegida (select/boolean).
   categoryFields?: FieldDef[]
+  // Orden + "solo verificados": se manejan acá adentro (antes estaban en la
+  // fila de categorías). Aplican en vivo (no por el botón "Aplicar").
+  order: string
+  orderOptions: { value: string; label: string }[]
+  onOrder: (value: string) => void
+  onlyVerified: boolean
+  onVerified: (value: boolean) => void
   onClose: () => void
 }
 
-export default function FeedFilters({ value, onApply, ensureLocation, categoryFields, onClose }: Props) {
+export default function FeedFilters({
+  value,
+  onApply,
+  ensureLocation,
+  categoryFields,
+  order,
+  orderOptions,
+  onOrder,
+  onlyVerified,
+  onVerified,
+  onClose,
+}: Props) {
   const [draft, setDraft] = useState<FeedFilterValues>(value)
   const [locationDenied, setLocationDenied] = useState(false)
 
@@ -129,6 +147,35 @@ export default function FeedFilters({ value, onApply, ensureLocation, categoryFi
   return (
     <Modal title="Filtros" onClose={onClose}>
       <div className="space-y-6">
+        {/* Ordenar (aplica en vivo) */}
+        <div>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wider text-neutral-500">Ordenar por</p>
+          <div className="flex flex-wrap gap-1.5">
+            {orderOptions.map((o) => (
+              <button key={o.value} onClick={() => onOrder(o.value)} className={chip(order === o.value)}>
+                {o.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* Solo verificados (aplica en vivo) */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-sm text-neutral-200">Solo verificados</p>
+            <p className="mt-0.5 text-xs text-neutral-500">Publicaciones de gente con identidad validada</p>
+          </div>
+          <button
+            role="switch"
+            aria-checked={onlyVerified}
+            aria-label="Solo verificados"
+            onClick={() => onVerified(!onlyVerified)}
+            className={`relative h-6 w-11 shrink-0 rounded-full transition ${onlyVerified ? 'bg-white' : 'bg-neutral-700'}`}
+          >
+            <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-black transition ${onlyVerified ? 'left-[1.375rem]' : 'left-0.5'}`} />
+          </button>
+        </div>
+
         {/* Moneda */}
         <div>
           <p className="mb-2 text-xs font-medium uppercase tracking-wider text-neutral-500">Moneda</p>
@@ -269,7 +316,11 @@ export default function FeedFilters({ value, onApply, ensureLocation, categoryFi
         {/* Acciones */}
         <div className="flex gap-3 pt-1">
           <button
-            onClick={() => setDraft(EMPTY_FILTERS)}
+            onClick={() => {
+              setDraft(EMPTY_FILTERS)
+              onVerified(false)
+              if (orderOptions[0]) onOrder(orderOptions[0].value) // vuelve a "Recientes"
+            }}
             className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700"
           >
             Limpiar

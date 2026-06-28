@@ -72,12 +72,6 @@ const orderLabels: Record<FeedOrder, string> = {
   price_asc: 'Menor precio',
   price_desc: 'Mayor precio',
 }
-const orderCycle: Record<FeedOrder, FeedOrder> = {
-  recent: 'price_asc',
-  price_asc: 'price_desc',
-  price_desc: 'recent',
-}
-
 const SELECT =
   '*, seller:profiles!listings_seller_id_fkey'
 
@@ -430,7 +424,10 @@ export default function Home() {
     row.scrollTo({ left: row.scrollLeft + delta, behavior: 'smooth' })
   }, [categoryId, categories, catScrollRef])
 
-  const activeFilters = countActiveFilters(filters)
+  // Incluye verificados y orden (ahora viven dentro del sheet) en el contador
+  // del badge de "Filtros", para que se note que hay algo activo.
+  const activeFilters = countActiveFilters(filters) + (onlyVerified ? 1 : 0) + (order !== 'recent' ? 1 : 0)
+  const orderOptions = (Object.keys(orderLabels) as FeedOrder[]).map((v) => ({ value: v, label: orderLabels[v] }))
   const canSaveSearch = Boolean(search.trim()) || activeFilters > 0 || categoryId !== null
 
   useEffect(() => {
@@ -636,76 +633,69 @@ export default function Home() {
         )}
       </header>
 
-      {/* Filtros como tabs de texto, no pills de color. Se arrastra de lado
-          (touch nativo + mouse-drag por useDragScroll). */}
-      <div
-        ref={catScrollRef}
-        className="no-scrollbar flex touch-pan-x select-none items-center gap-5 overflow-x-auto px-4 py-3 md:cursor-grab md:active:cursor-grabbing"
-      >
-        <button
-          onClick={() => {
-            setCategoryId(null)
-            setOnlyAuctions(false)
-          }}
-          className={`shrink-0 text-sm font-medium transition ${!categoryId && !onlyAuctions ? 'text-white' : 'text-neutral-500'}`}
+      {/* Fila de categorías (navegación). Los controles (Filtros/Orden/
+          Verificados) ya NO van acá: "Filtros" queda FIJO a la derecha (no se
+          pierde al final del scroll) y adentro tiene orden + verificados. */}
+      <div className="relative">
+        <div
+          ref={catScrollRef}
+          className="no-scrollbar flex touch-pan-x select-none items-center gap-5 overflow-x-auto px-4 py-3 pr-24 md:cursor-grab md:active:cursor-grabbing"
         >
-          Todo
-        </button>
-        <button
-          onClick={() => {
-            setOnlyAuctions(true)
-            setCategoryId(null)
-          }}
-          className={`shrink-0 text-sm font-semibold transition ${onlyAuctions ? 'glow-text text-amber-400' : 'text-neutral-500'}`}
-        >
-          Subastas
-        </button>
-        {categories
-          .filter((c) => !c.parent_id)
-          .map((cat) => (
-            <button
-              key={cat.id}
-              data-cat-id={cat.id}
-              onClick={() => {
-                setCategoryId(categoryId === cat.id ? null : cat.id)
-                setOnlyAuctions(false)
-              }}
-              className={`shrink-0 text-sm font-medium transition ${
-                categoryId === cat.id ? 'text-white' : 'text-neutral-500'
-              }`}
-            >
-              {cat.name}
-            </button>
-          ))}
-        <button
-          onClick={() => setOnlyVerified(!onlyVerified)}
-          className={`shrink-0 text-sm font-medium transition ${onlyVerified ? 'text-white' : 'text-neutral-500'}`}
-        >
-          ✓ Verificados
-        </button>
-        <button
-          onClick={() => setFiltersOpen(true)}
-          className={`flex shrink-0 items-center gap-1 text-sm font-medium transition ${activeFilters ? 'text-white' : 'text-neutral-500'}`}
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 5h18M6 12h12M10 19h4" />
-          </svg>
-          Filtros
-          {activeFilters > 0 && (
-            <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-black">
-              {activeFilters}
-            </span>
-          )}
-        </button>
-        <button
-          onClick={() => setOrder(orderCycle[order])}
-          className={`flex shrink-0 items-center gap-1 text-sm font-medium transition ${order !== 'recent' ? 'text-white' : 'text-neutral-500'}`}
-        >
-          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 6h18M7 12h10M10 18h4" />
-          </svg>
-          {orderLabels[order]}
-        </button>
+          <button
+            onClick={() => {
+              setCategoryId(null)
+              setOnlyAuctions(false)
+            }}
+            className={`shrink-0 text-sm font-medium transition ${!categoryId && !onlyAuctions ? 'text-white' : 'text-neutral-500'}`}
+          >
+            Todo
+          </button>
+          <button
+            onClick={() => {
+              setOnlyAuctions(true)
+              setCategoryId(null)
+            }}
+            className={`shrink-0 text-sm font-semibold transition ${onlyAuctions ? 'glow-text text-amber-400' : 'text-neutral-500'}`}
+          >
+            Subastas
+          </button>
+          {categories
+            .filter((c) => !c.parent_id)
+            .map((cat) => (
+              <button
+                key={cat.id}
+                data-cat-id={cat.id}
+                onClick={() => {
+                  setCategoryId(categoryId === cat.id ? null : cat.id)
+                  setOnlyAuctions(false)
+                }}
+                className={`shrink-0 text-sm font-medium transition ${
+                  categoryId === cat.id ? 'text-white' : 'text-neutral-500'
+                }`}
+              >
+                {cat.name}
+              </button>
+            ))}
+        </div>
+        {/* "Filtros" fijo a la derecha, con degradado para que las categorías
+            pasen por detrás. pointer-events-none en el contenedor para no
+            bloquear el scroll; solo el botón recibe toques. */}
+        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-black via-black to-transparent pl-10 pr-4">
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className={`pointer-events-auto flex shrink-0 items-center gap-1 text-sm font-semibold transition ${activeFilters ? 'text-white' : 'text-neutral-400'}`}
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M3 5h18M6 12h12M10 19h4" />
+            </svg>
+            Filtros
+            {activeFilters > 0 && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-black">
+                {activeFilters}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {canSaveSearch && (
@@ -819,6 +809,11 @@ export default function Home() {
           onApply={setFilters}
           ensureLocation={ensureLocation}
           categoryFields={categoryFieldDefs}
+          order={order}
+          orderOptions={orderOptions}
+          onOrder={(v) => setOrder(v as FeedOrder)}
+          onlyVerified={onlyVerified}
+          onVerified={setOnlyVerified}
           onClose={() => setFiltersOpen(false)}
         />
       )}
