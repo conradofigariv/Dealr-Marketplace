@@ -65,6 +65,19 @@ export async function subscribeToPush(): Promise<boolean> {
   }
 }
 
+// ¿Este dispositivo tiene una suscripción de push activa ahora mismo?
+// Sirve para que el toggle de Ajustes refleje el estado real (no asumir).
+export async function isPushSubscribed(): Promise<boolean> {
+  if (!pushSupported()) return false
+  try {
+    const reg = await navigator.serviceWorker.ready
+    const sub = await reg.pushManager.getSubscription()
+    return Boolean(sub)
+  } catch {
+    return false
+  }
+}
+
 export async function unsubscribeFromPush(): Promise<void> {
   if (typeof navigator === 'undefined' || !('serviceWorker' in navigator)) return
   try {

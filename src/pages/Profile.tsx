@@ -68,7 +68,9 @@ export default function Profile() {
   // aviso para actualizar; si no, avisamos que ya está al día.
   async function checkUpdate() {
     setCheckingUpdate(true)
-    const result = await checkForUpdate()
+    // Mínimo 2s de spinner aunque el chequeo sea instantáneo (se siente que
+    // "hizo algo" en vez de un parpadeo).
+    const [result] = await Promise.all([checkForUpdate(), new Promise((r) => setTimeout(r, 2000))])
     setCheckingUpdate(false)
     if (result === true) {
       setSettingsOpen(false)
