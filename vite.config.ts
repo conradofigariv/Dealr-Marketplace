@@ -29,6 +29,9 @@ export default defineConfig({
       },
       workbox: {
         navigateFallbackDenylist: [/^\/api/],
+        // Sumamos audio al precache (el default no incluye mp3): los sonidos de
+        // public/sounds/ quedan disponibles offline.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,mp3}'],
         // Inyecta los handlers de Web Push (push + notificationclick) en el SW
         // generado, sin tener que escribir un SW propio (injectManifest).
         importScripts: ['push-listener.js'],

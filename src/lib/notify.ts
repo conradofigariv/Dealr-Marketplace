@@ -55,6 +55,8 @@ function getCtx(): AudioContext | null {
 if (typeof window !== 'undefined') {
   const unlock = () => {
     getCtx()?.resume()
+    // Ya hay AudioContext: precargamos los sonidos por archivo (si existen).
+    ;(Object.keys(SOUNDS) as SoundKind[]).forEach(loadSoundFile)
     window.removeEventListener('pointerdown', unlock)
     window.removeEventListener('keydown', unlock)
   }
@@ -129,8 +131,49 @@ const SOUNDS: Record<string, Note[]> = {
 
 export type SoundKind = keyof typeof SOUNDS
 
+// --- Sonidos por ARCHIVO (opcional, override del sintetizado) --------------
+// Si existe public/sounds/<kind>.mp3, se usa ese archivo en vez del sintetizado.
+// Drop-and-go: no hace falta tocar código, solo subir el archivo con el nombre
+// del kind (success/win/pop/outbid/tick/chime). Se decodifica una vez a un
+// AudioBuffer y se reutiliza (baja latencia, ideal en mobile).
+const fileBuffers = new Map<SoundKind, AudioBuffer | null>() // null = sin archivo
+
+async function loadSoundFile(kind: SoundKind): Promise<void> {
+  if (fileBuffers.has(kind)) return // ya intentado (cargado o sin archivo)
+  fileBuffers.set(kind, null) // marca "intentado" para no repetir el fetch
+  const ac = getCtx()
+  if (!ac) return
+  try {
+    const res = await fetch(`/sounds/${kind}.mp3`)
+    if (!res.ok) return // 404 → no hay archivo, queda el sintetizado
+    const buf = await ac.decodeAudioData(await res.arrayBuffer())
+    fileBuffers.set(kind, buf)
+  } catch {
+    /* sin archivo o formato no soportado → fallback sintetizado */
+  }
+}
+
+function playBuffer(buf: AudioBuffer) {
+  const ac = getCtx()
+  if (!ac) return
+  if (ac.state === 'suspended') ac.resume()
+  const src = ac.createBufferSource()
+  src.buffer = buf
+  const gain = ac.createGain()
+  gain.gain.value = 0.9
+  src.connect(gain).connect(ac.destination)
+  src.start()
+}
+
 export function playSound(kind: SoundKind) {
-  playNotes(SOUNDS[kind])
+  if (!soundEnabled()) return
+  const buf = fileBuffers.get(kind)
+  if (buf) {
+    playBuffer(buf) // hay archivo cargado → usalo
+    return
+  }
+  if (!fileBuffers.has(kind)) loadSoundFile(kind) // cargarlo para la próxima
+  playNotes(SOUNDS[kind]) // por ahora, sintetizado
 }
 
 // Alias histórico (lo usan NotificationSettings y alertIncoming).
