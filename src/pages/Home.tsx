@@ -206,6 +206,12 @@ export default function Home() {
       if (range.min && !Number.isNaN(min)) query = query.gte(range.column, min)
       if (range.max && !Number.isNaN(max)) query = query.lte(range.column, max)
     }
+    // Filtros multiselect (amenities): el aviso debe tener TODAS las elegidas.
+    // Contención sobre el jsonb completo ({"key":[opciones]}) → usa el índice
+    // GIN de 00034 y la contención de arrays anidados de jsonb (@>).
+    for (const [key, opts] of Object.entries(filters.multi)) {
+      if (opts.length) query = query.contains('structured_fields', { [key]: opts })
+    }
     return query
   }, [search, categoryId, onlyVerified, onlyAuctions, filters, order])
 
@@ -403,8 +409,8 @@ export default function Home() {
       return
     }
     setFilters((f) =>
-      Object.keys(f.fields).length || Object.keys(f.fieldRanges).length
-        ? { ...f, fields: {}, fieldRanges: {} }
+      Object.keys(f.fields).length || Object.keys(f.fieldRanges).length || Object.keys(f.multi).length
+        ? { ...f, fields: {}, fieldRanges: {}, multi: {} }
         : f,
     )
   }, [categoryId])

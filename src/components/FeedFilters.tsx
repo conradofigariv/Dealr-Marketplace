@@ -15,6 +15,9 @@ export interface FeedFilterValues {
   // Filtros por rango numérico (Año, Kilómetros, Superficie…). key del campo ->
   // columna generada a comparar + mín/máx (strings del input, '' = sin tope).
   fieldRanges: Record<string, { column: string; min: string; max: string }>
+  // Filtros multiselect (amenities). key del campo -> opciones elegidas; el
+  // aviso tiene que tener TODAS las elegidas (contención jsonb @>).
+  multi: Record<string, string[]>
 }
 
 export const EMPTY_FILTERS: FeedFilterValues = {
@@ -25,6 +28,7 @@ export const EMPTY_FILTERS: FeedFilterValues = {
   radiusKm: null,
   fields: {},
   fieldRanges: {},
+  multi: {},
 }
 
 export function countActiveFilters(f: FeedFilterValues): number {
@@ -35,14 +39,17 @@ export function countActiveFilters(f: FeedFilterValues): number {
     (f.conditions.length ? 1 : 0) +
     (f.radiusKm ? 1 : 0) +
     Object.keys(f.fields).length +
-    Object.values(f.fieldRanges).filter((r) => r.min || r.max).length
+    Object.values(f.fieldRanges).filter((r) => r.min || r.max).length +
+    Object.values(f.multi).filter((arr) => arr.length).length
   )
 }
 
-// Son buenos filtros los campos de opciones cerradas (select/boolean) y los
-// numéricos con rango (filterRange). El texto libre no se ofrece como filtro.
+// Son buenos filtros los campos de opciones cerradas (select/boolean/
+// multiselect) y los numéricos con rango (filterRange). El texto libre no.
 export function filterableFields(fields: FieldDef[] | undefined): FieldDef[] {
-  return (fields ?? []).filter((f) => f.type === 'select' || f.type === 'boolean' || Boolean(f.filterRange))
+  return (fields ?? []).filter(
+    (f) => f.type === 'select' || f.type === 'boolean' || f.type === 'multiselect' || Boolean(f.filterRange),
+  )
 }
 
 const RADII = [2, 5, 10, 25] as const
@@ -76,6 +83,18 @@ export default function FeedFilters({ value, onApply, ensureLocation, categoryFi
       if (value === null) delete fields[key]
       else fields[key] = value
       return { ...d, fields }
+    })
+  }
+
+  // Agrega/saca una opción de un filtro multiselect. Si queda vacío, lo limpia.
+  function toggleMulti(key: string, opt: string) {
+    setDraft((d) => {
+      const multi = { ...d.multi }
+      const current = multi[key] ?? []
+      const next = current.includes(opt) ? current.filter((o) => o !== opt) : [...current, opt]
+      if (next.length) multi[key] = next
+      else delete multi[key]
+      return { ...d, multi }
     })
   }
 
@@ -215,6 +234,18 @@ export default function FeedFilters({ value, onApply, ensureLocation, categoryFi
                 <button onClick={() => setFieldFilter(f.key, 'false')} className={chip(draft.fields[f.key] === 'false')}>
                   No
                 </button>
+              </div>
+            ) : f.type === 'multiselect' ? (
+              <div className="flex flex-wrap gap-1.5">
+                {f.options?.map((opt) => (
+                  <button
+                    key={opt}
+                    onClick={() => toggleMulti(f.key, opt)}
+                    className={chip((draft.multi[f.key] ?? []).includes(opt))}
+                  >
+                    {opt}
+                  </button>
+                ))}
               </div>
             ) : (
               <div className="flex flex-wrap gap-1.5">

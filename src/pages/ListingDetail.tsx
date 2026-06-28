@@ -523,7 +523,10 @@ export default function ListingDetail() {
       : null
   const structuredEntries = fieldDefs
     .map((def) => ({ def, value: listing.structured_fields[def.key] }))
-    .filter(({ value }) => value !== undefined && value !== null && value !== '')
+    .filter(
+      ({ value }) =>
+        value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0),
+    )
 
   return (
     <div className="pb-32">
