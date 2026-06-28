@@ -591,7 +591,7 @@ export default function Home() {
           ref={zoneButtonRef}
           onClick={() => setZoneMenuRect(zoneButtonRef.current!.getBoundingClientRect())}
           disabled={locating}
-          className="mt-1 flex items-center gap-1.5 text-xs font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
+          className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
         >
           {locating ? (
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-500/40 border-t-neutral-300" />
@@ -759,7 +759,7 @@ export default function Home() {
           rect={zoneMenuRect}
           onClose={() => setZoneMenuRect(null)}
           anchor={
-            <span className="flex h-full items-center gap-1.5 text-xs font-medium text-white">
+            <span className="flex h-full items-center gap-1.5 whitespace-nowrap text-xs font-medium text-white">
               <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
                 <circle cx="12" cy="10" r="3" />

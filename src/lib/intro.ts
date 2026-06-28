@@ -22,3 +22,18 @@ export function markIntroSeen() {
     /* ignore: queda la marca en memoria */
   }
 }
+
+// Precarga las fotos del onboarding al caché del navegador (una sola vez por
+// sesión). Se llama desde Auth: mientras el usuario inicia sesión, las imágenes
+// quedan listas y los slides post-login aparecen al instante. Si ya vio el
+// intro, no hace nada.
+let preloaded = false
+
+export function preloadOnboardingImages(urls: string[]) {
+  if (preloaded || typeof window === 'undefined' || hasSeenIntro()) return
+  preloaded = true
+  for (const url of urls) {
+    const img = new Image()
+    img.src = url
+  }
+}

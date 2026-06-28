@@ -4,6 +4,8 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../lib/authErrors'
 import { markWelcomeSeen } from '../lib/welcome'
+import { preloadOnboardingImages } from '../lib/intro'
+import { ONBOARDING_IMAGES } from '../components/IntroSlides'
 
 type Channel = 'email' | 'phone'
 
@@ -35,8 +37,11 @@ export default function Auth() {
   const [busy, setBusy] = useState(false)
 
   // Mostrada al menos una vez: la próxima apertura va directo al feed.
+  // Y precargamos las fotos del onboarding: mientras el usuario inicia sesión
+  // quedan en caché, así los slides post-login aparecen al instante.
   useEffect(() => {
     markWelcomeSeen()
+    preloadOnboardingImages(ONBOARDING_IMAGES)
   }, [])
 
   // Si la sesión aparece (tocó el magic link o login con Google), volver

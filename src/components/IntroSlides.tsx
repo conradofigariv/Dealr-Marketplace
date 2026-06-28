@@ -31,6 +31,10 @@ const SLIDES: Slide[] = [
   },
 ]
 
+// Rutas de las fotos del onboarding, para precargarlas (ej. desde Auth) y que
+// se vean al instante cuando aparecen los slides tras iniciar sesión.
+export const ONBOARDING_IMAGES = SLIDES.map((s) => s.image)
+
 const reducedMotion =
   typeof window !== 'undefined' && window.matchMedia?.('(prefers-reduced-motion: reduce)').matches
 

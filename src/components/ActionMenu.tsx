@@ -42,7 +42,9 @@ export default function ActionMenu({
           style={{
             top: rect.top,
             left: rect.left,
-            width: rect.width,
+            // Redondeamos el ancho hacia arriba: con el valor fraccionario exacto,
+            // un texto que ocupa justo el ancho se parte en dos renglones en el clon.
+            width: Math.ceil(rect.width),
             height: rect.height,
             WebkitTouchCallout: 'none',
           }}
