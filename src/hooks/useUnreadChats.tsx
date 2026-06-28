@@ -47,6 +47,21 @@ export function UnreadChatsProvider({ children }: { children: ReactNode }) {
     }
   }, [session, refresh])
 
+  // Recontar al volver a la app (foreground): mientras estuvo en segundo plano
+  // pudieron marcarse mensajes como leídos y el Realtime no entregó el evento,
+  // así el badge queda desfasado hasta volver. Recalculamos desde la base.
+  useEffect(() => {
+    function onVisible() {
+      if (document.visibilityState === 'visible') refresh()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('focus', onVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('focus', onVisible)
+    }
+  }, [refresh])
+
   return <UnreadChatsContext.Provider value={{ count, refresh }}>{children}</UnreadChatsContext.Provider>
 }
 

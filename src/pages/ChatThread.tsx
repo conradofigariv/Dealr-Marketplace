@@ -672,6 +672,9 @@ export default function ChatThread() {
         <button
           disabled={!draft.trim()}
           aria-label="Enviar"
+          // Evita que el botón le robe el foco al input al tocarlo: así el
+          // teclado NO se cierra al enviar (el submit se dispara igual por el click).
+          onMouseDown={(e) => e.preventDefault()}
           className="shrink-0 rounded-full bg-white p-3 text-black transition disabled:opacity-30"
         >
           <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
