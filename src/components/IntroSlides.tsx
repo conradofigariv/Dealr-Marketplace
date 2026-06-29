@@ -13,7 +13,7 @@ interface Slide {
 const SLIDES: Slide[] = [
   {
     title: 'Un marketplace seguro',
-    body: 'Con gente verificada. Validamos identidades para que compres y vendas con más confianza.',
+    body: 'Validamos identidades para que compres y vendas con más confianza.',
     image: '/onboarding/Comprasegura.jpg',
     fallback: 'from-emerald-900 via-neutral-950 to-black',
   },
@@ -24,8 +24,8 @@ const SLIDES: Slide[] = [
     fallback: 'from-amber-900 via-neutral-950 to-black',
   },
   {
-    title: 'Descubrí cerca tuyo',
-    body: 'Fijate qué hay de interesante cerca tuyo con el mapa.',
+    title: 'Descubrí qué hay cerca tuyo',
+    body: 'Con la función de Mapa podés ver qué podés comprar cerca de tu casa.',
     image: '/onboarding/CompraMapa.jpg',
     fallback: 'from-sky-900 via-neutral-950 to-black',
   },
@@ -68,12 +68,26 @@ export default function IntroSlides({ onDone }: { onDone: () => void }) {
     if ((i === 0 && dx > 0) || (last && dx < 0)) dx *= 0.3
     setDragX(dx)
   }
-  function onUp() {
+  // Termina el gesto. Si hubo arrastre real, hace snap al slide. Si fue un TAP
+  // (sin movimiento), navega según el lado: izquierda (33%) → anterior, derecha
+  // → siguiente (o "Empezar" en el último). Ignora taps sobre botones.
+  function endDrag(e?: React.PointerEvent) {
     if (!dragging) return
     setDragging(false)
+    const moved = Math.abs(dragX)
     const threshold = Math.max(60, width.current * 0.2)
-    if (dragX <= -threshold) go(i + 1)
-    else if (dragX >= threshold) go(i - 1)
+    if (moved >= threshold) {
+      if (dragX < 0) go(i + 1)
+      else go(i - 1)
+    } else if (e && moved < 10) {
+      const onButton = e.target instanceof HTMLElement && Boolean(e.target.closest('button'))
+      if (!onButton) {
+        const w = width.current || window.innerWidth
+        if (e.clientX < w * 0.33) go(i - 1)
+        else if (last) finish()
+        else go(i + 1)
+      }
+    }
     setDragX(0)
   }
 
@@ -83,8 +97,8 @@ export default function IntroSlides({ onDone }: { onDone: () => void }) {
       style={{ touchAction: 'pan-y' }}
       onPointerDown={onDown}
       onPointerMove={onMove}
-      onPointerUp={onUp}
-      onPointerLeave={onUp}
+      onPointerUp={endDrag}
+      onPointerLeave={() => endDrag()}
     >
       {/* Pista deslizable: las 3 pantallas en fila; se mueve con el dedo y, al
           soltar, transiciona al slide elegido (misma curva que las pantallas). */}

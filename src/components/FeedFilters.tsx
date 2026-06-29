@@ -48,7 +48,13 @@ export function countActiveFilters(f: FeedFilterValues): number {
 // multiselect) y los numéricos con rango (filterRange). El texto libre no.
 export function filterableFields(fields: FieldDef[] | undefined): FieldDef[] {
   return (fields ?? []).filter(
-    (f) => f.type === 'select' || f.type === 'boolean' || f.type === 'multiselect' || Boolean(f.filterRange),
+    (f) =>
+      f.type === 'select' ||
+      f.type === 'boolean' ||
+      f.type === 'multiselect' ||
+      Boolean(f.filterRange) ||
+      Boolean(f.filterSlider) ||
+      Boolean(f.filterMaxChips),
   )
 }
 
@@ -248,7 +254,44 @@ export default function FeedFilters({
         {(categoryFields ?? []).map((f) => (
           <div key={f.key}>
             <p className="mb-2 text-xs font-medium uppercase tracking-wider text-neutral-500">{f.label}</p>
-            {f.filterRange ? (
+            {f.filterSlider ? (
+              <div>
+                <p className="mb-1 text-sm text-neutral-300">
+                  {Number(draft.fieldRanges[f.key]?.[f.filterSlider.bound] ?? f.filterSlider.min) <= f.filterSlider.min
+                    ? 'Cualquiera'
+                    : `${f.filterSlider.bound === 'min' ? 'Desde' : 'Hasta'} ${draft.fieldRanges[f.key]?.[f.filterSlider.bound]} ${f.filterSlider.unit ?? ''}`}
+                </p>
+                <input
+                  type="range"
+                  min={f.filterSlider.min}
+                  max={f.filterSlider.max}
+                  step={f.filterSlider.step}
+                  value={Number(draft.fieldRanges[f.key]?.[f.filterSlider.bound] ?? f.filterSlider.min)}
+                  onChange={(e) => {
+                    const v = Number(e.target.value)
+                    setFieldRange(f.key, f.filterSlider!.column, f.filterSlider!.bound, v <= f.filterSlider!.min ? '' : String(v))
+                  }}
+                  className="w-full accent-white"
+                />
+              </div>
+            ) : f.filterMaxChips ? (
+              <div className="flex flex-wrap gap-1.5">
+                <button onClick={() => setFieldRange(f.key, f.filterMaxChips!.column, 'max', '')} className={chip(!draft.fieldRanges[f.key]?.max)}>
+                  Cualquiera
+                </button>
+                {f.filterMaxChips.options.map((o) => (
+                  <button
+                    key={o.value}
+                    onClick={() =>
+                      setFieldRange(f.key, f.filterMaxChips!.column, 'max', draft.fieldRanges[f.key]?.max === String(o.value) ? '' : String(o.value))
+                    }
+                    className={chip(draft.fieldRanges[f.key]?.max === String(o.value))}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            ) : f.filterRange ? (
               <div className="flex items-center gap-3">
                 <input
                   type="number"

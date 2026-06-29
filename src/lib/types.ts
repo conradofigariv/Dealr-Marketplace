@@ -34,6 +34,13 @@ export interface FieldDef {
   // columna generada de `listings` (numérica e indexada), no contra el jsonb,
   // para comparar como número y no como texto.
   filterRange?: { column: string; unit?: string }
+  // Filtro como DESLIZABLE (un solo valor). `bound` = si el valor elegido es el
+  // mínimo ('min' → "desde N") o el máximo ('max' → "hasta N"). Compara contra
+  // la columna generada. Escribe en el mismo `fieldRanges` que filterRange.
+  filterSlider?: { column: string; min: number; max: number; step: number; unit?: string; bound: 'min' | 'max' }
+  // Filtro como chips de valor MÁXIMO (ej. expensas: hasta 100mil/200mil…).
+  // Cada opción es un tope; filtra `column <= value`. También usa `fieldRanges`.
+  filterMaxChips?: { column: string; options: { label: string; value: number }[] }
   // Si está presente, el campo solo se muestra (y se exige/guarda) cuando el
   // valor del campo `key` cae dentro de `in`. Permite campos condicionados por
   // otro (ej. en Celulares: marca/modelo/almacenamiento solo aplican si
