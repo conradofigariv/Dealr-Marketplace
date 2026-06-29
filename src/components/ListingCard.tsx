@@ -60,9 +60,10 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
     <LongPressActions actions={adminActions} className="break-inside-avoid">
     <Link
       to={`/p/${listing.id}`}
-      className="relative mb-0.5 block w-full overflow-hidden bg-neutral-900 transition active:opacity-80"
+      className="mb-1 block w-full transition active:opacity-80"
       style={{ breakInside: 'avoid' }}
     >
+      <div className="relative overflow-hidden rounded-xl bg-neutral-900">
       {photo ? (
         <div className="relative">
           {!imgLoaded && <div className="img-shimmer pointer-events-none absolute inset-0" />}
@@ -84,24 +85,11 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
           </svg>
         </div>
       )}
-      {/* Barra inferior: precio + título, a lo ancho de la imagen. El título
-          se corta con elipsis donde termina la foto. */}
-      <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/90 via-black/45 to-transparent px-2.5 pb-2 pt-7">
-        <div className="flex items-center gap-1.5">
-          <span className="shrink-0 text-xs font-bold text-white">
-            {formatPrice(auction ? auctionPrice : listing.price, listing.currency)}
-          </span>
-          <span className="truncate text-xs text-white/85">{listing.title}</span>
-          {distanceKm != null && (
-            <span className="ml-auto shrink-0 text-[10px] font-medium text-white/70">{formatDistance(distanceKm)}</span>
-          )}
-        </div>
-        <p className={`mt-0.5 truncate text-[10px] ${auction && listing.auction_ends_at ? 'glow-text text-amber-400' : 'text-white/55'}`}>
-          {auction && listing.auction_ends_at
-            ? `${listing.bids_count} ${listing.bids_count === 1 ? 'oferta' : 'ofertas'} · ${timeLeftLabel(listing.auction_ends_at) === 'Finalizada' ? 'Finalizada' : 'Termina en ' + timeLeftLabel(listing.auction_ends_at)}`
-            : `${listing.location_label ? `${listing.location_label} · ` : ''}${timeAgo(listing.created_at)}`}
-        </p>
-      </div>
+      {/* Precio como "botón" sólido: se lee en cualquier foto (antes era texto
+          blanco que se perdía en fotos claras). */}
+      <span className="absolute bottom-2 left-2 rounded-full bg-black/80 px-2.5 py-1 text-xs font-bold text-white shadow-sm backdrop-blur-sm">
+        {formatPrice(auction ? auctionPrice : listing.price, listing.currency)}
+      </span>
       <div className="absolute right-2 top-2 flex flex-col items-end gap-1.5">
         {listing.photos.length > 1 && (
           <span className="rounded-full bg-black/60 p-1.5 text-white backdrop-blur-sm" title={`${listing.photos.length} fotos`}>
@@ -142,6 +130,17 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
         ) : recent ? (
           <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-bold text-black">Nuevo</span>
         ) : null}
+      </div>
+      </div>
+      {/* Debajo de la foto: título (descripción) ~20% más grande + meta. Sin
+          ubicación (location_label), como se pidió. */}
+      <div className="px-1.5 pb-1 pt-1.5">
+        <p className="line-clamp-2 text-[0.9rem] font-medium leading-snug text-neutral-100">{listing.title}</p>
+        <p className={`mt-0.5 truncate text-[11px] ${auction && listing.auction_ends_at ? 'glow-text text-amber-400' : 'text-neutral-500'}`}>
+          {auction && listing.auction_ends_at
+            ? `${listing.bids_count} ${listing.bids_count === 1 ? 'oferta' : 'ofertas'} · ${timeLeftLabel(listing.auction_ends_at) === 'Finalizada' ? 'Finalizada' : 'Termina en ' + timeLeftLabel(listing.auction_ends_at)}`
+            : `${distanceKm != null ? formatDistance(distanceKm) + ' · ' : ''}${timeAgo(listing.created_at)}`}
+        </p>
       </div>
     </Link>
     </LongPressActions>
