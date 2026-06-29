@@ -35,6 +35,30 @@ export default defineConfig({
         // Inyecta los handlers de Web Push (push + notificationclick) en el SW
         // generado, sin tener que escribir un SW propio (injectManifest).
         importScripts: ['push-listener.js'],
+        // Caché de imágenes en runtime: las fotos (Supabase Storage) y los tiles
+        // del mapa se guardan tras la 1ª carga → no se vuelven a descargar
+        // (ahorra datos) y aparecen al instante. Los paths de Storage son únicos
+        // e inmutables, así que CacheFirst es seguro (nunca sirve algo viejo).
+        runtimeCaching: [
+          {
+            urlPattern: /\/storage\/v1\/object\/public\//,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'dealr-images',
+              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+          {
+            urlPattern: /basemaps\.cartocdn\.com|cartodb-basemaps/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'dealr-map-tiles',
+              expiration: { maxEntries: 500, maxAgeSeconds: 60 * 60 * 24 * 14 },
+              cacheableResponse: { statuses: [0, 200] },
+            },
+          },
+        ],
       },
     }),
   ],
