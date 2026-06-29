@@ -6,7 +6,7 @@ import { NotificationsProvider } from './hooks/useNotifications'
 import { UnreadChatsProvider } from './hooks/useUnreadChats'
 import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import { hasSeenWelcome } from './lib/welcome'
-import { hasSeenIntro } from './lib/intro'
+import { hasSeenIntro, REPLAY_INTRO_EVENT } from './lib/intro'
 import './lib/pwaInstall' // registra el listener de instalación temprano
 import { capturePageview } from './lib/analytics'
 import BottomNav from './components/BottomNav'
@@ -92,6 +92,13 @@ function Shell() {
   useEffect(() => {
     if (session && !hasSeenIntro()) setShowIntro(true)
   }, [session])
+
+  // El moderador puede re-disparar el onboarding desde su perfil (replayIntro).
+  useEffect(() => {
+    const onReplay = () => setShowIntro(true)
+    window.addEventListener(REPLAY_INTRO_EVENT, onReplay)
+    return () => window.removeEventListener(REPLAY_INTRO_EVENT, onReplay)
+  }, [])
 
   // Primera apertura de la app: la bienvenida/login es lo primero que se ve,
   // pero no es obligatoria. Solo intercepta el feed ("/"); los deep links a

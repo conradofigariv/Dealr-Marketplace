@@ -23,6 +23,21 @@ export function markIntroSeen() {
   }
 }
 
+// Vuelve a mostrar el onboarding de funciones (para moderadores: previsualizar
+// la experiencia de un usuario nuevo). Limpia el flag y avisa a App con un
+// evento para mostrarlo sin recargar.
+export const REPLAY_INTRO_EVENT = 'dealr:replay-intro'
+
+export function replayIntro() {
+  seenInMemory = false
+  try {
+    localStorage.removeItem(KEY)
+  } catch {
+    /* ignore */
+  }
+  if (typeof window !== 'undefined') window.dispatchEvent(new Event(REPLAY_INTRO_EVENT))
+}
+
 // Precarga las fotos del onboarding al caché del navegador (una sola vez por
 // sesión). Se llama desde Auth: mientras el usuario inicia sesión, las imágenes
 // quedan listas y los slides post-login aparecen al instante. Si ya vio el

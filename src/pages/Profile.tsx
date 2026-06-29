@@ -15,6 +15,7 @@ import InstallButton from '../components/InstallButton'
 import SupportModal from '../components/SupportModal'
 import { useToast } from '../components/Toast'
 import { checkForUpdate } from '../lib/swUpdate'
+import { replayIntro } from '../lib/intro'
 import { invalidateFeedCache } from './Home'
 
 const statusLabels: Record<Listing['status'], string> = {
@@ -585,6 +586,21 @@ export default function Profile() {
                 </svg>
               )}
             </button>
+            {profile.is_admin && (
+              <button
+                onClick={() => {
+                  setSettingsOpen(false)
+                  replayIntro()
+                }}
+                className="flex w-full items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 text-left ring-1 ring-amber-500/30 transition hover:ring-amber-500/50"
+              >
+                <span className="text-amber-400">Ver onboarding (moderador)</span>
+                <svg viewBox="0 0 24 24" className="h-4 w-4 text-amber-400/70" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z" />
+                  <circle cx="12" cy="12" r="3" />
+                </svg>
+              </button>
+            )}
             <button
               onClick={() => {
                 setSettingsOpen(false)
