@@ -45,7 +45,13 @@ export default function LocationMap({ point, seed }: Props) {
       map.remove()
       mapRef.current = null
     }
-  }, [point, seed])
+    // OJO: dependemos de PRIMITIVOS (lat/lng/seed), no del objeto `point`. El
+    // padre pasa `point={{lat,lng}}` inline → objeto nuevo en cada render; con
+    // `[point]` el efecto recreaba el mapa en cada render (ListingDetail
+    // re-renderiza cada segundo por el countdown) → titilaba. Con primitivos
+    // solo se recrea si cambian las coordenadas de verdad.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [point.lat, point.lng, seed])
 
   return (
     // isolate: crea un contexto de apilamiento propio para que los z-index
