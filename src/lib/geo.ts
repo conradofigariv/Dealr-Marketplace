@@ -48,18 +48,20 @@ function hashSeed(seed: string): number {
   return h >>> 0
 }
 
-/** Radio del círculo aproximado que se dibuja en el detalle (metros). */
-export const APPROX_RADIUS_M = 700
+/** Radio del círculo aproximado que se dibuja en el detalle (metros).
+ *  Achicado ~30% (de 700 a 490 m) para mejor precisión sin exponer el punto. */
+export const APPROX_RADIUS_M = 490
 
 /**
- * Centro corrido de forma determinística (150–400 m) a partir del id de la
+ * Centro corrido de forma determinística (~105–280 m) a partir del id de la
  * publicación. El punto real queda DENTRO del círculo pero no es su centro,
- * así no se expone la ubicación exacta.
+ * así no se expone la ubicación exacta. El corrimiento se achicó junto con el
+ * radio (30% menos) para mantener la proporción de privacidad.
  */
 export function approxCenter(point: LatLng, seed: string): LatLng {
   const h = hashSeed(seed)
   const angle = (h % 360) * (Math.PI / 180)
-  const distKm = 0.15 + ((h >> 9) % 100) / 100 * 0.25 // 0,15–0,40 km
+  const distKm = 0.105 + ((h >> 9) % 100) / 100 * 0.175 // 0,105–0,28 km
   const dLat = (distKm / 111) * Math.cos(angle)
   const dLng = (distKm / (111 * Math.cos(toRad(point.lat)))) * Math.sin(angle)
   return { lat: point.lat + dLat, lng: point.lng + dLng }
@@ -120,10 +122,15 @@ export async function geocodeSearch(query: string, near?: LatLng | null): Promis
     }>
     const results = data.map((d) => {
       const a = d.address ?? {}
+      const road = a.road || a.pedestrian || a.footway || a.residential
+      const house = a.house_number
       const local = a.suburb || a.neighbourhood || a.city_district || a.town || a.village || a.city || a.county
       const region = a.state || a.province
-      const parts = [local, region].filter(Boolean)
-      const unique = parts.filter((v, i) => parts.indexOf(v) === i)
+      // Si Nominatim devolvió una CALLE (con o sin número), mostramos la
+      // dirección (ej. "Crisol 51, Nueva Córdoba") para que el vendedor vea su
+      // ubicación exacta en la lista. El lat/lng ya viene a nivel dirección.
+      const parts = road ? [`${road}${house ? ' ' + house : ''}`, local, region] : [local, region]
+      const unique = parts.filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i)
       return {
         lat: Number(d.lat),
         lng: Number(d.lon),

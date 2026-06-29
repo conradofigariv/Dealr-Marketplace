@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
 import { TILE_URL, TILE_ATTRIBUTION } from './leafletSetup'
 import { CORDOBA, reverseGeocode, requestBuyerLocation, geocodeSearch, getCachedBuyerLocation, type LatLng, type GeocodeResult } from '../lib/geo'
@@ -110,8 +110,7 @@ export default function LocationPicker({ value, onChange }: Props) {
     if (loc) emit(loc)
   }
 
-  async function search(e: FormEvent) {
-    e.preventDefault()
+  async function runSearch() {
     const q = query.trim()
     if (q.length < 3) return
     // Búsqueda inmediata (sin esperar el debounce) al apretar Enter/Buscar.
@@ -137,7 +136,11 @@ export default function LocationPicker({ value, onChange }: Props) {
 
   return (
     <div>
-      <form onSubmit={search} className="relative mb-2">
+      {/* OJO: NO usar <form> acá. Este componente se monta dentro del <form> del
+          wizard de Publicar, y un form anidado es HTML inválido → el submit de
+          "Buscar"/Enter terminaba enviando el form de afuera y saltaba de paso.
+          Por eso "Buscar" es type=button y Enter hace preventDefault + busca. */}
+      <div className="relative mb-2">
         <div className="flex items-center gap-2 rounded-full bg-neutral-900 px-4 py-2.5 ring-1 ring-neutral-800 focus-within:ring-neutral-600">
           <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="11" cy="11" r="7" />
@@ -146,6 +149,12 @@ export default function LocationPicker({ value, onChange }: Props) {
           <input
             value={query}
             onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault() // no enviar el form del wizard
+                runSearch()
+              }
+            }}
             placeholder="Buscar ciudad o dirección…"
             className="min-w-0 flex-1 bg-transparent text-sm text-white placeholder-neutral-500 outline-none"
           />
@@ -164,7 +173,7 @@ export default function LocationPicker({ value, onChange }: Props) {
               </svg>
             </button>
           )}
-          <button type="submit" disabled={searching} className="shrink-0 text-sm font-semibold text-white disabled:opacity-40">
+          <button type="button" onClick={runSearch} disabled={searching} className="shrink-0 text-sm font-semibold text-white disabled:opacity-40">
             {searching ? '…' : 'Buscar'}
           </button>
         </div>
@@ -187,7 +196,7 @@ export default function LocationPicker({ value, onChange }: Props) {
             ))}
           </ul>
         )}
-      </form>
+      </div>
 
       <div className="relative isolate overflow-hidden rounded-2xl ring-1 ring-neutral-800">
         <div ref={containerRef} className="h-56 w-full bg-neutral-900" />
