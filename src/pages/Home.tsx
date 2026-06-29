@@ -750,8 +750,8 @@ export default function Home() {
       ) : (
         /* Masonry edge-to-edge con separación mínima, estilo Savee */
         <div className="columns-2 gap-0.5">
-          {withDistance.map(({ listing, distanceKm }) => (
-            <ListingCard key={listing.id} listing={listing} distanceKm={distanceKm} />
+          {withDistance.map(({ listing, distanceKm }, i) => (
+            <ListingCard key={listing.id} listing={listing} distanceKm={distanceKm} index={i} />
           ))}
         </div>
       )}

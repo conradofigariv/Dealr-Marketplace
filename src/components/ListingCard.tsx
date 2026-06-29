@@ -13,7 +13,15 @@ import type { MenuAction } from './ActionMenu'
 import { invalidateFeedCache } from '../pages/Home'
 
 // Card estilo Savee: la foto es todo. Solo un precio discreto encima.
-export default function ListingCard({ listing, distanceKm }: { listing: Listing; distanceKm?: number }) {
+export default function ListingCard({
+  listing,
+  distanceKm,
+  index = 0,
+}: {
+  listing: Listing
+  distanceKm?: number
+  index?: number
+}) {
   const photo = listing.photos[0]
   const dropPct = priceDropPct(listing)
   const recent = isRecentlyPosted(listing.created_at)
@@ -60,8 +68,10 @@ export default function ListingCard({ listing, distanceKm }: { listing: Listing;
     <LongPressActions actions={adminActions} className="break-inside-avoid">
     <Link
       to={`/p/${listing.id}`}
-      className="mb-1 block w-full transition active:opacity-80"
-      style={{ breakInside: 'avoid' }}
+      className="reveal-card mb-1 block w-full transition active:opacity-80"
+      // Cascada: el delay crece con el índice pero se topa, para que las páginas
+      // siguientes del scroll infinito no esperen de más.
+      style={{ breakInside: 'avoid', animationDelay: `${Math.min(index, 10) * 0.04}s` }}
     >
       <div className="relative overflow-hidden rounded-xl bg-neutral-900">
       {photo ? (

@@ -337,6 +337,23 @@ textarea {
   animation: glowBadge 2s ease-in-out infinite;
 }
 
+/* Aparición escalonada de contenido (tarjetas del feed, ítems de listas): cada
+   elemento entra con un fade + leve desliz hacia arriba; el delay se setea
+   inline por índice para que aparezcan en orden de lectura (cascada). */
+@keyframes revealIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.reveal-card {
+  animation: revealIn 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-push,
   .page-pop,
@@ -347,6 +364,7 @@ textarea {
   .img-shimmer,
   .glow-text,
   .glow-badge::after,
+  .reveal-card,
   .ctx-pop-in,
   .update-prompt-in {
     animation: none;
