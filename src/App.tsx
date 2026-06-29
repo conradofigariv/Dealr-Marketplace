@@ -100,6 +100,34 @@ function Shell() {
     return () => window.removeEventListener(REPLAY_INTRO_EVENT, onReplay)
   }, [])
 
+  // Precarga los chunks de las páginas en segundo plano (cuando la app está
+  // ociosa). Sin esto, la PRIMERA navegación a cada página baja su chunk y
+  // Suspense muestra una pantalla negra que corta la animación de slide
+  // ("freeze"). Precargados, navegar es instantáneo y la transición fluye.
+  useEffect(() => {
+    const preload = () => {
+      void import('./pages/ListingDetail')
+      void import('./pages/ChatThread')
+      void import('./pages/Chats')
+      void import('./pages/Profile')
+      void import('./pages/Explorar')
+      void import('./pages/Notifications')
+      void import('./pages/Saved')
+      void import('./pages/Publish')
+      void import('./pages/MapView')
+      void import('./pages/PublicProfile')
+      void import('./pages/Auth')
+    }
+    const ric = (window as unknown as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => number })
+      .requestIdleCallback
+    if (ric) {
+      ric(preload, { timeout: 3000 })
+      return
+    }
+    const t = setTimeout(preload, 1500)
+    return () => clearTimeout(t)
+  }, [])
+
   // Primera apertura de la app: la bienvenida/login es lo primero que se ve,
   // pero no es obligatoria. Solo intercepta el feed ("/"); los deep links a
   // una publicación compartida se abren sin fricción. No espera a `loading`
