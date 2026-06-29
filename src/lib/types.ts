@@ -84,6 +84,7 @@ export interface Listing {
   bids_count: number
   auction_closed: boolean
   auction_cascade: boolean
+  auction_min_increment: number
   buyer_confirmed_pickup: boolean
   seller_confirmed_pickup: boolean
   seller_reported_no_show: boolean

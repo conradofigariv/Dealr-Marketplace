@@ -56,6 +56,7 @@ export default function Publish() {
   const [isAuction, setIsAuction] = useState(false)
   const [auctionDays, setAuctionDays] = useState(3)
   const [auctionCascade, setAuctionCascade] = useState(false)
+  const [auctionIncrement, setAuctionIncrement] = useState(1000)
   const [error, setError] = useState('')
   const [busy, setBusy] = useState(false)
   const [publishedId, setPublishedId] = useState<string | null>(null)
@@ -263,6 +264,7 @@ export default function Publish() {
               is_auction: true,
               auction_ends_at: new Date(Date.now() + auctionDays * 86400000).toISOString(),
               auction_cascade: auctionCascade,
+              auction_min_increment: auctionIncrement,
             }
           : {}
         const { data, error: err } = await supabase
@@ -353,6 +355,7 @@ export default function Publish() {
               setIsAuction(false)
               setAuctionDays(3)
               setAuctionCascade(false)
+              setAuctionIncrement(1000)
               setError('')
               setStep(1)
             }}
@@ -900,6 +903,22 @@ export default function Publish() {
                         </button>
                       ))}
                     </div>
+                  </div>
+                  <div>
+                    <label className={labelClass}>Salto mínimo de oferta</label>
+                    <div className="flex flex-wrap gap-1.5">
+                      {[500, 1000, 5000, 10000].map((inc) => (
+                        <button
+                          key={inc}
+                          type="button"
+                          onClick={() => setAuctionIncrement(inc)}
+                          className={`chip ${auctionIncrement === inc ? 'chip-on' : 'chip-off'}`}
+                        >
+                          ${inc.toLocaleString('es-AR')}
+                        </button>
+                      ))}
+                    </div>
+                    <p className="mt-1.5 text-xs text-neutral-500">Cada oferta sube de a este monto como mínimo.</p>
                   </div>
                   <label className="flex items-start gap-3">
                     <input

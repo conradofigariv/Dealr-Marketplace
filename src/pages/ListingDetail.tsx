@@ -516,6 +516,10 @@ export default function ListingDetail() {
       : null
   const urgent = secondsLeft != null && secondsLeft <= 60 // último minuto
   const critical = secondsLeft != null && secondsLeft <= 10 // últimos 10s
+  // Oferta mínima siguiente: precio inicial si no hay ofertas; si hay, la actual
+  // + el salto mínimo configurado por el vendedor.
+  const minNextBid =
+    listing.current_bid != null ? listing.current_bid + (listing.auction_min_increment || 1) : listing.price
   const buyerLoc = getCachedBuyerLocation()
   const distanceKm =
     listing.lat != null && listing.lng != null && buyerLoc
@@ -648,6 +652,12 @@ export default function ListingDetail() {
                   </span>
                 )}
               </div>
+              {!auctionEnded && (
+                <p className="mt-1.5 text-xs text-neutral-500">
+                  Próxima oferta mínima: <span className="font-semibold text-neutral-300">{formatPrice(minNextBid, listing.currency)}</span>
+                  {listing.auction_min_increment > 0 && ` · salto de ${formatPrice(listing.auction_min_increment, listing.currency)}`}
+                </p>
+              )}
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -975,9 +985,8 @@ export default function ListingDetail() {
                 <button
                   type="button"
                   onClick={() => {
-                    // Re-puja rápida: prellena con la oferta mínima para superar.
-                    const min = listing.current_bid != null ? Math.floor(listing.current_bid + 1) : listing.price
-                    setBidAmount(String(min))
+                    // Re-puja rápida: prellena con la oferta mínima (actual + salto).
+                    setBidAmount(String(minNextBid))
                     setOutbid(false)
                     haptic('tap')
                   }}
@@ -996,7 +1005,7 @@ export default function ListingDetail() {
                     required
                     value={bidAmount}
                     onChange={(e) => setBidAmount(e.target.value)}
-                    placeholder={String(listing.current_bid != null ? Math.floor(listing.current_bid + 1) : listing.price)}
+                    placeholder={String(minNextBid)}
                     className="w-full bg-transparent py-3 text-sm font-semibold text-white outline-none"
                   />
                 </div>
