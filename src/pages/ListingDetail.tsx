@@ -678,13 +678,25 @@ export default function ListingDetail() {
 
         {structuredEntries.length > 0 && (
           <div className="surface p-4">
-            <h2 className="mb-3 text-sm font-semibold text-white">Detalles</h2>
-            <dl className="space-y-2">
+            <h2 className="mb-1 text-sm font-semibold text-white">Detalles</h2>
+            <dl className="divide-y divide-neutral-800/70">
               {structuredEntries.map(({ def, value }) => (
-                <div key={def.key} className="flex justify-between gap-4 text-sm">
-                  <dt className="text-neutral-500">{def.label}</dt>
-                  <dd className="text-right font-medium text-neutral-200">
-                    {def.type === 'boolean' ? (value ? 'Sí' : 'No') : Array.isArray(value) ? value.join(', ') : String(value)}
+                <div key={def.key} className="flex items-start gap-3 py-2.5 text-sm">
+                  <dt className="w-28 shrink-0 pt-0.5 text-neutral-500">{def.label}</dt>
+                  <dd className="min-w-0 flex-1 font-medium text-neutral-100">
+                    {def.type === 'boolean' ? (
+                      <span className={value ? 'text-emerald-400' : 'text-neutral-400'}>{value ? 'Sí' : 'No'}</span>
+                    ) : Array.isArray(value) ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {value.map((v) => (
+                          <span key={String(v)} className="rounded-full bg-neutral-800 px-2.5 py-0.5 text-xs text-neutral-200">
+                            {String(v)}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      String(value)
+                    )}
                   </dd>
                 </div>
               ))}
