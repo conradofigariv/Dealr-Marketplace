@@ -639,7 +639,7 @@ export default function Home() {
       <div className="relative">
         <div
           ref={catScrollRef}
-          className="no-scrollbar flex touch-pan-x select-none items-center gap-5 overflow-x-auto px-4 py-3 pr-24 md:cursor-grab md:active:cursor-grabbing"
+          className="no-scrollbar flex touch-pan-x select-none items-center gap-5 overflow-x-auto py-3 pl-24 pr-4 md:cursor-grab md:active:cursor-grabbing"
         >
           <button
             onClick={() => {
@@ -677,10 +677,10 @@ export default function Home() {
               </button>
             ))}
         </div>
-        {/* "Filtros" fijo a la derecha, con degradado para que las categorías
+        {/* "Filtros" fijo a la izquierda, con degradado para que las categorías
             pasen por detrás. pointer-events-none en el contenedor para no
             bloquear el scroll; solo el botón recibe toques. */}
-        <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center bg-gradient-to-l from-black via-black to-transparent pl-10 pr-4">
+        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center bg-gradient-to-r from-black via-black to-transparent pl-4 pr-10">
           <button
             onClick={() => setFiltersOpen(true)}
             className={`pointer-events-auto flex shrink-0 items-center gap-1 text-sm font-semibold transition ${activeFilters ? 'text-white' : 'text-neutral-400'}`}

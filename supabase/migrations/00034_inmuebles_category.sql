@@ -65,9 +65,7 @@ update public.categories set required_fields = '[
   {"key": "antiguedad", "label": "Antigüedad", "type": "select", "required": false, "options": ["A estrenar", "En construcción (pozo)", "Hasta 5 años", "Entre 5 y 10 años", "Entre 10 y 20 años", "Entre 20 y 50 años", "Más de 50 años"]},
   {"key": "expensas", "label": "Expensas aprox. ($)", "type": "text", "required": false, "filterRange": {"column": "inm_expensas", "unit": "$"}},
   {"key": "apto_credito", "label": "Apto crédito hipotecario", "type": "boolean", "required": false},
-  {"key": "orientacion", "label": "Orientación", "type": "select", "required": false, "options": ["Norte", "Sur", "Este", "Oeste", "Noreste", "Noroeste", "Sureste", "Suroeste"]},
   {"key": "disposicion", "label": "Disposición", "type": "select", "required": false, "options": ["Frente", "Contrafrente", "Interno", "Lateral"]},
-  {"key": "pisos_edificio", "label": "Pisos del edificio", "type": "text", "required": false, "filterRange": {"column": "inm_pisos"}},
   {"key": "caracteristicas", "label": "Características", "type": "multiselect", "required": false, "options": ["Pileta", "Balcón", "Patio", "Jardín", "Parrilla", "Ascensor", "Baulera", "Gimnasio", "SUM", "Lavadero", "Aire acondicionado", "Amoblado", "Seguridad 24h", "Accesibilidad", "Acepta mascotas"]}
 ]'::jsonb
 where slug = 'alquileres';
