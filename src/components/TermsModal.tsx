@@ -193,6 +193,7 @@ export default function TermsModal({
 }) {
   const [open, setOpen] = useState<number | null>(0)
   const [accepting, setAccepting] = useState(false)
+  const [confirmedAge, setConfirmedAge] = useState(false)
 
   async function accept() {
     setAccepting(true)
@@ -265,24 +266,35 @@ export default function TermsModal({
         <p className="mt-5 text-center text-sm font-semibold text-neutral-400">Dealr — El mercado sin garcas</p>
       </div>
 
-      {/* Footer fijo con las dos acciones */}
-      <div className="flex shrink-0 gap-3 border-t border-neutral-800 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
-        <button
-          onClick={onReject}
-          disabled={accepting}
-          className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700 transition active:bg-neutral-900 disabled:opacity-50"
-        >
-          Rechazar
-        </button>
-        <button
-          onClick={accept}
-          disabled={accepting}
-          className="flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-white disabled:opacity-70"
-          style={{ backgroundColor: '#10B981' }}
-        >
-          {accepting && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
-          {accepting ? 'Guardando…' : 'Acepto los Términos'}
-        </button>
+      {/* Footer fijo: confirmación de edad + las dos acciones */}
+      <div className="shrink-0 border-t border-neutral-800 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
+        <label className="mb-3 flex items-start gap-3">
+          <input
+            type="checkbox"
+            checked={confirmedAge}
+            onChange={(e) => setConfirmedAge(e.target.checked)}
+            className="mt-0.5 h-4 w-4 shrink-0 accent-emerald-500"
+          />
+          <span className="text-sm text-neutral-300">Confirmo que soy mayor de 18 años.</span>
+        </label>
+        <div className="flex gap-3">
+          <button
+            onClick={onReject}
+            disabled={accepting}
+            className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700 transition active:bg-neutral-900 disabled:opacity-50"
+          >
+            Rechazar
+          </button>
+          <button
+            onClick={accept}
+            disabled={accepting || !confirmedAge}
+            className="flex flex-1 items-center justify-center gap-2 rounded-full py-3 text-sm font-semibold text-white transition disabled:opacity-40"
+            style={{ backgroundColor: '#10B981' }}
+          >
+            {accepting && <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" />}
+            {accepting ? 'Guardando…' : 'Acepto los Términos'}
+          </button>
+        </div>
       </div>
     </div>
   )

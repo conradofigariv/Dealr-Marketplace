@@ -317,11 +317,25 @@ export default function Profile() {
         )}
         {nameError && <p className="mt-2 text-xs text-red-400">{nameError}</p>}
         <div className="mt-4 flex justify-center">
-          <SellerBadges profile={profile} />
+          {profile.account_restricted ? (
+            <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs font-bold text-red-400 ring-1 ring-red-500/30">
+              Cuenta restringida
+            </span>
+          ) : (
+            <SellerBadges profile={profile} />
+          )}
         </div>
       </header>
 
       <div className="space-y-6 px-5">
+        {profile.account_restricted && (
+          <div className="rounded-2xl bg-red-500/10 px-4 py-3 ring-1 ring-red-500/30">
+            <p className="text-sm font-semibold text-red-400">Tu cuenta tiene funciones restringidas.</p>
+            <p className="mt-0.5 text-xs text-red-400/80">
+              Dealr es para mayores de 18 años. No podés publicar, ofertar ni iniciar compras.
+            </p>
+          </div>
+        )}
         {/* Reputación */}
         <div className="surface p-5">
           <h2 className="mb-4 text-sm font-semibold text-white">Reputación</h2>

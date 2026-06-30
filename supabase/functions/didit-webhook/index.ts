@@ -58,13 +58,13 @@ Deno.serve(async (req) => {
 
   if (!userId || !sessionId) return new Response('Missing vendor_data or session_id', { status: 400 })
 
-  // Solo el estado final aprobado otorga el badge. Si falla o queda en
-  // revisión, el perfil simplemente no lo muestra: no se bloquea nada.
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+  )
+
+  // Solo el estado final aprobado otorga el badge.
   if (status === 'Approved') {
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
-    )
     const { error } = await supabase
       .from('profiles')
       .update({
@@ -74,6 +74,31 @@ Deno.serve(async (req) => {
       })
       .eq('id', userId)
     if (error) return new Response(`DB error: ${error.message}`, { status: 500 })
+  } else {
+    // Rechazo / no aprobado. Didit NO aprueba a menores de 18 (valida la edad él
+    // mismo; nosotros NO guardamos la fecha de nacimiento → privacidad). Si el
+    // rechazo es por EDAD, restringimos la cuenta. Logueamos el payload para
+    // afinar la detección con un rechazo real (los nombres de campo dependen de
+    // la config de Didit).
+    console.log('Didit no-approved payload:', rawBody)
+    const blob = rawBody.toLowerCase()
+    const ageDecline =
+      blob.includes('underage') ||
+      blob.includes('under age') ||
+      blob.includes('under_age') ||
+      blob.includes('menor de edad') ||
+      blob.includes('age_not_met') ||
+      blob.includes('below_minimum_age') ||
+      blob.includes('minimum age') ||
+      blob.includes('age requirement') ||
+      blob.includes('requisito de edad')
+    if (ageDecline) {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ is_minor: true, account_restricted: true })
+        .eq('id', userId)
+      if (error) return new Response(`DB error: ${error.message}`, { status: 500 })
+    }
   }
 
   return new Response(JSON.stringify({ ok: true }), {

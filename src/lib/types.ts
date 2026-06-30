@@ -21,6 +21,8 @@ export interface Profile {
   auction_strikes: number
   auction_banned_until: string | null
   terms_accepted_at: string | null
+  is_minor: boolean
+  account_restricted: boolean
   created_at: string
 }
 

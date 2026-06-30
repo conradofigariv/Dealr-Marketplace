@@ -318,6 +318,27 @@ export default function Publish() {
 
   const labelClass = 'mb-2 block text-xs font-medium uppercase tracking-wider text-neutral-500'
 
+  // Cuenta restringida (menor de edad según Didit): no puede publicar.
+  if (profile?.account_restricted) {
+    return (
+      <div className="flex min-h-dvh flex-col items-center justify-center gap-3 px-10 text-center">
+        <div className="flex h-14 w-14 items-center justify-center rounded-full bg-red-500/15">
+          <svg viewBox="0 0 24 24" className="h-7 w-7 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="12" cy="12" r="10" />
+            <path d="M4.9 4.9 19 19" />
+          </svg>
+        </div>
+        <p className="text-lg font-bold text-white">No podés publicar productos</p>
+        <p className="text-sm text-neutral-400">
+          Tu cuenta tiene funciones restringidas. Dealr es para mayores de 18 años.
+        </p>
+        <Link to="/" className="mt-2 text-sm font-semibold text-white">
+          Volver al inicio
+        </Link>
+      </div>
+    )
+  }
+
   if (publishedId) {
     return (
       <div className="flex min-h-dvh flex-col justify-center px-8 pb-28 text-center">

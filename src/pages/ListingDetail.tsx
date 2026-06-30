@@ -279,6 +279,7 @@ export default function ListingDetail() {
   async function placeBid(e: FormEvent) {
     e.preventDefault()
     if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
+    if (profile?.account_restricted) return toast('Tu cuenta tiene funciones restringidas. Dealr es para mayores de 18 años.')
     const amount = Number(bidAmount)
     // Optimista: marco mi puja ANTES del await. Así, cuando llegue por Realtime
     // el eco de mi propia oferta, myBidRef ya vale `amount` y no se confunde con
@@ -389,6 +390,7 @@ export default function ListingDetail() {
   async function sendOffer(e: FormEvent) {
     e.preventDefault()
     if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
+    if (profile?.account_restricted) return toast('Tu cuenta tiene funciones restringidas. Dealr es para mayores de 18 años.')
     setBusy(true)
     setOfferError('')
     const { error } = await supabase.from('offers').insert({
@@ -407,6 +409,7 @@ export default function ListingDetail() {
 
   async function openChat() {
     if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
+    if (profile?.account_restricted) return toast('Tu cuenta tiene funciones restringidas. Dealr es para mayores de 18 años.')
     if (!listing) return
     const { data: existing } = await supabase
       .from('conversations')
@@ -1022,7 +1025,11 @@ export default function ListingDetail() {
       {!isOwner && !auction && listing.status === 'active' && (
         <div className="fixed bottom-0 left-1/2 z-20 flex w-full max-w-lg -translate-x-1/2 gap-3 bg-gradient-to-t from-black via-black/95 to-transparent px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-8">
           <button
-            onClick={() => setOfferOpen(true)}
+            onClick={() =>
+              profile?.account_restricted
+                ? toast('Tu cuenta tiene funciones restringidas. Dealr es para mayores de 18 años.')
+                : setOfferOpen(true)
+            }
             className="flex-1 rounded-full border border-neutral-600 py-3 text-sm font-semibold text-white"
           >
             Hacer oferta
