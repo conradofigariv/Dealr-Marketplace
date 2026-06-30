@@ -537,7 +537,7 @@ do $$
 declare
   common jsonb := '[
     {"key": "zona", "label": "Zona", "type": "text", "required": true},
-    {"key": "formas_de_pago", "label": "Formas de pago", "type": "multiselect", "required": true, "options": ["Efectivo", "Transferencia", "Mercado Pago"]},
+    {"key": "formas_de_pago", "label": "Formas de pago", "type": "multiselect", "required": true, "options": ["Efectivo", "Transferencia", "Tarjeta"]},
     {"key": "acepta_envio", "label": "Acepta envío", "type": "boolean", "required": true},
     {"key": "motivo_venta", "label": "Motivo de venta", "type": "text", "required": false}
   ]'::jsonb;

@@ -24,6 +24,8 @@ export default function LocationPicker({ value, onChange }: Props) {
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<GeocodeResult[]>([])
   const [searching, setSearching] = useState(false)
+  const [locating, setLocating] = useState(false)
+  const [locError, setLocError] = useState('')
   // Última etiqueta elegida: evita que el autocompletado vuelva a buscar el
   // texto que acabamos de fijar al elegir un resultado.
   const pickedRef = useRef('')
@@ -106,8 +108,26 @@ export default function LocationPicker({ value, onChange }: Props) {
   }, [query])
 
   async function useMyLocation() {
+    if (locating) return
+    setLocating(true)
+    setLocError('')
     const loc = await requestBuyerLocation()
-    if (loc) emit(loc)
+    if (!loc) {
+      setLocating(false)
+      setLocError('No pudimos obtener tu ubicación. Revisá los permisos de ubicación del navegador.')
+      return
+    }
+    // Movemos el mapa al toque y luego buscamos la dirección para completarla.
+    mapRef.current?.setView([loc.lat, loc.lng], 16)
+    markerRef.current?.setLatLng([loc.lat, loc.lng])
+    onChangeRef.current(loc)
+    const label = await reverseGeocode(loc)
+    if (label) {
+      onChangeRef.current(loc, label)
+      pickedRef.current = label
+      setQuery(label)
+    }
+    setLocating(false)
   }
 
   async function runSearch() {
@@ -203,18 +223,24 @@ export default function LocationPicker({ value, onChange }: Props) {
         <button
           type="button"
           onClick={useMyLocation}
-          className="absolute right-3 top-3 z-[400] flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm"
+          disabled={locating}
+          className="absolute right-3 top-3 z-[400] flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm disabled:opacity-80"
         >
-          <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <circle cx="12" cy="12" r="3" />
-            <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
-          </svg>
-          Usar mi ubicación
+          {locating ? (
+            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
+          ) : (
+            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <circle cx="12" cy="12" r="3" />
+              <path d="M12 2v3M12 19v3M2 12h3M19 12h3" />
+            </svg>
+          )}
+          {locating ? 'Buscando…' : 'Usar mi ubicación'}
         </button>
         <p className="pointer-events-none absolute bottom-2 left-3 z-[400] text-[11px] text-white/70 drop-shadow">
           Tocá el mapa o arrastrá el pin para ajustar
         </p>
       </div>
+      {locError && <p className="mt-2 text-xs text-amber-400">{locError}</p>}
     </div>
   )
 }

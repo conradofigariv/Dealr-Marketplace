@@ -354,6 +354,21 @@ textarea {
   animation: revealIn 0.42s cubic-bezier(0.22, 0.61, 0.36, 1) both;
 }
 
+/* Apertura suave del visor de fotos a pantalla completa (fade + leve zoom). */
+@keyframes photoViewerIn {
+  from {
+    opacity: 0;
+    transform: scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+.photo-viewer-in {
+  animation: photoViewerIn 0.26s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .page-push,
   .page-pop,
@@ -365,6 +380,7 @@ textarea {
   .glow-text,
   .glow-badge::after,
   .reveal-card,
+  .photo-viewer-in,
   .ctx-pop-in,
   .update-prompt-in {
     animation: none;

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type MouseEvent } from 'react'
 import { photoUrl } from '../lib/supabase'
 
 // Visor de fotos a pantalla completa: swipe horizontal entre fotos (snap) y
@@ -28,16 +28,33 @@ export default function PhotoViewer({
     }
   }, [index])
 
-  function onTap(i: number) {
-    const now = Date.now()
-    if (now - lastTap.current < 280) {
-      setZoomed((z) => (z === i ? null : i))
+  // Pasa a la foto anterior/siguiente (con scroll suave; el snap del scroller
+  // termina de acomodar). Lo usan los toques en los costados.
+  function go(dir: number) {
+    const el = scrollerRef.current
+    if (!el) return
+    const next = Math.max(0, Math.min(photos.length - 1, current + dir))
+    el.scrollTo({ left: next * el.clientWidth, behavior: 'smooth' })
+  }
+
+  function onPhotoTap(e: MouseEvent, i: number) {
+    // Si está con zoom, un tap lo saca.
+    if (zoomed !== null) {
+      setZoomed(null)
+      return
     }
+    // Tocar el costado izquierdo/derecho pasa de foto; el centro queda para el
+    // doble-tap (zoom).
+    const w = window.innerWidth
+    if (photos.length > 1 && e.clientX < w * 0.28) return go(-1)
+    if (photos.length > 1 && e.clientX > w * 0.72) return go(1)
+    const now = Date.now()
+    if (now - lastTap.current < 280) setZoomed(i)
     lastTap.current = now
   }
 
   return (
-    <div className="fixed inset-0 z-[60] bg-black">
+    <div className="photo-viewer-in fixed inset-0 z-[60] bg-black">
       <button
         onClick={onClose}
         aria-label="Cerrar"
@@ -67,7 +84,7 @@ export default function PhotoViewer({
             <img
               src={photoUrl(p)}
               alt={`Foto ${i + 1}`}
-              onClick={() => onTap(i)}
+              onClick={(e) => onPhotoTap(e, i)}
               className={`max-h-full max-w-full object-contain transition-transform duration-300 ${
                 zoomed === i ? 'scale-[2.2]' : 'scale-100'
               }`}
@@ -78,7 +95,7 @@ export default function PhotoViewer({
 
       {photos.length > 1 && (
         <p className="absolute inset-x-0 bottom-[max(1rem,env(safe-area-inset-bottom))] text-center text-xs text-white/60">
-          Deslizá para ver más · doble tap para zoom
+          Deslizá o tocá los costados · doble tap para zoom
         </p>
       )}
     </div>
