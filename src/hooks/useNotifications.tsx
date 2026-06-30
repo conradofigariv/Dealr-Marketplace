@@ -33,9 +33,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     // PostgREST no encuentra la FK y la consulta ENTERA falla → caería en cero
     // notificaciones. Por eso, si el embed da error, reintentamos sin él (el
     // panel funciona igual, solo sin el avatar del que la disparó).
+    // Los mensajes NO van en la campanita: ya tienen su propio contador en la
+    // barra de abajo (useUnreadChats) y verlos acá duplicaba la notificación.
     const withActor = await supabase
       .from('notifications')
       .select('*, actor:profiles!notifications_actor_id_fkey(id, username, avatar_url)')
+      .neq('type', 'message')
       .order('created_at', { ascending: false })
       .limit(50)
     if (!withActor.error) {
@@ -45,6 +48,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     const plain = await supabase
       .from('notifications')
       .select('*')
+      .neq('type', 'message')
       .order('created_at', { ascending: false })
       .limit(50)
     if (!plain.error) setItems((plain.data as AppNotification[]) ?? [])
@@ -69,6 +73,8 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
             // Sonido + vibración + globo (si la pestaña no está visible).
             alertIncoming(n.title, n.body, n.link)
           }
+          // Los mensajes no entran a la campanita (los maneja el badge del chat).
+          if (n.type === 'message') return
           // El payload de Realtime no trae el embed: buscamos el avatar del
           // actor aparte para mostrarlo en vivo (no solo al recargar).
           if (n.actor_id) {
