@@ -1,10 +1,10 @@
 import { lazy, Suspense, Component, useEffect, useState, type ReactNode } from 'react'
-import { BrowserRouter, Routes, Route, Outlet, useLocation, useNavigationType, Navigate } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Outlet, useLocation, useNavigationType, useNavigate, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { FavoritesProvider } from './hooks/useFavorites'
 import { NotificationsProvider } from './hooks/useNotifications'
 import { UnreadChatsProvider } from './hooks/useUnreadChats'
-import { supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
+import { supabase, supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import { hasSeenWelcome } from './lib/welcome'
 import { hasSeenIntro, REPLAY_INTRO_EVENT } from './lib/intro'
 import './lib/pwaInstall' // registra el listener de instalación temprano
@@ -12,6 +12,7 @@ import { capturePageview } from './lib/analytics'
 import BottomNav from './components/BottomNav'
 import UpdatePrompt from './components/UpdatePrompt'
 import IntroSlides from './components/IntroSlides'
+import TermsModal from './components/TermsModal'
 import { ToastProvider } from './components/Toast'
 import Home from './pages/Home'
 
@@ -85,7 +86,8 @@ function PageviewTracker() {
 function Shell() {
   const location = useLocation()
   const navType = useNavigationType()
-  const { profile, session } = useAuth()
+  const navigate = useNavigate()
+  const { profile, session, refreshProfile } = useAuth()
   const [showIntro, setShowIntro] = useState(false)
 
   // Onboarding de funciones (3 slides): una vez, apenas hay sesión.
@@ -135,6 +137,24 @@ function Shell() {
   // bienvenida, así que la bandera está puesta).
   if (!session && location.pathname === '/' && !hasSeenWelcome()) {
     return <Navigate to="/auth" replace state={{ from: '/', back: '/' }} />
+  }
+
+  // Términos y Condiciones: bloquea la app hasta aceptar (va ANTES del onboarding
+  // de username). Como el auth es magic link / Google, la cuenta ya existe al
+  // llegar acá, así que "Rechazar" cierra sesión y vuelve al login.
+  if (profile && !profile.terms_accepted_at) {
+    return (
+      <TermsModal
+        onAccept={async () => {
+          await supabase.from('profiles').update({ terms_accepted_at: new Date().toISOString() }).eq('id', profile.id)
+          await refreshProfile()
+        }}
+        onReject={async () => {
+          await supabase.auth.signOut()
+          navigate('/auth', { replace: true })
+        }}
+      />
+    )
   }
 
   // Recién registrado con username autogenerado: primero elige su nombre

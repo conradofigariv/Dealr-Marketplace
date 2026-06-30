@@ -20,6 +20,7 @@ export interface Profile {
   is_admin: boolean
   auction_strikes: number
   auction_banned_until: string | null
+  terms_accepted_at: string | null
   created_at: string
 }
 
