@@ -92,8 +92,12 @@ export default function IntroSlides({ onDone }: { onDone: () => void }) {
   }
 
   return (
+    // Fondo negro a pantalla completa; el contenido se acota a la misma columna
+    // que el resto de la app (max-w-lg) y se centra → en desktop queda vertical,
+    // no estirado.
+    <div className="fixed inset-0 z-[680] flex justify-center bg-black">
     <div
-      className="fixed inset-0 z-[680] overflow-hidden bg-black"
+      className="relative h-full w-full max-w-lg overflow-hidden"
       style={{ touchAction: 'pan-y' }}
       onPointerDown={onDown}
       onPointerMove={onMove}
@@ -151,6 +155,7 @@ export default function IntroSlides({ onDone }: { onDone: () => void }) {
           </button>
         </div>
       </div>
+    </div>
     </div>
   )
 }
