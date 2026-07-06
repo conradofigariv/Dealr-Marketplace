@@ -27,7 +27,7 @@ const SECTIONS: Section[] = [
           '“Usuario”: toda persona física que se registra y utiliza Dealr, ya sea como comprador, vendedor, o ambos.',
           '“Vendedor”: Usuario que publica uno o más productos para su venta a través de la Plataforma.',
           '“Comprador”: Usuario que contacta a un Vendedor con intención de adquirir un producto publicado.',
-          '“Publicación” o “Listing”: anuncio de un producto creado por un Vendedor, incluyendo fotos, video, descripción, precio y ubicación.',
+          '“Publicación” o “Listing”: anuncio de un producto creado por un Vendedor, incluyendo fotos, descripción, precio y ubicación.',
           '“Transacción”: acuerdo de compraventa alcanzado entre un Comprador y un Vendedor a través de Dealr.',
           '“Reputación”: puntaje numérico asignado a cada Usuario en base a su comportamiento dentro de la Plataforma, según el sistema descripto en la Sección 6.',
         ],
@@ -44,7 +44,7 @@ const SECTIONS: Section[] = [
   {
     title: '4 — Registro y Cuenta de Usuario',
     blocks: [
-      { p: '4.1 Requisitos. Para utilizar Dealr es necesario registrarse mediante correo electrónico y contraseña, o a través de autenticación con cuenta de Google. El Usuario debe ser mayor de 18 años o contar con autorización de su representante legal.' },
+      { p: '4.1 Requisitos. Para utilizar Dealr es necesario registrarse mediante correo electrónico (enlace de acceso) o autenticación con cuenta de Google. El Usuario debe ser mayor de 18 años. La verificación de identidad se realiza a través de un proveedor externo que valida la edad; si la validación indica que el Usuario es menor de 18 años, su cuenta queda con funciones restringidas.' },
       { p: '4.2 Veracidad de los datos. El Usuario se compromete a proporcionar información veraz, completa y actualizada al momento de registrarse, y a mantenerla actualizada. La provisión de información falsa puede resultar en la suspensión o eliminación de la cuenta.' },
       { p: '4.3 Verificación de identidad. Dealr ofrece un mecanismo opcional de verificación de identidad mediante documento nacional de identidad (DNI). La verificación otorga al Usuario una insignia visible (“Identidad verificada”) y puntos adicionales de reputación. La verificación no constituye una garantía absoluta de la identidad del Usuario ni exime de responsabilidad a Dealr ni al Usuario verificado.' },
       { p: '4.4 Responsabilidad de la cuenta. El Usuario es responsable de mantener la confidencialidad de sus credenciales de acceso y de toda actividad realizada desde su cuenta. Dealr no se responsabiliza por accesos no autorizados derivados de la negligencia del Usuario en la custodia de sus credenciales.' },
@@ -53,8 +53,8 @@ const SECTIONS: Section[] = [
   {
     title: '5 — Publicaciones de Productos',
     blocks: [
-      { p: '5.1 Contenido permitido. Los Vendedores pueden publicar productos nuevos o usados, acompañados de hasta ocho archivos multimedia (fotos y/o un video), descripción, precio, categoría, condición y ubicación.' },
-      { p: '5.2 Veracidad de las publicaciones. El Vendedor garantiza que las fotos y videos corresponden al producto real ofrecido, que la descripción es precisa, y que el producto se encuentra legalmente en su posesión y disponible para la venta.' },
+      { p: '5.1 Contenido permitido. Los Vendedores pueden publicar productos nuevos o usados, acompañados de hasta seis fotos, descripción, precio, categoría, condición y ubicación.' },
+      { p: '5.2 Veracidad de las publicaciones. El Vendedor garantiza que las fotos corresponden al producto real ofrecido, que la descripción es precisa, y que el producto se encuentra legalmente en su posesión y disponible para la venta.' },
       { p: '5.3 Productos prohibidos. Queda terminantemente prohibido publicar:' },
       {
         ul: [
@@ -68,34 +68,24 @@ const SECTIONS: Section[] = [
           'Cualquier bien o servicio cuya comercialización esté prohibida por la legislación argentina vigente',
         ],
       },
-      { p: '5.4 Ubicación del producto. El Vendedor puede optar por mostrar la dirección exacta del producto o un radio aproximado de privacidad (500 metros a 5 kilómetros). En caso de optar por el radio aproximado, la dirección exacta solo será revelada al Comprador una vez acordada la Transacción dentro del chat de la Plataforma.' },
+      { p: '5.4 Ubicación del producto. Por privacidad, la Plataforma nunca muestra el punto exacto: solo un área aproximada alrededor de la ubicación cargada por el Vendedor. La dirección exacta se coordina entre las partes dentro del chat de la Plataforma.' },
       { p: '5.5 Moderación. Dealr se reserva el derecho de remover cualquier Publicación que infrinja estos Términos, sin necesidad de aviso previo, y de suspender o eliminar la cuenta del Usuario responsable.' },
     ],
   },
   {
-    title: '6 — Sistema de Reputación',
+    title: '6 — Reputación y Calificaciones',
     blocks: [
-      { p: 'Dealr cuenta con un sistema de reputación automático destinado a fomentar un entorno de confianza entre Usuarios. El puntaje de reputación es público, oscila entre 0 y 200 puntos, y se ajusta automáticamente según los siguientes eventos:' },
-      {
-        ul: [
-          'Verificación de DNI: +20 puntos',
-          'Recepción de reseña de 5 estrellas: +10 puntos',
-          'Recepción de reseña de 4 estrellas: +5 puntos',
-          'Recepción de reseña de 2 estrellas: -10 puntos',
-          'Conversación abandonada sin respuesta por más de 48 horas: -5 puntos',
-          'Recepción de reseña de 1 estrella: -20 puntos',
-          'Denuncia validada por el equipo de Dealr: -30 puntos',
-        ],
-      },
-      { p: 'Según su puntaje, el Usuario recibe una etiqueta visible: “Nuevo”, “Confiable” (más de 80 puntos), “En observación” (entre 60 y 79 puntos), “Riesgoso” (entre 30 y 59 puntos) o “Baneado” (menos de 30 puntos).' },
-      { p: 'Dealr no garantiza que el sistema de reputación refleje con exactitud el comportamiento real de cada Usuario en todas las circunstancias, y recomienda a los Usuarios actuar siempre con prudencia razonable al concretar una Transacción.' },
+      { p: 'Dealr cuenta con un sistema de reputación basado en las calificaciones que los Usuarios se dan entre sí al concretar operaciones. Cada Usuario puede tener un puntaje como vendedor y como comprador, expresado en estrellas (de 1 a 5), calculado como el promedio de las calificaciones recibidas.' },
+      { p: 'Las calificaciones son “ciegas”: la calificación que un Usuario recibe permanece oculta hasta que ambas partes hayan calificado, o hasta que transcurra un plazo desde la calificación. Esto evita represalias y fomenta calificaciones honestas.' },
+      { p: 'Hasta contar con un mínimo de calificaciones, el Usuario se muestra como “Usuario nuevo”. La verificación de identidad otorga además una insignia visible de “Identidad verificada”.' },
+      { p: 'Dealr no garantiza que la reputación refleje con exactitud el comportamiento real de cada Usuario en todas las circunstancias, y recomienda a los Usuarios actuar siempre con prudencia razonable al concretar una Transacción.' },
     ],
   },
   {
     title: '7 — Mensajería y Comunicación',
     blocks: [
-      { p: 'Toda comunicación entre Comprador y Vendedor relacionada con una Publicación debe realizarse a través del chat interno de Dealr. Los mensajes quedan almacenados de forma permanente y no pueden ser eliminados por los Usuarios, con el fin de preservar un historial verificable ante eventuales disputas.' },
-      { p: 'Si un Vendedor no responde al primer mensaje de un Comprador dentro de las 48 horas, la conversación se marca automáticamente como “abandonada” y se aplica la penalización de reputación correspondiente. La acumulación de tres conversaciones abandonadas en un período de 30 días resulta en la pausa automática de las Publicaciones del Vendedor.' },
+      { p: 'Toda comunicación entre Comprador y Vendedor relacionada con una Publicación debe realizarse a través del chat interno de Dealr. Los Usuarios pueden editar o eliminar sus propios mensajes; Dealr puede conservar registros con el fin de moderación y de resolver eventuales disputas.' },
+      { p: 'Las publicaciones que llevan mucho tiempo sin renovarse se pausan automáticamente para mantener el catálogo actualizado.' },
       { p: 'Queda prohibido el uso del chat para fines distintos a la negociación de una Transacción, incluyendo el envío de spam, contenido ofensivo, discriminatorio o ilegal.' },
     ],
   },
@@ -110,8 +100,8 @@ const SECTIONS: Section[] = [
   {
     title: '9 — Reseñas y Calificaciones',
     blocks: [
-      { p: 'Al finalizar una Transacción, ambas partes están obligadas a dejar una reseña con calificación de 1 a 5 estrellas y un comentario de al menos 20 caracteres dentro de los 7 días posteriores. Las reseñas son públicas, permanentes y no pueden ser eliminadas por el Usuario que las recibe.' },
-      { p: 'Está prohibido publicar reseñas falsas, difamatorias o que no correspondan a una Transacción real ocurrida dentro de la Plataforma. Dealr se reserva el derecho de eliminar reseñas que infrinjan esta disposición.' },
+      { p: 'Al concretar una operación, ambas partes pueden dejarse una calificación de 1 a 5 estrellas y un comentario. Las calificaciones son ciegas hasta que ambas partes califican (o hasta vencer el plazo), y una vez reveladas son públicas y no pueden ser eliminadas por el Usuario que las recibe.' },
+      { p: 'Está prohibido publicar calificaciones falsas, difamatorias o que no correspondan a una operación real ocurrida dentro de la Plataforma. Dealr se reserva el derecho de eliminar calificaciones que infrinjan esta disposición.' },
     ],
   },
   {
@@ -124,8 +114,8 @@ const SECTIONS: Section[] = [
   {
     title: '11 — Entrega y Logística',
     blocks: [
-      { p: 'Dealr no presta servicios de envío ni logística. Cada Vendedor indica en su Publicación el modo de entrega disponible: retiro en persona, coordinación con cadetería local, o ambas opciones. La coordinación, el costo y la ejecución del envío son responsabilidad exclusiva de las partes involucradas en la Transacción.' },
-      { p: 'Dealr recomienda a los Usuarios que opten por encuentros en persona realizar dicho encuentro en lugares públicos y concurridos. Los Vendedores pueden activar la opción “Solo me reúno en lugar público”, visible en su perfil y publicaciones.' },
+      { p: 'Dealr no presta servicios de envío ni logística. El Vendedor puede indicar en su Publicación si acepta envío. La coordinación, el costo y la ejecución de la entrega son responsabilidad exclusiva de las partes involucradas en la Transacción.' },
+      { p: 'Dealr recomienda a los Usuarios que opten por encuentros en persona realizar dicho encuentro en lugares públicos y concurridos, y verificar el producto antes de pagar.' },
     ],
   },
   {
@@ -148,7 +138,7 @@ const SECTIONS: Section[] = [
     title: '13 — Propiedad Intelectual',
     blocks: [
       { p: 'El nombre “Dealr”, su logotipo, diseño, interfaz y demás elementos distintivos son propiedad de Dealr. Queda prohibida su reproducción, copia o uso sin autorización expresa.' },
-      { p: 'Los Usuarios conservan los derechos sobre el contenido (fotos, videos, descripciones) que suban a sus Publicaciones, pero otorgan a Dealr una licencia no exclusiva para mostrar dicho contenido dentro de la Plataforma con fines de operación del servicio.' },
+      { p: 'Los Usuarios conservan los derechos sobre el contenido (fotos, descripciones) que suban a sus Publicaciones, pero otorgan a Dealr una licencia no exclusiva para mostrar dicho contenido dentro de la Plataforma con fines de operación del servicio.' },
     ],
   },
   {
