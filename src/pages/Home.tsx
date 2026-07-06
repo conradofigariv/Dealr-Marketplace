@@ -737,8 +737,8 @@ export default function Home() {
       )}
 
       {showSkeleton ? (
-        <div className="columns-2 gap-0.5 px-0">
-          {[280, 200, 240, 320, 180, 260].map((h, i) => (
+        <div className="columns-2 gap-0.5 px-0 lg:columns-3 xl:columns-4">
+          {[280, 200, 240, 320, 180, 260, 220, 300].map((h, i) => (
             <div key={i} className="mb-0.5 animate-pulse bg-neutral-900" style={{ height: h }} />
           ))}
         </div>
@@ -749,7 +749,7 @@ export default function Home() {
         </div>
       ) : (
         /* Masonry edge-to-edge con separación mínima, estilo Savee */
-        <div className="columns-2 gap-0.5">
+        <div className="columns-2 gap-0.5 lg:columns-3 xl:columns-4">
           {withDistance.map(({ listing, distanceKm }, i) => (
             <ListingCard key={listing.id} listing={listing} distanceKm={distanceKm} index={i} />
           ))}

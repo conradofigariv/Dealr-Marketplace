@@ -165,8 +165,11 @@ function Shell() {
   const hideNav = /^\/(chats|p)\/.+/.test(location.pathname) || location.pathname === '/mapa'
   // Volver (POP) entra desde la izquierda; avanzar, desde la derecha (iOS).
   const pageAnim = navType === 'POP' ? 'page-pop' : 'page-push'
+  // En DESKTOP (lg+) solo el feed se ensancha para respirar; el resto queda en la
+  // columna angosta de siempre. Mobile no cambia (las clases base son idénticas).
+  const isFeed = location.pathname === '/'
   return (
-    <div className="mx-auto min-h-dvh max-w-lg overflow-x-hidden bg-black">
+    <div className={`mx-auto min-h-dvh overflow-x-hidden bg-black max-w-lg ${isFeed ? 'lg:max-w-4xl' : ''}`}>
       <Suspense fallback={<div className="min-h-dvh bg-black" />}>
         <div key={location.pathname} className={pageAnim}>
           <Outlet />
