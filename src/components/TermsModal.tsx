@@ -195,7 +195,10 @@ export default function TermsModal({
   }
 
   return (
-    <div className="fixed inset-0 z-[700] flex flex-col bg-black">
+    // Fondo negro a pantalla completa; el panel se acota a la columna angosta
+    // de la app (max-w-lg) y se centra → en desktop queda vertical, no full-screen.
+    <div className="fixed inset-0 z-[700] flex justify-center bg-black">
+    <div className="flex h-full w-full max-w-lg flex-col bg-black">
       {/* Header fijo */}
       <div className="flex shrink-0 items-center justify-between border-b border-neutral-800 px-5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
         <h2 className="text-base font-bold text-white">Términos y Condiciones de Dealr</h2>
@@ -286,6 +289,7 @@ export default function TermsModal({
           </button>
         </div>
       </div>
+    </div>
     </div>
   )
 }

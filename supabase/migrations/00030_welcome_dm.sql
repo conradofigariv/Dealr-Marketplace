@@ -124,9 +124,21 @@ begin
 
 El lugar para comprar y vender cosas usadas en Córdoba, con gente real y verificada ✅
 
-🔨 Participá en subastas en vivo y 📍 descubrí lo que hay cerca tuyo en el mapa. Vos cerrás el trato como quieras, sin comisiones.
+🔨 Subastas en vivo
+Ofertá en tiempo real y llevate lo que buscás al mejor precio.
 
-Nos ayuda un montón que seas parte 💪 Si ves un error o algo que no funciona, reportalo 🐛 Y si se te ocurre una función nueva, proponela desde tu perfil 💡'
+📍 Cerca tuyo
+Descubrí en el mapa lo que hay a la vuelta de tu casa.
+
+🤝 Sin comisiones
+Vos cerrás el trato como quieras. Dealr solo conecta.
+
+📲 Instalá la app
+Agregala a tu pantalla de inicio para tenerla siempre a mano.
+
+Nos ayuda un montón que seas parte 💪
+🐛 Si ves un error, reportalo.
+💡 Si se te ocurre una función nueva, proponela desde tu perfil.'
     );
   exception when others then
     null; -- nunca bloquear el alta por el saludo

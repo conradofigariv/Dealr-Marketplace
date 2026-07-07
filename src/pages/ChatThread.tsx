@@ -48,7 +48,7 @@ function MessageContextMenu({
           <img src={photoUrl(message.image_path)} alt="" className="h-full w-full rounded-2xl object-cover" draggable={false} />
         ) : (
           <div
-            className={`flex h-full w-full items-center rounded-3xl px-4 py-2.5 text-[15px] ${
+            className={`flex h-full w-full items-center whitespace-pre-line rounded-3xl px-4 py-2.5 text-[15px] ${
               mine ? 'rounded-br-lg bg-white text-black' : 'rounded-bl-lg bg-neutral-900 text-neutral-100'
             }`}
           >
@@ -587,7 +587,7 @@ export default function ChatThread() {
                       setContextMenu({ message: m, rect: e.currentTarget.getBoundingClientRect() })
                     }
                   }}
-                  className={`msg-pressable max-w-[80%] rounded-3xl px-4 py-2.5 text-[15px] ${
+                  className={`msg-pressable max-w-[80%] whitespace-pre-line rounded-3xl px-4 py-2.5 text-[15px] ${
                     mine ? 'rounded-br-lg bg-white text-black' : 'rounded-bl-lg bg-neutral-900 text-neutral-100'
                   } ${pressingId === m.id ? 'msg-pressing' : ''}`}
                 >
