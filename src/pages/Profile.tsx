@@ -61,6 +61,11 @@ export default function Profile() {
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [sellTarget, setSellTarget] = useState<Listing | null>(null)
+  // Reactivar una subasta finalizada = relanzarla: hay que volver a elegir la
+  // duración (y se resetean las ofertas). Este target abre el picker de duración.
+  const [reactivateAuctionTarget, setReactivateAuctionTarget] = useState<Listing | null>(null)
+  const [reactivateDays, setReactivateDays] = useState(3)
+  const [reactivating, setReactivating] = useState(false)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const avatarInput = useRef<HTMLInputElement>(null)
   const toast = useToast()
@@ -164,6 +169,32 @@ export default function Profile() {
       setNameError('No pudimos actualizar la publicación. Probá de nuevo.')
       return
     }
+    invalidateFeedCache()
+    loadListings()
+  }
+
+  // Relanza una subasta finalizada: status→active, ofertas a cero y un nuevo
+  // auction_ends_at según la duración elegida. Sin esto, "Reactivar" solo movía
+  // el status y la subasta seguía apareciendo como "Finalizada" (auction_closed
+  // seguía en true y el cierre en el pasado).
+  async function reactivateAuction(listing: Listing, days: number) {
+    setReactivating(true)
+    const patch: Record<string, unknown> = {
+      status: 'active',
+      last_renewed_at: new Date().toISOString(),
+      sold_to: null,
+      auction_closed: false,
+      auction_ends_at: new Date(Date.now() + days * 86400000).toISOString(),
+      current_bid: null,
+      bids_count: 0,
+    }
+    const { error } = await supabase.from('listings').update(patch).eq('id', listing.id)
+    setReactivating(false)
+    if (error) {
+      setNameError('No pudimos reactivar la subasta. Probá de nuevo.')
+      return
+    }
+    setReactivateAuctionTarget(null)
     invalidateFeedCache()
     loadListings()
   }
@@ -448,6 +479,16 @@ export default function Profile() {
                                   Ya lo vendí
                                 </button>
                               </>
+                            ) : l.is_auction ? (
+                              <button
+                                onClick={() => {
+                                  setReactivateDays(3)
+                                  setReactivateAuctionTarget(l)
+                                }}
+                                className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black"
+                              >
+                                Relanzar subasta
+                              </button>
                             ) : (
                               <button onClick={() => setStatus(l.id, 'active', true)} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black">
                                 Reactivar
@@ -573,6 +614,50 @@ export default function Profile() {
           onClose={() => setSellTarget(null)}
           onSold={loadListings}
         />
+      )}
+
+      {reactivateAuctionTarget && (
+        <Modal title="Relanzar subasta" onClose={() => !reactivating && setReactivateAuctionTarget(null)}>
+          <div className="space-y-5 text-sm text-neutral-400">
+            <p>
+              Vas a volver a publicar <strong className="text-white">{reactivateAuctionTarget.title}</strong> como
+              una subasta nueva. Las ofertas anteriores se reinician. Elegí cuánto va a durar:
+            </p>
+            <div>
+              <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-neutral-500">Duración</span>
+              <div className="flex gap-1.5">
+                {[1, 3, 7].map((d) => (
+                  <button
+                    key={d}
+                    type="button"
+                    onClick={() => setReactivateDays(d)}
+                    className={`flex-1 rounded-full py-2.5 text-sm font-semibold transition ${
+                      reactivateDays === d ? 'bg-white text-black' : 'text-neutral-300 ring-1 ring-neutral-700'
+                    }`}
+                  >
+                    {d} {d === 1 ? 'día' : 'días'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => setReactivateAuctionTarget(null)}
+                disabled={reactivating}
+                className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => reactivateAuction(reactivateAuctionTarget, reactivateDays)}
+                disabled={reactivating}
+                className="flex-1 rounded-full bg-white py-3 text-sm font-semibold text-black disabled:opacity-50"
+              >
+                {reactivating ? 'Publicando…' : 'Relanzar'}
+              </button>
+            </div>
+          </div>
+        </Modal>
       )}
 
       {settingsOpen && (

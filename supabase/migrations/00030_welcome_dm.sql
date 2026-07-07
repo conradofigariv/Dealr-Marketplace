@@ -122,11 +122,34 @@ begin
       new.id,
       '¡Bienvenido a Dealr 🙌!
 
-El lugar para comprar y vender cosas usadas en Córdoba, con gente real y verificada ✅
+Dealr es un proyecto estudiantil 🎓: un marketplace para comprar y vender cosas usadas en Córdoba, con gente real y verificada ✅. Estamos aprendiendo y construyéndolo de a poco, así que tu ayuda vale un montón 💪
 
-🔨 Participá en subastas en vivo y 📍 descubrí lo que hay cerca tuyo en el mapa. Vos cerrás el trato como quieras, sin comisiones.
+Esto es lo que podés hacer:
 
-Nos ayuda un montón que seas parte 💪 Si ves un error o algo que no funciona, reportalo 🐛 Y si se te ocurre una función nueva, proponela desde tu perfil 💡'
+🛒 Comprar y vender
+Publicá lo que no usás y encontrá lo que buscás, cerca tuyo.
+
+🔨 Subastas en vivo
+Ofertá en tiempo real y llevate cosas al mejor precio.
+
+💬 Chat directo
+Coordinás con la otra persona por chat, sin intermediarios.
+
+📍 Mapa
+Descubrí qué hay a la vuelta de tu casa.
+
+⭐ Reputación
+Calificaciones entre usuarios para comprar y vender con confianza.
+
+🤝 Sin comisiones
+Vos cerrás el trato como quieras. Dealr solo conecta.
+
+👉 Animate a publicar tu primer producto: tocá el botón + para vender algo. Se hace en un minuto.
+
+🐛 Si ves un error, reportalo.
+💡 Si se te ocurre una función nueva, proponela desde tu perfil.
+
+¡Gracias por ser parte! 🚀'
     );
   exception when others then
     null; -- nunca bloquear el alta por el saludo
