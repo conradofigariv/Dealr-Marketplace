@@ -711,11 +711,24 @@ export default function ListingDetail() {
           <LongPressActions actions={adminListingActions}>
             <h1 className="mt-1.5 text-lg leading-snug text-neutral-200">{listing.title}</h1>
           </LongPressActions>
-          <p className="mt-2 text-sm text-neutral-500">
-            {conditionLabels[listing.condition]} · publicado {timeAgo(listing.created_at)}
-            {listing.favorites_count > 0 &&
-              ` · ${listing.favorites_count} ${listing.favorites_count === 1 ? 'persona lo guardó' : 'personas lo guardaron'}`}
-          </p>
+          {/* El estado del artículo en chip y negritas: perdido en la línea
+              gris no se distinguía "Nuevo" de "Con detalles" de un vistazo. */}
+          <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1.5 text-sm text-neutral-500">
+            <span
+              className={`rounded-full px-3 py-1 text-xs font-bold ${
+                listing.condition === 'nuevo'
+                  ? 'bg-emerald-500/15 text-emerald-400 ring-1 ring-emerald-500/40'
+                  : 'bg-neutral-800 text-white ring-1 ring-neutral-700'
+              }`}
+            >
+              {conditionLabels[listing.condition]}
+            </span>
+            <span>
+              publicado {timeAgo(listing.created_at)}
+              {listing.favorites_count > 0 &&
+                ` · ${listing.favorites_count} ${listing.favorites_count === 1 ? 'persona lo guardó' : 'personas lo guardaron'}`}
+            </span>
+          </div>
         </div>
 
         {listing.description && (
