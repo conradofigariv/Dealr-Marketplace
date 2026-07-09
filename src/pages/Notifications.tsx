@@ -149,7 +149,7 @@ function NotificationIcon({ n }: { n: AppNotification }) {
 export default function Notifications() {
   const navigate = useNavigate()
   const { session, loading } = useAuth()
-  const { items, markAllRead, refresh } = useNotifications()
+  const { items, loaded, markAllRead, refresh } = useNotifications()
 
   useEffect(() => {
     if (!loading && !session) navigate('/auth', { state: { from: '/notificaciones', back: '/' } })
@@ -171,7 +171,21 @@ export default function Notifications() {
         <h1 className="text-2xl font-bold tracking-tight text-white">Notificaciones</h1>
       </header>
 
-      {grouped.length === 0 ? (
+      {!loaded ? (
+        /* Skeleton: sin esto, quien SÍ tiene notificaciones veía un instante
+           el estado vacío antes de que llegara la primera respuesta. */
+        <ul>
+          {[0, 1, 2, 3].map((i) => (
+            <li key={i} className="flex items-start gap-3.5 px-5 py-3.5">
+              <span className="h-11 w-11 shrink-0 animate-pulse rounded-full bg-neutral-900" />
+              <div className="flex-1 space-y-2 pt-1">
+                <div className="h-3 w-2/3 animate-pulse rounded bg-neutral-900" />
+                <div className="h-3 w-1/3 animate-pulse rounded bg-neutral-900" />
+              </div>
+            </li>
+          ))}
+        </ul>
+      ) : grouped.length === 0 ? (
         <EmptyState
           icon={<><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" /><path d="M13.7 21a2 2 0 0 1-3.4 0" /></>}
           title="No tenés notificaciones todavía."

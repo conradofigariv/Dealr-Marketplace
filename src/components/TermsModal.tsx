@@ -177,15 +177,20 @@ const SECTIONS: Section[] = [
 export default function TermsModal({
   onAccept,
   onReject,
+  viewOnly = false,
 }: {
-  onAccept: () => Promise<void>
+  // En modo lectura (viewOnly, desde Configuración) no hay aceptar/rechazar:
+  // onReject hace de "cerrar" y el footer no se muestra.
+  onAccept?: () => Promise<void>
   onReject: () => void
+  viewOnly?: boolean
 }) {
   const [open, setOpen] = useState<number | null>(0)
   const [accepting, setAccepting] = useState(false)
   const [confirmedAge, setConfirmedAge] = useState(false)
 
   async function accept() {
+    if (!onAccept) return
     setAccepting(true)
     try {
       await onAccept()
@@ -260,6 +265,7 @@ export default function TermsModal({
       </div>
 
       {/* Footer fijo: confirmación de edad + las dos acciones */}
+      {!viewOnly && (
       <div className="shrink-0 border-t border-neutral-800 px-5 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3">
         <label className="mb-3 flex items-start gap-3">
           <input
@@ -289,6 +295,7 @@ export default function TermsModal({
           </button>
         </div>
       </div>
+      )}
     </div>
     </div>
   )

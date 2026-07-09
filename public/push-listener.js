@@ -20,8 +20,10 @@ self.addEventListener('push', (event) => {
   }
   event.waitUntil(self.registration.showNotification(title, options))
 
-  // Badge: mostrar que hay notificaciones sin leer
-  if ('setAppBadge' in navigator) navigator.setAppBadge(1)
+  // Badge: marcar que hay pendientes. Sin argumento pone el "puntito" genérico
+  // en vez de un número inventado (antes era un 1 hardcodeado que nunca
+  // reflejaba el conteo real; el payload del push no trae el total).
+  if ('setAppBadge' in navigator) navigator.setAppBadge()
 })
 
 self.addEventListener('notificationclick', (event) => {

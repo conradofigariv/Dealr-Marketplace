@@ -5,6 +5,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import ReportButton from '../components/ReportButton'
 import LongPressActions from '../components/LongPressActions'
+import ConfirmDialog from '../components/ConfirmDialog'
 import { capture } from '../lib/analytics'
 import { timeAgo } from '../lib/format'
 import type { AppReview, FeatureSuggestion, SuggestionStatus } from '../lib/types'
@@ -67,6 +68,8 @@ export default function Feedback() {
   const [ideaTitle, setIdeaTitle] = useState('')
   const [ideaBody, setIdeaBody] = useState('')
   const [ideaBusy, setIdeaBusy] = useState(false)
+  // Confirmación de borrado (admin): {kind, id} o null.
+  const [confirmDelete, setConfirmDelete] = useState<{ kind: 'review' | 'idea'; id: string } | null>(null)
 
   function requireLogin() {
     navigate('/auth', { state: { from: '/opiniones', back: '/opiniones' } })
@@ -184,7 +187,7 @@ export default function Feedback() {
   }
 
   async function deleteReview(id: string) {
-    if (!confirm('¿Borrar esta opinión?')) return
+    setConfirmDelete(null)
     const { error } = await supabase.from('app_reviews').delete().eq('id', id)
     if (error) return toast(error.message)
     toast('Opinión borrada')
@@ -192,7 +195,7 @@ export default function Feedback() {
   }
 
   async function deleteIdea(id: string) {
-    if (!confirm('¿Borrar esta idea?')) return
+    setConfirmDelete(null)
     const { error } = await supabase.from('feature_suggestions').delete().eq('id', id)
     if (error) return toast(error.message)
     toast('Idea borrada')
@@ -265,7 +268,7 @@ export default function Feedback() {
             {reviews.map((r) => (
               <li key={r.id} className="surface p-4">
                 <LongPressActions
-                  actions={isAdmin ? [{ label: 'Borrar', destructive: true, onClick: () => deleteReview(r.id) }] : []}
+                  actions={isAdmin ? [{ label: 'Borrar', destructive: true, onClick: () => setConfirmDelete({ kind: 'review', id: r.id }) }] : []}
                 >
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-semibold text-white">{r.author?.username ?? 'Usuario'}</span>
@@ -335,7 +338,7 @@ export default function Feedback() {
                     </button>
                     <div className="min-w-0 flex-1">
                       <LongPressActions
-                        actions={isAdmin ? [{ label: 'Borrar', destructive: true, onClick: () => deleteIdea(s.id) }] : []}
+                        actions={isAdmin ? [{ label: 'Borrar', destructive: true, onClick: () => setConfirmDelete({ kind: 'idea', id: s.id }) }] : []}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <p className="text-sm font-semibold text-white">{s.title}</p>
@@ -360,6 +363,19 @@ export default function Feedback() {
             </ul>
           )}
         </div>
+      )}
+
+      {confirmDelete && (
+        <ConfirmDialog
+          title={confirmDelete.kind === 'review' ? 'Borrar opinión' : 'Borrar idea'}
+          message={`Vas a borrar esta ${confirmDelete.kind === 'review' ? 'opinión' : 'idea'} de forma permanente.`}
+          confirmLabel="Borrar"
+          destructive
+          onConfirm={() =>
+            confirmDelete.kind === 'review' ? deleteReview(confirmDelete.id) : deleteIdea(confirmDelete.id)
+          }
+          onClose={() => setConfirmDelete(null)}
+        />
       )}
     </div>
   )

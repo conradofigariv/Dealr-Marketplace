@@ -109,9 +109,20 @@ export default function Onboarding() {
               autoCorrect="off"
               spellCheck={false}
             />
-            <p className="mt-2 text-xs text-neutral-600">
-              Entre 3 y 30 caracteres. Letras, números, punto y guión bajo.
-            </p>
+            {/* Hint en vivo: antes el botón quedaba gris sin explicación. */}
+            {username.length > 0 && !valid ? (
+              <p className="mt-2 text-xs text-amber-400">
+                {username.length < 3
+                  ? 'Te faltan letras: mínimo 3 caracteres.'
+                  : username.length > 30
+                    ? 'Muy largo: máximo 30 caracteres.'
+                    : 'Solo letras minúsculas, números, punto y guión bajo.'}
+              </p>
+            ) : (
+              <p className="mt-2 text-xs text-neutral-500">
+                Entre 3 y 30 caracteres. Letras, números, punto y guión bajo.
+              </p>
+            )}
           </div>
 
           <div>

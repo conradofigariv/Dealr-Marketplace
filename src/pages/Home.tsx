@@ -249,7 +249,12 @@ export default function Home() {
   // Primera página (reset): reemplaza la lista.
   const loadFirst = useCallback(async () => {
     const gen = ++genRef.current
-    const batch = await fetchPage(0)
+    // Con radio activo el filtro de distancia es client-side y el scroll
+    // infinito se desactiva: una sola página (24) dejaba afuera casi todo lo
+    // cercano. Traemos varias páginas de una para filtrar sobre más base.
+    const batch = filters.radiusKm
+      ? (await Promise.all([0, 1, 2, 3, 4].map((p) => fetchPage(p)))).flat()
+      : await fetchPage(0)
     if (gen !== genRef.current) return // llegó tarde: ya corre otra carga
     pageRef.current = 0
     setListings(batch)
@@ -597,7 +602,7 @@ export default function Home() {
                 if (searchOpen) setSearch('')
               }}
               aria-label="Buscar"
-              className="p-2 text-white"
+              className="p-2.5 text-white"
             >
               {searchOpen ? (
                 <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
@@ -610,13 +615,13 @@ export default function Home() {
                 </svg>
               )}
             </button>
-            <Link to="/mapa" aria-label="Ver en el mapa" className="p-2 text-white">
+            <Link to="/mapa" aria-label="Ver en el mapa" className="p-2.5 text-white">
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" />
                 <path d="M9 4v14M15 6v14" />
               </svg>
             </Link>
-            <Link to="/guardados" aria-label="Guardados" className="p-2 text-white">
+            <Link to="/guardados" aria-label="Guardados" className="p-2.5 text-white">
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
               </svg>

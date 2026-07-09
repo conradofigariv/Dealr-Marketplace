@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -51,6 +51,9 @@ export default function Publish() {
   const [fields, setFields] = useState<Record<string, unknown>>({})
   const [photos, setPhotos] = useState<PendingPhoto[]>([])
   const [addingPhotos, setAddingPhotos] = useState(false)
+  // Fotos que tenía la publicación al abrir el editor: las que el usuario quite
+  // se borran del storage tras guardar (antes quedaban huérfanas para siempre).
+  const originalPhotosRef = useRef<string[]>([])
   const [location, setLocation] = useState<LatLng | null>(null)
   const [locationLabel, setLocationLabel] = useState('')
   const [isAuction, setIsAuction] = useState(false)
@@ -96,6 +99,7 @@ export default function Publish() {
         setCondition(data.condition)
         setFields(data.structured_fields ?? {})
         setPhotos(data.photos.map((p: string) => ({ path: p, preview: photoUrl(p) })))
+        originalPhotosRef.current = data.photos as string[]
         if (data.lat != null && data.lng != null) {
           setLocation({ lat: data.lat, lng: data.lng })
           setLocationLabel(data.location_label ?? '')
@@ -135,13 +139,14 @@ export default function Publish() {
     setPhotos((prev) => prev.filter((_, i) => i !== index))
   }
 
-  // Mover una foto un lugar hacia adelante: tocando repetido se llega
-  // a portada. Más confiable que drag & drop en pantallas táctiles.
-  function movePhotoLeft(index: number) {
+  // Llevar una foto directo a portada (antes era una flecha "un lugar hacia
+  // adelante": llevar la 6ª a portada eran 5 toques).
+  function makeCover(index: number) {
     if (index === 0) return
     setPhotos((prev) => {
       const next = [...prev]
-      ;[next[index - 1], next[index]] = [next[index], next[index - 1]]
+      const [picked] = next.splice(index, 1)
+      next.unshift(picked)
       return next
     })
   }
@@ -256,6 +261,9 @@ export default function Publish() {
       if (id) {
         const { error: err } = await supabase.from('listings').update(payload).eq('id', id)
         if (err) throw err
+        // Best-effort: borrar del storage las fotos que el usuario quitó.
+        const removed = originalPhotosRef.current.filter((p) => !paths.includes(p))
+        if (removed.length) await supabase.storage.from('listing-photos').remove(removed).catch(() => {})
         invalidateFeedCache()
         navigate(`/p/${id}`)
       } else {
@@ -422,13 +430,11 @@ export default function Publish() {
                   ) : (
                     <button
                       type="button"
-                      onClick={() => movePhotoLeft(i)}
-                      aria-label="Mover foto hacia adelante"
-                      className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
+                      onClick={() => makeCover(i)}
+                      aria-label="Hacer portada"
+                      className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm"
                     >
-                      <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="M19 12H5m7-7-7 7 7 7" />
-                      </svg>
+                      Portada
                     </button>
                   )}
                 </div>
@@ -446,8 +452,8 @@ export default function Publish() {
                 </label>
               )}
             </div>
-            <p className="mt-2 text-xs text-neutral-600">
-              Se comprimen automáticamente. La primera es la portada — usá la flecha para reordenar.
+            <p className="mt-2 text-xs text-neutral-500">
+              Se comprimen automáticamente. La primera es la portada — tocá "Portada" en otra foto para destacarla.
             </p>
           </div>
 
@@ -524,7 +530,7 @@ export default function Publish() {
                 if (label !== undefined) setLocationLabel(label)
               }}
             />
-            <p className="mt-2 text-xs text-neutral-600">
+            <p className="mt-2 text-xs text-neutral-500">
               {locationLabel ? (
                 <>
                   <span className="text-neutral-400">{locationLabel}</span> · solo se muestra el área aproximada, nunca el punto exacto.
@@ -692,13 +698,11 @@ export default function Publish() {
                           ) : (
                             <button
                               type="button"
-                              onClick={() => movePhotoLeft(i)}
-                              aria-label="Mover foto hacia adelante"
-                              className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 p-1.5 text-white backdrop-blur-sm"
+                              onClick={() => makeCover(i)}
+                              aria-label="Hacer portada"
+                              className="absolute bottom-1.5 left-1.5 rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-semibold text-white backdrop-blur-sm"
                             >
-                              <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                                <path d="M19 12H5m7-7-7 7 7 7" />
-                              </svg>
+                              Portada
                             </button>
                           )}
                         </div>
