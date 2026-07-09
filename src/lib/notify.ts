@@ -187,16 +187,48 @@ export function playChime() {
   playSound('chime')
 }
 
+// --- Háptico en iOS (sin navigator.vibrate) --------------------------------
+// Safari/PWA en iOS NO implementa la Vibration API. Truco (iOS 17.4+): togglear
+// un <input type="checkbox" switch> nativo dispara el háptico del sistema, y un
+// click programático dentro de un gesto real del usuario también lo dispara.
+// Limitación: solo funciona DURANTE un gesto (tap/click); los eventos que llegan
+// solos (mensaje entrante con la app quieta) no pueden vibrar en iOS.
+let iosHapticLabel: HTMLLabelElement | null = null
+
+function iosHapticTick(): boolean {
+  if (typeof document === 'undefined' || !document.body) return false
+  if (!iosHapticLabel) {
+    const label = document.createElement('label')
+    label.setAttribute('aria-hidden', 'true')
+    label.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;overflow:hidden;pointer-events:none'
+    const input = document.createElement('input')
+    input.type = 'checkbox'
+    input.setAttribute('switch', '') // el switch nativo es el que tiene háptico
+    label.appendChild(input)
+    document.body.appendChild(label)
+    iosHapticLabel = label
+  }
+  try {
+    iosHapticLabel.click()
+    return true
+  } catch {
+    return false
+  }
+}
+
 // Vibración cruda, respetando el toggle de hápticos del usuario.
 export function vibrate(pattern: number | number[] = [40, 30, 40]) {
   if (!hapticsEnabled()) return
   if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
     try {
       navigator.vibrate(pattern)
+      return
     } catch {
-      /* algunos navegadores lo bloquean sin gesto; lo ignoramos */
+      /* algunos navegadores lo bloquean sin gesto; probamos el fallback */
     }
   }
+  // iOS (sin Vibration API): un tick háptico nativo. No soporta patrones.
+  iosHapticTick()
 }
 
 // Patrones hápticos con nombre, para no esparcir números mágicos por el código.
