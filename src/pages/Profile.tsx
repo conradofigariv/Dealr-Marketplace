@@ -174,23 +174,35 @@ export default function Profile() {
   }
 
   // Relanza una subasta finalizada: status→active, ofertas a cero y un nuevo
-  // auction_ends_at según la duración elegida. Sin esto, "Reactivar" solo movía
-  // el status y la subasta seguía apareciendo como "Finalizada" (auction_closed
-  // seguía en true y el cierre en el pasado).
+  // auction_ends_at según la duración elegida. Va por el RPC `relaunch_auction`
+  // (00041): las columnas de subasta ya no se pueden tocar con update directo
+  // (trigger protect_listing_columns). Si la migración todavía no está aplicada
+  // (el RPC no existe), cae al update directo de antes.
   async function reactivateAuction(listing: Listing, days: number) {
     setReactivating(true)
-    const patch: Record<string, unknown> = {
-      status: 'active',
-      last_renewed_at: new Date().toISOString(),
-      sold_to: null,
-      auction_closed: false,
-      auction_ends_at: new Date(Date.now() + days * 86400000).toISOString(),
-      current_bid: null,
-      bids_count: 0,
+    let failed = false
+    const { data, error } = await supabase.rpc('relaunch_auction', { p_listing: listing.id, p_days: days })
+    if (error && /function|schema cache/i.test(error.message)) {
+      // Fallback pre-00041: update directo (el trigger aún no existe, funciona).
+      const { error: updErr } = await supabase
+        .from('listings')
+        .update({
+          status: 'active',
+          last_renewed_at: new Date().toISOString(),
+          sold_to: null,
+          auction_closed: false,
+          auction_ends_at: new Date(Date.now() + days * 86400000).toISOString(),
+          current_bid: null,
+          bids_count: 0,
+        })
+        .eq('id', listing.id)
+      failed = Boolean(updErr)
+    } else {
+      // El RPC devuelve null en éxito o un mensaje de error en texto.
+      failed = Boolean(error) || Boolean(data)
     }
-    const { error } = await supabase.from('listings').update(patch).eq('id', listing.id)
     setReactivating(false)
-    if (error) {
+    if (failed) {
       setNameError('No pudimos reactivar la subasta. Probá de nuevo.')
       return
     }
@@ -475,9 +487,14 @@ export default function Profile() {
                                 <button onClick={() => setStatus(l.id, 'active', true)} className="rounded-full bg-white px-3 py-1 text-[11px] font-semibold text-black">
                                   Sigue disponible
                                 </button>
-                                <button onClick={() => setSellTarget(l)} className="rounded-full px-3 py-1 text-[11px] font-semibold text-neutral-400 ring-1 ring-neutral-700">
-                                  Ya lo vendí
-                                </button>
+                                {/* Una subasta EN CURSO no se marca vendida a mano: la vende
+                                    el cierre (o quedaría un ganador robado y auction_closed
+                                    inconsistente). El botón solo aparece en precio fijo. */}
+                                {!l.is_auction && (
+                                  <button onClick={() => setSellTarget(l)} className="rounded-full px-3 py-1 text-[11px] font-semibold text-neutral-400 ring-1 ring-neutral-700">
+                                    Ya lo vendí
+                                  </button>
+                                )}
                               </>
                             ) : l.is_auction ? (
                               <button

@@ -1,4 +1,5 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from 'react'
+import { haptic } from '../lib/notify'
 
 // Toast simple: reemplaza los alert() del navegador. useToast() devuelve una
 // función para mostrar un mensaje que se desvanece solo.
@@ -9,6 +10,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
   const timer = useRef<ReturnType<typeof setTimeout>>()
 
   const show = useCallback((msg: string) => {
+    haptic('tap') // los avisos internos también vibran (respeta el toggle del usuario)
     setMessage(msg)
     clearTimeout(timer.current)
     timer.current = setTimeout(() => setMessage(null), 3200)
