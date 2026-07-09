@@ -75,7 +75,11 @@ export default function ListingCard({
     >
       <div className="relative overflow-hidden rounded-xl bg-neutral-900">
       {photo ? (
-        <div className="relative">
+        /* Mientras carga, el contenedor reserva un 3:4 (altura típica de una
+           foto de producto): el shimmer ocupa espacio real y el masonry no
+           salta de 0 a la altura final con cada imagen que llega (CLS). Al
+           cargar, la foto toma su proporción natural. */
+        <div className={`relative ${imgLoaded ? '' : 'aspect-[3/4]'}`}>
           {!imgLoaded && <div className="img-shimmer pointer-events-none absolute inset-0" />}
           <img
             src={photoUrl(photo)}
@@ -83,7 +87,9 @@ export default function ListingCard({
             loading="lazy"
             decoding="async"
             onLoad={() => setImgLoaded(true)}
-            className={`block h-auto w-full transition-opacity duration-500 ${imgLoaded ? 'opacity-100' : 'opacity-0'}`}
+            className={`block w-full transition-opacity duration-500 ${
+              imgLoaded ? 'h-auto opacity-100' : 'absolute inset-0 h-full object-cover opacity-0'
+            }`}
           />
         </div>
       ) : (
