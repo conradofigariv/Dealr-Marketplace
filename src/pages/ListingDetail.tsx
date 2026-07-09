@@ -325,11 +325,13 @@ export default function ListingDetail() {
       body: questionBody.trim(),
     })
     setBusy(false)
-    if (!error) {
-      capture('question_asked', { listing_id: id })
-      setQuestionBody('')
-      load()
+    if (error) {
+      toast('No pudimos enviar tu pregunta. Probá de nuevo.')
+      return
     }
+    capture('question_asked', { listing_id: id })
+    setQuestionBody('')
+    load()
   }
 
   async function answerQuestion(questionId: string) {
@@ -475,17 +477,21 @@ export default function ListingDetail() {
   async function deleteListing() {
     if (!listing) return
     setDeleting(true)
-    // Las fotos van por separado; preguntas/ofertas/chats caen por el cascade del FK.
-    if (listing.photos.length) {
-      await supabase.storage.from('listing-photos').remove(listing.photos)
-    }
+    // Primero la fila, después las fotos: si el delete falla, la publicación
+    // sigue viva CON sus fotos (antes se borraban las fotos primero y un fallo
+    // dejaba el aviso vivo con imágenes rotas para siempre). Las fotos son
+    // best-effort: si su borrado falla solo quedan huérfanas en storage.
     const { error } = await supabase.from('listings').delete().eq('id', listing.id)
-    setDeleting(false)
     if (error) {
+      setDeleting(false)
       setDeleteOpen(false)
       toast('No pudimos eliminar la publicación. Probá de nuevo.')
       return
     }
+    if (listing.photos.length) {
+      await supabase.storage.from('listing-photos').remove(listing.photos)
+    }
+    setDeleting(false)
     invalidateFeedCache()
     navigate('/perfil')
   }

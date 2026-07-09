@@ -5,6 +5,7 @@ import type { Profile } from '../lib/types'
 import Modal from './Modal'
 import Avatar from './Avatar'
 import RatingForm from './RatingForm'
+import { useToast } from './Toast'
 import { invalidateFeedCache } from '../pages/Home'
 
 interface BuyerConv {
@@ -29,6 +30,7 @@ export default function SellFlowModal({
   const [convs, setConvs] = useState<BuyerConv[]>([])
   const [loaded, setLoaded] = useState(false)
   const [busy, setBusy] = useState(false)
+  const toast = useToast()
   // null = elegir; objeto = ya se vendió a ese comprador y toca calificarlo
   const [rating, setRating] = useState<BuyerConv | null>(null)
 
@@ -51,7 +53,11 @@ export default function SellFlowModal({
       .update({ status: 'sold', sold_to: soldTo })
       .eq('id', listingId)
     setBusy(false)
-    if (error) return false
+    if (error) {
+      // Antes fallaba en silencio: el usuario tocaba y "no pasaba nada".
+      toast('No pudimos marcar la venta. Probá de nuevo.')
+      return false
+    }
     invalidateFeedCache()
     capture('listing_sold', { listing_id: listingId, in_app_buyer: Boolean(soldTo) })
     onSold()

@@ -213,19 +213,21 @@ export default function Profile() {
 
   async function deleteListing(listing: Listing) {
     setDeleting(true)
-    // Borramos primero las fotos del storage (best-effort); las preguntas y
-    // ofertas caen por el cascade del FK. Los chats NO: su FK es `on delete
-    // set null` (00027), así que la conversación sobrevive con la publicación
-    // marcada como eliminada.
-    if (listing.photos.length) {
-      await supabase.storage.from('listing-photos').remove(listing.photos)
-    }
+    // Primero la fila, después las fotos (best-effort): si el delete falla, la
+    // publicación sigue viva CON sus fotos (el orden inverso dejaba avisos con
+    // imágenes rotas). Preguntas y ofertas caen por el cascade del FK; los
+    // chats NO: su FK es `on delete set null` (00027), así que la conversación
+    // sobrevive con la publicación marcada como eliminada.
     const { error } = await supabase.from('listings').delete().eq('id', listing.id)
-    setDeleting(false)
     if (error) {
+      setDeleting(false)
       setNameError('No pudimos eliminar la publicación. Probá de nuevo.')
       return
     }
+    if (listing.photos.length) {
+      await supabase.storage.from('listing-photos').remove(listing.photos)
+    }
+    setDeleting(false)
     setDeleteTarget(null)
     setListings((prev) => prev.filter((l) => l.id !== listing.id))
   }

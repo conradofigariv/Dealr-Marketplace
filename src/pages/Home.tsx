@@ -11,6 +11,8 @@ import AuctionRail from '../components/AuctionRail'
 import FeedFilters, { EMPTY_FILTERS, countActiveFilters, filterableFields, type FeedFilterValues } from '../components/FeedFilters'
 import Modal from '../components/Modal'
 import ActionMenu from '../components/ActionMenu'
+import EmptyState from '../components/EmptyState'
+import { useToast } from '../components/Toast'
 import { vibrate, haptic, playSound } from '../lib/notify'
 import {
   getCachedBuyerLocation,
@@ -79,6 +81,7 @@ export default function Home() {
   const { unreadCount } = useNotifications()
   const { session } = useAuth()
   const navigate = useNavigate()
+  const toast = useToast()
   // Estado prearmado (Explorar / Búsquedas guardadas): tiene prioridad sobre
   // la caché y se consume una sola vez.
   const pending = pendingFeedState
@@ -94,6 +97,7 @@ export default function Home() {
   const [filters, setFilters] = useState<FeedFilterValues>(pending?.filters ?? feedCache?.filters ?? EMPTY_FILTERS)
   const [filtersOpen, setFiltersOpen] = useState(false)
   const [savedSearch, setSavedSearch] = useState(false)
+  const [savingSearch, setSavingSearch] = useState(false)
   const [buyerLoc, setBuyerLoc] = useState<LatLng | null>(getCachedBuyerLocation())
   const [buyerLabel, setBuyerLabel] = useState<string | null>(getCachedBuyerLabel())
   const [locating, setLocating] = useState(false)
@@ -108,6 +112,10 @@ export default function Home() {
   const [hasMore, setHasMore] = useState(feedCache?.hasMore ?? true)
   const [recentItems, setRecentItems] = useState<Listing[]>([])
   const pageRef = useRef(feedCache?.page ?? 0)
+  // Generación del feed: cada loadFirst la incrementa. Un loadMore en vuelo de
+  // una generación vieja (otros filtros / refresh) descarta su resultado en vez
+  // de mezclarlo con la lista nueva (duplicados + páginas salteadas).
+  const genRef = useRef(0)
   const restoredScroll = useRef(false)
   const firstLoad = useRef(true)
   const sentinelRef = useRef<HTMLDivElement>(null)
@@ -149,7 +157,11 @@ export default function Home() {
   }, [])
 
   // Vistos recientemente (localStorage): solo en la vista por defecto.
-  const defaultView = !search.trim() && !categoryId && !onlyVerified && !onlyAuctions && countActiveFilters(filters) === 0
+  // OJO: elegir un orden distinto de "Recientes" TAMBIÉN saca la vista por
+  // defecto — la RPC de recomendados impone su propio ranking e ignoraría
+  // "Menor/Mayor precio" (el selector no hacía nada).
+  const defaultView =
+    !search.trim() && !categoryId && !onlyVerified && !onlyAuctions && countActiveFilters(filters) === 0 && order === 'recent'
   useEffect(() => {
     const ids = getRecentlyViewed()
     if (ids.length === 0) {
@@ -175,7 +187,9 @@ export default function Home() {
       // sold_to), así que el embed debe decir cuál usar o PostgREST falla.
       .select(`${SELECT}${onlyVerified ? '!inner' : ''}(id, username, avatar_url, phone_verified, identity_verified, seller_score, seller_ratings_count)`)
       .eq('status', 'active')
-    if (onlyAuctions) query = query.eq('is_auction', true)
+    // Subastas: solo las que siguen en juego. Una vencida pero aún no cerrada
+    // sigue 'active' — sin este filtro aparecía (y PRIMERA, por el orden asc).
+    if (onlyAuctions) query = query.eq('is_auction', true).gt('auction_ends_at', new Date().toISOString())
     if (onlyAuctions) query = query.order('auction_ends_at', { ascending: true })
     else if (order === 'price_asc') query = query.order('price', { ascending: true })
     else if (order === 'price_desc') query = query.order('price', { ascending: false })
@@ -234,7 +248,9 @@ export default function Home() {
 
   // Primera página (reset): reemplaza la lista.
   const loadFirst = useCallback(async () => {
+    const gen = ++genRef.current
     const batch = await fetchPage(0)
+    if (gen !== genRef.current) return // llegó tarde: ya corre otra carga
     pageRef.current = 0
     setListings(batch)
     setHasMore(batch.length === PAGE_SIZE)
@@ -257,8 +273,15 @@ export default function Home() {
   const loadMore = useCallback(async () => {
     if (loadingMore || !hasMore || loading) return
     setLoadingMore(true)
+    const gen = genRef.current
     const next = pageRef.current + 1
     const batch = await fetchPage(next)
+    if (gen !== genRef.current) {
+      // Mientras bajaba esta página, loadFirst reseteó el feed (cambio de
+      // filtros / foreground): descartar para no mezclar generaciones.
+      setLoadingMore(false)
+      return
+    }
     pageRef.current = next
     setListings((prev) => {
       const merged = [...prev, ...batch]
@@ -436,6 +459,8 @@ export default function Home() {
 
   async function saveSearch() {
     if (!session) return navigate('/auth', { state: { from: '/', back: '/' } })
+    if (savingSearch) return // sin doble submit (dos taps = dos alertas iguales)
+    setSavingSearch(true)
     const { error } = await supabase.from('saved_searches').insert({
       user_id: session.user.id,
       query: search.trim() || null,
@@ -445,7 +470,12 @@ export default function Home() {
       currency: filters.currency === 'all' ? null : filters.currency,
       conditions: filters.conditions.length ? filters.conditions : null,
     })
-    if (!error) setSavedSearch(true)
+    setSavingSearch(false)
+    if (error) {
+      toast('No pudimos guardar la búsqueda. Probá de nuevo.')
+      return
+    }
+    setSavedSearch(true)
   }
 
   // Pull-to-refresh: si arrancás el gesto con el feed arriba de todo y tirás
@@ -743,10 +773,29 @@ export default function Home() {
           ))}
         </div>
       ) : withDistance.length === 0 ? (
-        <div className="px-8 py-24 text-center text-sm text-neutral-500">
-          No encontramos publicaciones.
-          {(search || categoryId || onlyVerified || activeFilters > 0) && <p className="mt-1">Probá con otros filtros.</p>}
-        </div>
+        search || categoryId || onlyVerified || onlyAuctions || activeFilters > 0 ? (
+          <EmptyState
+            icon={<path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM21 21l-4.35-4.35" />}
+            title="No encontramos publicaciones con esos filtros."
+          >
+            <p className="text-xs text-neutral-500">Probá con otros filtros o una búsqueda más amplia.</p>
+          </EmptyState>
+        ) : (
+          /* Primera impresión con catálogo chico: invitar a publicar, no un
+             texto pelado que parece app rota. */
+          <EmptyState
+            icon={<path d="M12 5v14M5 12h14" />}
+            title="Todavía no hay publicaciones por acá."
+          >
+            <p className="text-xs text-neutral-500">Sé de los primeros: publicá algo que ya no uses.</p>
+            <Link
+              to="/publicar"
+              className="mt-4 inline-block rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition active:scale-[0.98]"
+            >
+              Vender algo
+            </Link>
+          </EmptyState>
+        )
       ) : (
         /* Masonry edge-to-edge con separación mínima, estilo Savee */
         <div className="columns-2 gap-0.5 lg:columns-3 xl:columns-4">

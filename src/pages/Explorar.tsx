@@ -4,48 +4,42 @@ import { supabase } from '../lib/supabase'
 import type { Category } from '../lib/types'
 import { openFeed } from './Home'
 
-// Por categoría: emoji (fallback) + keyword para la foto temática.
-// Las fotos salen de loremflickr (gratis, sin key). Para producción se pueden
-// reemplazar por imágenes curadas en /public/categories/<slug>.jpg cambiando
-// imageFor().
-const CATS: Record<string, { emoji: string; kw: string }> = {
-  celulares: { emoji: '📱', kw: 'smartphone' },
-  computacion: { emoji: '💻', kw: 'laptop' },
-  electronica: { emoji: '🎧', kw: 'headphones' },
-  'consolas-videojuegos': { emoji: '🎮', kw: 'gaming' },
-  'hogar-muebles': { emoji: '🛋️', kw: 'furniture' },
-  electrodomesticos: { emoji: '🧺', kw: 'appliance' },
-  'ropa-accesorios': { emoji: '👕', kw: 'clothes' },
-  'deportes-fitness': { emoji: '🏋️', kw: 'fitness' },
-  bicicletas: { emoji: '🚲', kw: 'bicycle' },
-  'vehiculos-accesorios': { emoji: '🚗', kw: 'car' },
-  'bebes-ninos': { emoji: '🧸', kw: 'baby' },
-  herramientas: { emoji: '🔧', kw: 'tools' },
-  instrumentos: { emoji: '🎸', kw: 'guitar' },
-  'libros-musica': { emoji: '📚', kw: 'books' },
-  'plantas-jardineria': { emoji: '🪴', kw: 'plants' },
-  alquileres: { emoji: '🏠', kw: 'apartment' },
-  otros: { emoji: '📦', kw: 'boxes' },
-}
-
-function imageFor(slug: string, id: number): string {
-  const kw = CATS[slug]?.kw ?? 'product'
-  // lock fija la imagen para que no cambie en cada carga.
-  return `https://loremflickr.com/320/240/${kw}?lock=${id}`
+// Por categoría: foto curada en /public/categories/<slug>.jpg; si falta, cae
+// al emoji (prolijo y consistente). Antes había un fallback intermedio a
+// loremflickr (fotos de stock ALEATORIAS de un tercero) que se veía a
+// placeholder de desarrollo — fuera para el lanzamiento.
+const CATS: Record<string, { emoji: string }> = {
+  celulares: { emoji: '📱' },
+  computacion: { emoji: '💻' },
+  electronica: { emoji: '🎧' },
+  'consolas-videojuegos': { emoji: '🎮' },
+  'hogar-muebles': { emoji: '🛋️' },
+  electrodomesticos: { emoji: '🧺' },
+  'ropa-accesorios': { emoji: '👕' },
+  'deportes-fitness': { emoji: '🏋️' },
+  bicicletas: { emoji: '🚲' },
+  'vehiculos-accesorios': { emoji: '🚗' },
+  'bebes-ninos': { emoji: '🧸' },
+  herramientas: { emoji: '🔧' },
+  instrumentos: { emoji: '🎸' },
+  'libros-musica': { emoji: '📚' },
+  'plantas-jardineria': { emoji: '🪴' },
+  alquileres: { emoji: '🏠' },
+  otros: { emoji: '📦' },
 }
 
 function CategoryTile({ category, onOpen }: { category: Category; onOpen: (c: Category) => void }) {
-  // 0 = imagen local (/public/categories/<slug>.jpg), 1 = foto remota, 2 = emoji
-  const [step, setStep] = useState(0)
+  // true = imagen local (/public/categories/<slug>.jpg); false = emoji
+  const [useImage, setUseImage] = useState(true)
   const [loaded, setLoaded] = useState(false)
   const meta = CATS[category.slug]
-  const src = step === 0 ? `/categories/${category.slug}.jpg` : imageFor(category.slug, category.id)
+  const src = `/categories/${category.slug}.jpg`
   return (
     <button
       onClick={() => onOpen(category)}
       className="relative aspect-square overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-neutral-800 transition active:opacity-80"
     >
-      {step < 2 ? (
+      {useImage ? (
         <>
           {!loaded && <div className="img-shimmer pointer-events-none absolute inset-0" />}
           <img
@@ -55,7 +49,7 @@ function CategoryTile({ category, onOpen }: { category: Category; onOpen: (c: Ca
             onLoad={() => setLoaded(true)}
             onError={() => {
               setLoaded(false)
-              setStep((s) => s + 1)
+              setUseImage(false)
             }}
             className={`h-full w-full object-cover transition-opacity duration-500 ${loaded ? 'opacity-100' : 'opacity-0'}`}
           />

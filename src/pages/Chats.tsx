@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -35,34 +35,56 @@ export default function Chats() {
     if (!loading && !session) navigate('/auth', { state: { from: location.pathname, back: '/' } })
   }, [loading, session, location.pathname, navigate])
 
-  useEffect(() => {
+  const load = useCallback(async () => {
     if (!session) return
-    supabase
+    const { data } = await supabase
       .from('conversations')
       .select(
         '*, listing:listings(title, photos, status), buyer:profiles!conversations_buyer_id_fkey(username, avatar_url, last_seen_at), seller:profiles!conversations_seller_id_fkey(username, avatar_url, last_seen_at)',
       )
       .order('last_message_at', { ascending: false })
-      .then(async ({ data }) => {
-        const convs = (data as Conversation[]) ?? []
-        setConversations(convs)
-        setFetched(true)
-        if (convs.length === 0) return
-        // Último mensaje + no leídos por conversación en un solo RPC (en vez de
-        // traer todos los mensajes y agruparlos en el cliente).
-        const { data: previews } = await supabase.rpc('conversation_previews')
-        const next: Record<string, ConvMeta> = {}
-        for (const p of (previews ?? []) as PreviewRow[]) {
-          if (!p.last_sender) continue // conversación sin mensajes todavía
-          next[p.conversation_id] = {
-            body: p.last_body ?? (p.last_image ? '📷 Foto' : ''),
-            senderId: p.last_sender,
-            unread: p.unread,
-          }
-        }
-        setMeta(next)
-      })
+    const convs = (data as Conversation[]) ?? []
+    setConversations(convs)
+    setFetched(true)
+    if (convs.length === 0) return
+    // Último mensaje + no leídos por conversación en un solo RPC (en vez de
+    // traer todos los mensajes y agruparlos en el cliente).
+    const { data: previews } = await supabase.rpc('conversation_previews')
+    const next: Record<string, ConvMeta> = {}
+    for (const p of (previews ?? []) as PreviewRow[]) {
+      if (!p.last_sender) continue // conversación sin mensajes todavía
+      next[p.conversation_id] = {
+        body: p.last_body ?? (p.last_image ? '📷 Foto' : ''),
+        senderId: p.last_sender,
+        unread: p.unread,
+      }
+    }
+    setMeta(next)
   }, [session])
+
+  useEffect(() => {
+    load()
+  }, [load])
+
+  // La lista vive: un mensaje nuevo (en cualquiera de mis chats) actualiza
+  // preview / orden / no-leídos sin salir y volver a entrar. Realtime respeta
+  // RLS: solo llegan eventos de conversaciones donde participo. El debounce
+  // agrupa ráfagas (varios mensajes seguidos = una sola recarga).
+  useEffect(() => {
+    if (!session) return
+    let timer: ReturnType<typeof setTimeout>
+    const channel = supabase
+      .channel(`chats-list-${session.user.id}`)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'messages' }, () => {
+        clearTimeout(timer)
+        timer = setTimeout(load, 300)
+      })
+      .subscribe()
+    return () => {
+      clearTimeout(timer)
+      supabase.removeChannel(channel)
+    }
+  }, [session, load])
 
   const filtered = query.trim()
     ? conversations.filter((conv) => {

@@ -58,6 +58,25 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
     refresh()
   }, [refresh])
 
+  // Al volver del background el socket pudo perder eventos: re-fetch para que
+  // el badge y la lista no queden viejos (mismo patrón que useUnreadChats).
+  useEffect(() => {
+    let last = 0
+    function refreshIfVisible() {
+      if (document.visibilityState !== 'visible') return
+      const t = Date.now()
+      if (t - last < 1500) return // visibilitychange y focus llegan juntos
+      last = t
+      refresh()
+    }
+    document.addEventListener('visibilitychange', refreshIfVisible)
+    window.addEventListener('focus', refreshIfVisible)
+    return () => {
+      document.removeEventListener('visibilitychange', refreshIfVisible)
+      window.removeEventListener('focus', refreshIfVisible)
+    }
+  }, [refresh])
+
   // Realtime: las notificaciones nuevas aparecen sin recargar.
   useEffect(() => {
     if (!session) return
@@ -68,7 +87,12 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
         { event: 'INSERT', schema: 'public', table: 'notifications', filter: `user_id=eq.${session.user.id}` },
         async (payload) => {
           const n = payload.new as AppNotification
-          if (!alertedRef.current.has(n.id)) {
+          // Si el usuario está PARADO en ese chat leyendo, no sonar el chime
+          // global por cada mensaje (ya lo ve llegar en vivo; era molesto en un
+          // ida y vuelta rápido). El link del mensaje es '/chats/<conv>'.
+          const viewingThatChat =
+            n.type === 'message' && Boolean(n.link) && window.location.pathname === n.link && document.visibilityState === 'visible'
+          if (!alertedRef.current.has(n.id) && !viewingThatChat) {
             alertedRef.current.add(n.id)
             // Sonido + vibración + globo (si la pestaña no está visible).
             alertIncoming(n.title, n.body, n.link)
