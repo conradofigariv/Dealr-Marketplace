@@ -13,6 +13,7 @@ import SellFlowModal from '../components/SellFlowModal'
 import NotificationSettings from '../components/NotificationSettings'
 import InstallButton from '../components/InstallButton'
 import SupportModal from '../components/SupportModal'
+import TermsModal from '../components/TermsModal'
 import { useToast } from '../components/Toast'
 import { checkForUpdate } from '../lib/swUpdate'
 import { replayIntro } from '../lib/intro'
@@ -56,6 +57,7 @@ export default function Profile() {
     window.location.href = data.url as string
   }
   const [settingsOpen, setSettingsOpen] = useState(false)
+  const [termsOpen, setTermsOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
   const [myListingsOpen, setMyListingsOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
@@ -322,7 +324,7 @@ export default function Profile() {
             className="text-xl font-bold text-white"
           >
             {profile.username}
-            <span className="ml-2 text-sm font-normal text-neutral-600">editar</span>
+            <span className="-m-2 ml-0 inline-block p-2 text-sm font-normal text-neutral-400">editar</span>
           </button>
         )}
         <p className="mt-1 text-xs text-neutral-500">
@@ -353,7 +355,7 @@ export default function Profile() {
             {profile.zone ? (
               <>
                 <span className="text-neutral-300">{profile.zone}</span>
-                <span className="ml-2 text-neutral-600">editar</span>
+                <span className="-m-2 ml-0 inline-block p-2 text-neutral-400">editar</span>
               </>
             ) : (
               '+ Agregar tu zona'
@@ -683,10 +685,17 @@ export default function Profile() {
         <Modal title="Configuración" onClose={() => setSettingsOpen(false)}>
           <div className="space-y-2 text-sm">
             <NotificationSettings />
-            <div className="flex items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800">
-              <span className="text-neutral-300">Privacidad y datos</span>
-              <span className="text-xs text-neutral-600">Próximamente</span>
-            </div>
+            {/* Antes: "Privacidad y datos · Próximamente" (fila muerta). Ahora
+                abre los Términos ya aceptados, en modo lectura. */}
+            <button
+              onClick={() => setTermsOpen(true)}
+              className="flex w-full items-center justify-between rounded-xl bg-neutral-900 px-4 py-3.5 text-left ring-1 ring-neutral-800 transition hover:ring-neutral-700"
+            >
+              <span className="text-neutral-300">Términos y Condiciones</span>
+              <svg viewBox="0 0 24 24" className="h-4 w-4 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
             <button
               onClick={checkUpdate}
               disabled={checkingUpdate}
@@ -745,6 +754,7 @@ export default function Profile() {
       )}
 
       {supportOpen && <SupportModal onClose={() => setSupportOpen(false)} />}
+      {termsOpen && <TermsModal viewOnly onReject={() => setTermsOpen(false)} />}
     </div>
   )
 }

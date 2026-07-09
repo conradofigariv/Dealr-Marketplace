@@ -141,6 +141,8 @@ export default function ChatThread() {
     conversation?.listing?.status === 'sold' && conversation?.listing?.sold_to === conversation?.buyer_id
   const canRate =
     !alreadyRated &&
+    // El DM de bienvenida del admin no es una operación: no se califica.
+    conversation?.kind !== 'welcome' &&
     (saleConfirmed || (messages.length >= 4 && new Set(messages.map((m) => m.sender_id)).size >= 2))
 
   useEffect(() => {
@@ -248,17 +250,38 @@ export default function ChatThread() {
     haptic('tap') // feedback inmediato al enviar
     setDraft('')
     setSendError('')
+    // Burbuja optimista: el mensaje aparece al instante (levemente translúcido)
+    // y se reemplaza por el real cuando el insert confirma. En conexión lenta,
+    // antes el texto "desaparecía" del input y tardaba en aparecer.
+    const tempId = `temp-${crypto.randomUUID()}`
+    const temp = {
+      id: tempId,
+      conversation_id: id,
+      sender_id: myId,
+      body: text,
+      image_path: null,
+      created_at: new Date().toISOString(),
+      read_at: null,
+      edited_at: null,
+      deleted_at: null,
+    } as Message
+    setMessages((prev) => [...prev, temp])
     const { data, error } = await supabase
       .from('messages')
       .insert({ conversation_id: id, sender_id: myId, body: text })
       .select('*')
       .single()
     if (error || !data) {
+      setMessages((prev) => prev.filter((m) => m.id !== tempId))
       setDraft((d) => d || text)
       setSendError('No se pudo enviar. Probá de nuevo.')
       return
     }
-    setMessages((prev) => (prev.some((m) => m.id === data.id) ? prev : [...prev, data]))
+    setMessages((prev) => {
+      const withoutTemp = prev.filter((m) => m.id !== tempId)
+      // El eco de Realtime puede haber llegado antes que esta respuesta.
+      return withoutTemp.some((m) => m.id === data.id) ? withoutTemp : [...withoutTemp, data]
+    })
   }
 
   async function sendImage(file: File, mirrored = false) {
@@ -337,6 +360,7 @@ export default function ChatThread() {
   // texto), reportar y —si sos admin— borrar. Si no hay sesión, no hay menú.
   function hasMenu(m: Message): boolean {
     if (m.deleted_at) return false
+    if (m.id.startsWith('temp-')) return false // burbuja optimista aún sin id real
     return m.sender_id === myId || Boolean(session)
   }
 
@@ -596,7 +620,7 @@ export default function ChatThread() {
                   }}
                   className={`msg-pressable max-w-[80%] whitespace-pre-line rounded-3xl px-4 py-2.5 text-[15px] ${
                     mine ? 'rounded-br-lg bg-white text-black' : 'rounded-bl-lg bg-neutral-900 text-neutral-100'
-                  } ${pressingId === m.id ? 'msg-pressing' : ''}`}
+                  } ${pressingId === m.id ? 'msg-pressing' : ''} ${m.id.startsWith('temp-') ? 'opacity-60' : ''}`}
                 >
                   {m.body}
                   {m.edited_at && (
@@ -606,7 +630,7 @@ export default function ChatThread() {
                   )}
                 </div>
               )}
-              {mine && !m.deleted_at && (
+              {mine && !m.deleted_at && !m.id.startsWith('temp-') && (
                 <svg
                   viewBox="0 0 24 24"
                   className={`mb-1 h-3.5 w-3.5 shrink-0 ${m.read_at ? 'text-sky-400' : 'text-neutral-600'}`}

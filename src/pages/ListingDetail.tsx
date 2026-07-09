@@ -11,6 +11,7 @@ import StarRating from '../components/StarRating'
 import SellerBadges from '../components/SellerBadges'
 import VerifiedSeal from '../components/VerifiedSeal'
 import Modal from '../components/Modal'
+import ConfirmDialog from '../components/ConfirmDialog'
 import SellFlowModal from '../components/SellFlowModal'
 import LocationMap from '../components/LocationMap'
 import ListingRail from '../components/ListingRail'
@@ -28,18 +29,37 @@ import { invalidateFeedCache } from './Home'
 // Mi última puja por subasta, guardada en localStorage para que la detección de
 // "me superaron" sobreviva a recargar/reabrir (las pujas son anónimas, no hay
 // forma server-side de saber si soy el mejor postor).
-function readMyBid(listingId: string): number | null {
+// Se guarda también bids_count al momento de pujar: si el listing tiene MENOS
+// ofertas que eso, la subasta se relanzó (las pujas se borran) y la guardada es
+// de la instancia anterior — se descarta en vez de mostrarme como "mejor postor"
+// de una subasta en la que no oferté.
+function readMyBid(listingId: string): { amount: number; count: number } | null {
   try {
     const v = localStorage.getItem(`dealr_mybid_${listingId}`)
-    return v == null ? null : Number(v)
+    if (v == null) return null
+    const parsed: unknown = JSON.parse(v)
+    if (typeof parsed === 'number') return { amount: parsed, count: 0 } // formato viejo
+    const obj = parsed as { amount?: number; count?: number }
+    return typeof obj?.amount === 'number' ? { amount: obj.amount, count: obj.count ?? 0 } : null
   } catch {
-    return null
+    // Formato viejo sin JSON ("50000") o storage bloqueado.
+    const v = localStorage.getItem(`dealr_mybid_${listingId}`)
+    const n = v == null ? NaN : Number(v)
+    return Number.isNaN(n) ? null : { amount: n, count: 0 }
   }
 }
 
-function persistMyBid(listingId: string, amount: number) {
+function persistMyBid(listingId: string, amount: number, count: number) {
   try {
-    localStorage.setItem(`dealr_mybid_${listingId}`, String(amount))
+    localStorage.setItem(`dealr_mybid_${listingId}`, JSON.stringify({ amount, count }))
+  } catch {
+    /* ignorar */
+  }
+}
+
+function clearMyBid(listingId: string) {
+  try {
+    localStorage.removeItem(`dealr_mybid_${listingId}`)
   } catch {
     /* ignorar */
   }
@@ -68,6 +88,8 @@ export default function ListingDetail() {
   const [offerError, setOfferError] = useState('')
   const [busy, setBusy] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  const [confirmNoShow, setConfirmNoShow] = useState(false)
+  const [confirmDeleteQuestion, setConfirmDeleteQuestion] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [sellOpen, setSellOpen] = useState(false)
   const [statusError, setStatusError] = useState('')
@@ -258,9 +280,13 @@ export default function ListingDetail() {
     if (!rehydratedBid.current && id && listing.current_bid != null) {
       rehydratedBid.current = true
       const mine = readMyBid(id)
-      if (mine != null) {
-        myBidRef.current = mine
-        if (listing.current_bid > mine) {
+      if (mine != null && listing.bids_count < mine.count) {
+        // La subasta se relanzó (hay menos ofertas que cuando pujé): mi puja
+        // guardada es de la instancia anterior, no cuenta.
+        clearMyBid(id)
+      } else if (mine != null) {
+        myBidRef.current = mine.amount
+        if (listing.current_bid > mine.amount) {
           iWasWinningRef.current = false
           if (!listing.auction_closed && !auctionEndedNow(listing)) setOutbid(true)
         } else {
@@ -298,8 +324,9 @@ export default function ListingDetail() {
       // `data` = mensaje de validación de la DB; error = fallo de red.
       return toast(error ? 'No pudimos registrar la oferta. Probá de nuevo.' : (data as string))
     }
-    // Quedé como mejor postor: persisto la puja para sobrevivir recargar.
-    if (id) persistMyBid(id, amount)
+    // Quedé como mejor postor: persisto la puja para sobrevivir recargar
+    // (con el bids_count esperado, para invalidarla si la subasta se relanza).
+    if (id) persistMyBid(id, amount, (listing?.bids_count ?? 0) + 1)
     setOutbid(false)
     setBidAmount('')
     playSound('pop')
@@ -372,17 +399,17 @@ export default function ListingDetail() {
   }
 
   async function reportNoShow() {
-    if (!confirm('¿Marcar que el comprador NO retiró? Si no confirmó el retiro, queda sin participar de subastas por un tiempo (escala con la reincidencia).')) return
+    setConfirmNoShow(false)
     const { data, error } = await supabase.rpc('report_auction_no_show', { p_listing: listing!.id })
     if (error) return toast(error.message)
     if (data) return toast(data as string)
-    toast('Reporte registrado')
+    toast('Reporte registrado. El equipo va a revisar el caso.')
     load()
   }
 
   // Moderación del admin (long-press sobre la pregunta).
   async function deleteQuestion(questionId: string) {
-    if (!confirm('¿Borrar esta pregunta?')) return
+    setConfirmDeleteQuestion(null)
     const { error } = await supabase.from('questions').delete().eq('id', questionId)
     if (error) return toast(error.message)
     setQuestions((prev) => prev.filter((x) => x.id !== questionId))
@@ -796,7 +823,7 @@ export default function ListingDetail() {
                     <button onClick={confirmPickup} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-black">
                       El comprador retiró
                     </button>
-                    <button onClick={reportNoShow} className="rounded-full px-4 py-2 text-xs font-semibold text-red-400 ring-1 ring-red-500/30">
+                    <button onClick={() => setConfirmNoShow(true)} className="rounded-full px-4 py-2 text-xs font-semibold text-red-400 ring-1 ring-red-500/30">
                       No retiró
                     </button>
                   </div>
@@ -924,7 +951,7 @@ export default function ListingDetail() {
               {questions.map((q) => (
                 <li key={q.id} className="text-sm">
                   <LongPressActions
-                    actions={isAdmin ? [{ label: 'Borrar', destructive: true, onClick: () => deleteQuestion(q.id) }] : []}
+                    actions={isAdmin ? [{ label: 'Borrar', destructive: true, onClick: () => setConfirmDeleteQuestion(q.id) }] : []}
                   >
                   <div className="flex items-start justify-between gap-2">
                     <p className="font-medium text-neutral-200">{q.body}</p>
@@ -1098,8 +1125,8 @@ export default function ListingDetail() {
           <div className="space-y-5 text-sm text-neutral-400">
             <p>
               Vas a eliminar <strong className="text-white">{listing.title}</strong> de forma
-              permanente. También se borran sus preguntas, ofertas y chats. Esta acción no se puede
-              deshacer.
+              permanente. También se borran sus preguntas y ofertas. Los chats se conservan (sin la
+              publicación). Esta acción no se puede deshacer.
             </p>
             <p className="text-xs text-neutral-600">
               Si solo querés que deje de aparecer, mejor usá <strong className="text-neutral-400">Pausar</strong> o <strong className="text-neutral-400">Ya lo vendí</strong>.
@@ -1122,6 +1149,28 @@ export default function ListingDetail() {
             </div>
           </div>
         </Modal>
+      )}
+
+      {confirmNoShow && (
+        <ConfirmDialog
+          title="Reportar que no retiró"
+          message="Vas a reportar que el ganador no retiró la compra. El caso queda en revisión del equipo de Dealr, que puede contactar a ambas partes y aplicar sanciones si corresponde."
+          confirmLabel="Reportar"
+          destructive
+          onConfirm={reportNoShow}
+          onClose={() => setConfirmNoShow(false)}
+        />
+      )}
+
+      {confirmDeleteQuestion && (
+        <ConfirmDialog
+          title="Borrar pregunta"
+          message="Vas a borrar esta pregunta de forma permanente."
+          confirmLabel="Borrar"
+          destructive
+          onConfirm={() => deleteQuestion(confirmDeleteQuestion)}
+          onClose={() => setConfirmDeleteQuestion(null)}
+        />
       )}
     </div>
   )

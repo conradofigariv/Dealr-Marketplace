@@ -43,7 +43,14 @@ export default function Saved() {
         <h1 className="text-2xl font-bold tracking-tight text-white">Guardados</h1>
       </header>
 
-      {fetched && listings.length === 0 ? (
+      {!fetched ? (
+        /* Skeleton mientras carga: antes se veía un instante en blanco. */
+        <div className="columns-2 gap-0.5">
+          {[240, 300, 200, 280].map((h, i) => (
+            <div key={i} className="mb-0.5 animate-pulse rounded-xl bg-neutral-900" style={{ height: h }} />
+          ))}
+        </div>
+      ) : listings.length === 0 ? (
         <EmptyState
           icon={<path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />}
           title="Todavía no guardaste nada."

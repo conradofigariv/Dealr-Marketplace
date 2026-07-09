@@ -7,6 +7,9 @@ import type { AppNotification } from '../lib/types'
 interface NotificationsState {
   items: AppNotification[]
   unreadCount: number
+  // true cuando ya llegó la primera respuesta: permite distinguir "cargando"
+  // de "no tenés notificaciones" (antes se veía el vacío un instante).
+  loaded: boolean
   markAllRead: () => Promise<void>
   refresh: () => Promise<void>
 }
@@ -14,6 +17,7 @@ interface NotificationsState {
 const NotificationsContext = createContext<NotificationsState>({
   items: [],
   unreadCount: 0,
+  loaded: false,
   markAllRead: async () => {},
   refresh: async () => {},
 })
@@ -21,12 +25,14 @@ const NotificationsContext = createContext<NotificationsState>({
 export function NotificationsProvider({ children }: { children: ReactNode }) {
   const { session } = useAuth()
   const [items, setItems] = useState<AppNotification[]>([])
+  const [loaded, setLoaded] = useState(false)
   // Ids ya alertados, para no sonar dos veces (StrictMode / reentregas).
   const alertedRef = useRef<Set<string>>(new Set())
 
   const refresh = useCallback(async () => {
     if (!session) {
       setItems([])
+      setLoaded(true)
       return
     }
     // Con el embed del actor (FK de la 00023). Si esa migración no está aplicada,
@@ -43,6 +49,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       .limit(50)
     if (!withActor.error) {
       setItems((withActor.data as AppNotification[]) ?? [])
+      setLoaded(true)
       return
     }
     const plain = await supabase
@@ -52,6 +59,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
       .order('created_at', { ascending: false })
       .limit(50)
     if (!plain.error) setItems((plain.data as AppNotification[]) ?? [])
+    setLoaded(true)
   }, [session])
 
   useEffect(() => {
@@ -130,7 +138,7 @@ export function NotificationsProvider({ children }: { children: ReactNode }) {
   const unreadCount = items.reduce((acc, n) => acc + (n.read_at ? 0 : 1), 0)
 
   return (
-    <NotificationsContext.Provider value={{ items, unreadCount, markAllRead, refresh }}>
+    <NotificationsContext.Provider value={{ items, unreadCount, loaded, markAllRead, refresh }}>
       {children}
     </NotificationsContext.Provider>
   )

@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useState, type MouseEvent } from 'react'
+import { useEffect, useState, type MouseEvent } from 'react'
 import type { Listing } from '../lib/types'
 import { photoUrl, supabase } from '../lib/supabase'
 import { formatPrice, priceDropPct, isRecentlyPosted, timeAgo, timeLeftLabel } from '../lib/format'
@@ -9,6 +9,7 @@ import { useFavorites } from '../hooks/useFavorites'
 import { useToast } from './Toast'
 import LongPressActions from './LongPressActions'
 import VerifiedSeal from './VerifiedSeal'
+import ConfirmDialog from './ConfirmDialog'
 import type { MenuAction } from './ActionMenu'
 import { invalidateFeedCache } from '../pages/Home'
 
@@ -34,6 +35,16 @@ export default function ListingCard({
   const saved = isFavorite(listing.id)
   const [imgLoaded, setImgLoaded] = useState(false)
   const [hidden, setHidden] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  // El "Termina en Xm" de una subasta activa se refresca solo (la card no
+  // re-renderiza por sí sola y el countdown quedaba congelado/finalizado).
+  const auctionLive = auction && listing.auction_ends_at && new Date(listing.auction_ends_at).getTime() > Date.now()
+  const [, setTick] = useState(0)
+  useEffect(() => {
+    if (!auctionLive) return
+    const t = setInterval(() => setTick((n) => n + 1), 30000)
+    return () => clearInterval(t)
+  }, [auctionLive])
 
   function onSave(e: MouseEvent) {
     e.preventDefault()
@@ -47,7 +58,7 @@ export default function ListingCard({
 
   // Acciones de moderación (long-press), solo admin.
   async function adminDelete() {
-    if (!confirm(`¿Borrar "${listing.title}"? No se puede deshacer.`)) return
+    setConfirmDelete(false)
     const { error } = await supabase.from('listings').delete().eq('id', listing.id)
     if (error) return toast(error.message)
     invalidateFeedCache()
@@ -58,7 +69,7 @@ export default function ListingCard({
   const adminActions: MenuAction[] = profile?.is_admin
     ? [
         { label: 'Editar', onClick: () => navigate(`/publicar/${listing.id}`) },
-        { label: 'Borrar', destructive: true, onClick: adminDelete },
+        { label: 'Borrar', destructive: true, onClick: () => setConfirmDelete(true) },
       ]
     : []
 
@@ -159,6 +170,16 @@ export default function ListingCard({
         </p>
       </div>
     </Link>
+    {confirmDelete && (
+      <ConfirmDialog
+        title="Borrar publicación"
+        message={`Vas a borrar "${listing.title}" de forma permanente. No se puede deshacer.`}
+        confirmLabel="Borrar"
+        destructive
+        onConfirm={adminDelete}
+        onClose={() => setConfirmDelete(false)}
+      />
+    )}
     </LongPressActions>
   )
 }

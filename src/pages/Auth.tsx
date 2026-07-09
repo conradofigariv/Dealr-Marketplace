@@ -273,7 +273,9 @@ export default function Auth() {
         {error && (
           <div className="mt-6 text-center">
             <p className="text-sm text-red-400">{error}</p>
-            {rawError && <p className="mt-1 text-xs text-neutral-600">{rawError}</p>}
+            {/* El error crudo de Supabase (inglés técnico) solo en desarrollo:
+                en la pantalla de login de prod queda poco profesional. */}
+            {import.meta.env.DEV && rawError && <p className="mt-1 text-xs text-neutral-600">{rawError}</p>}
           </div>
         )}
       </div>
