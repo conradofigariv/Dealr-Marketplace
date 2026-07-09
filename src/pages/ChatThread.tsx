@@ -5,7 +5,7 @@ import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { formatPrice, isOnline, lastSeenLabel } from '../lib/format'
 import { compressPhoto, mirrorImage } from '../lib/images'
-import { vibrate } from '../lib/notify'
+import { vibrate, haptic } from '../lib/notify'
 import type { Conversation, Message } from '../lib/types'
 import Modal from '../components/Modal'
 import ActionMenu, { type MenuAction } from '../components/ActionMenu'
@@ -105,6 +105,11 @@ export default function ChatThread() {
   // y el navegador empuja todo hacia arriba. Seguimos el visualViewport para que
   // el contenedor del chat use el alto VISIBLE (descontando el teclado) y la
   // pantalla no se deslice. En Android lo respeta igual.
+  // OJO: depende de que exista el div con rootRef, que recién se monta cuando
+  // cargó la conversación (antes hay un early-return "Cargando…") — por eso la
+  // dep: con [] el efecto corría una sola vez, encontraba root=null y nunca se
+  // enganchaba (el teclado tapaba el input siempre).
+  const chatReady = Boolean(conversation)
   useEffect(() => {
     const vv = window.visualViewport
     const root = rootRef.current
@@ -126,7 +131,7 @@ export default function ChatThread() {
       vv.removeEventListener('scroll', update)
       root.style.height = ''
     }
-  }, [])
+  }, [chatReady])
 
   const myId = session?.user.id
   const iAmBuyer = conversation?.buyer_id === myId
@@ -178,9 +183,10 @@ export default function ChatThread() {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'messages', filter: `conversation_id=eq.${id}` },
         (payload) => {
-          setMessages((prev) =>
-            prev.some((m) => m.id === (payload.new as Message).id) ? prev : [...prev, payload.new as Message],
-          )
+          const incoming = payload.new as Message
+          // Vibración sutil al recibir un mensaje del otro con el chat abierto.
+          if (incoming.sender_id !== session.user.id) haptic('tap')
+          setMessages((prev) => (prev.some((m) => m.id === incoming.id) ? prev : [...prev, incoming]))
           setOthersTyping(false)
         },
       )
@@ -239,6 +245,7 @@ export default function ChatThread() {
   async function send(body: string) {
     const text = body.trim()
     if (!text || !myId || !id) return
+    haptic('tap') // feedback inmediato al enviar
     setDraft('')
     setSendError('')
     const { data, error } = await supabase

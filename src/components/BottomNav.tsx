@@ -1,5 +1,6 @@
 import { NavLink } from 'react-router-dom'
 import { useUnreadChats } from '../hooks/useUnreadChats'
+import { haptic } from '../lib/notify'
 
 const tabs = [
   {
@@ -57,6 +58,7 @@ export default function BottomNav() {
             to={tab.to}
             end={tab.to === '/'}
             aria-label={tab.label}
+            onClick={() => haptic('tap')}
             className={({ isActive }) =>
               `relative rounded-full p-2.5 transition ${isActive ? 'text-white' : 'text-neutral-500'}`
             }
