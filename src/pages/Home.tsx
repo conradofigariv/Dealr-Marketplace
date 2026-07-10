@@ -878,7 +878,12 @@ export default function Home() {
           }
           actions={orderOptions.map((o) => ({
             label: `${order === o.value ? '✓ ' : ''}${o.label}`,
-            onClick: () => setOrder(o.value as FeedOrder),
+            onClick: () => {
+              // Elegir cierra el menú y vuelve al feed (las acciones del
+              // ActionMenu no cierran solas: stopPropagation en el popup).
+              setOrder(o.value as FeedOrder)
+              setOrderMenuRect(null)
+            },
           }))}
         />
       )}
