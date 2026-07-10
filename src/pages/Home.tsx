@@ -468,7 +468,7 @@ export default function Home() {
     if (!session) return navigate('/auth', { state: { from: '/', back: '/' } })
     if (savingSearch) return // sin doble submit (dos taps = dos alertas iguales)
     setSavingSearch(true)
-    const { error } = await supabase.from('saved_searches').insert({
+    const base = {
       user_id: session.user.id,
       query: search.trim() || null,
       category_id: categoryId,
@@ -476,7 +476,20 @@ export default function Home() {
       max_price: filters.priceMax ? Number(filters.priceMax) : null,
       currency: filters.currency === 'all' ? null : filters.currency,
       conditions: filters.conditions.length ? filters.conditions : null,
-    })
+    }
+    // Filtros de categoría (00043): también se guardan, así la búsqueda vuelve
+    // COMPLETA al aplicarla y la alerta de publicación nueva los respeta.
+    const multiClean = Object.fromEntries(Object.entries(filters.multi).filter(([, v]) => v.length))
+    const extra = {
+      fields: Object.keys(filters.fields).length ? filters.fields : null,
+      field_ranges: Object.keys(filters.fieldRanges).length ? filters.fieldRanges : null,
+      multi: Object.keys(multiClean).length ? multiClean : null,
+    }
+    let { error } = await supabase.from('saved_searches').insert({ ...base, ...extra })
+    // Fallback pre-00043: si las columnas nuevas no existen todavía, guardar lo básico.
+    if (error && /column|schema cache/i.test(error.message)) {
+      ;({ error } = await supabase.from('saved_searches').insert(base))
+    }
     setSavingSearch(false)
     if (error) {
       toast('No pudimos guardar la búsqueda. Probá de nuevo.')

@@ -552,6 +552,9 @@ export default function Publish() {
                 <input
                   value={(fields[def.key] as string) ?? ''}
                   onChange={(e) => setField(def.key, e.target.value)}
+                  // Campos con filtro numérico (año, km, superficie, expensas):
+                  // teclado numérico — "12,5" se parsea como 125 en la DB.
+                  inputMode={def.filterRange || def.filterSlider || def.filterMaxChips ? 'numeric' : undefined}
                   className="input-line"
                 />
               )}
@@ -802,6 +805,7 @@ export default function Publish() {
                     <input
                       value={(fields[def.key] as string) ?? ''}
                       onChange={(e) => setField(def.key, e.target.value)}
+                      inputMode={def.filterRange || def.filterSlider || def.filterMaxChips ? 'numeric' : undefined}
                       className="input-line"
                     />
                   )}
