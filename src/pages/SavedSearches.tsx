@@ -21,6 +21,10 @@ function summarize(s: SavedSearch, categoryName?: string): string {
     parts.push(s.currency)
   }
   if (s.conditions?.length) parts.push(s.conditions.map((c) => conditionLabels[c]).join(', '))
+  // Filtros finos guardados (campos, rangos, amenities): resumen por cantidad.
+  const fineCount =
+    Object.keys(s.fields ?? {}).length + Object.keys(s.field_ranges ?? {}).length + Object.keys(s.multi ?? {}).length
+  if (fineCount > 0) parts.push(`+${fineCount} ${fineCount === 1 ? 'filtro' : 'filtros'}`)
   return parts.join(' · ') || 'Todas las publicaciones'
 }
 
@@ -65,9 +69,10 @@ export default function SavedSearches() {
         currency: s.currency ?? 'all',
         conditions: s.conditions ?? [],
         radiusKm: null,
-        fields: {},
-        fieldRanges: {},
-        multi: {},
+        // Filtros finos guardados (00043); null en búsquedas viejas.
+        fields: s.fields ?? {},
+        fieldRanges: s.field_ranges ?? {},
+        multi: s.multi ?? {},
       },
     })
     navigate('/')

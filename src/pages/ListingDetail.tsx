@@ -567,6 +567,13 @@ export default function ListingDetail() {
       ({ value }) =>
         value !== undefined && value !== null && value !== '' && !(Array.isArray(value) && value.length === 0),
     )
+    // Defensa showIf: si el campo depende de otro (ej. marca solo si
+    // tipo=Teléfono) y la condición no se cumple, no mostrarlo aunque haya
+    // quedado un valor huérfano guardado (avisos previos a la poda de Publish).
+    .filter(
+      ({ def }) =>
+        !def.showIf || def.showIf.in.includes(String(listing.structured_fields[def.showIf.key] ?? '')),
+    )
 
   return (
     <div className="pb-32">

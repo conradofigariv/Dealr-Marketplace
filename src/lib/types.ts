@@ -194,6 +194,11 @@ export interface SavedSearch {
   max_price: number | null
   currency: Currency | null
   conditions: ListingCondition[] | null
+  // Filtros de categoría (00043). null en búsquedas guardadas antes de esa
+  // migración (o sin filtros finos).
+  fields: Record<string, string> | null
+  field_ranges: Record<string, { column: string; min: string; max: string }> | null
+  multi: Record<string, string[]> | null
   created_at: string
 }
 
