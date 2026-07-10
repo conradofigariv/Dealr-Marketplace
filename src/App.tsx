@@ -1,4 +1,4 @@
-import { lazy, Suspense, Component, useEffect, useRef, useState, type ReactNode, type TouchEvent as ReactTouchEvent } from 'react'
+import { lazy, startTransition, Suspense, Component, useEffect, useRef, useState, type ReactNode, type TouchEvent as ReactTouchEvent } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useLocation, useNavigationType, useNavigate, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { FavoritesProvider } from './hooks/useFavorites'
@@ -95,7 +95,7 @@ function Shell() {
   const navigate = useNavigate()
   const { profile, session, refreshProfile } = useAuth()
   const [showIntro, setShowIntro] = useState(false)
-  const swipeRef = useRef<{ x: number; y: number } | null>(null)
+  const swipeRef = useRef<{ x: number; y: number; t: number } | null>(null)
 
   // Swipe horizontal entre secciones de la barra: deslizar a la izquierda va a
   // la pestaña siguiente (entra desde la derecha) y viceversa — la animación
@@ -108,7 +108,7 @@ function Shell() {
     // filas/rieles con scroll horizontal, mapas Leaflet, inputs y capas fixed
     // (modales, intro, viewers) — ahí el swipe significa otra cosa.
     if (t.closest('.overflow-x-auto, .leaflet-container, input, textarea, .fixed')) return
-    swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+    swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() }
   }
 
   function onTabTouchEnd(e: ReactTouchEvent) {
@@ -117,14 +117,21 @@ function Shell() {
     if (!start) return
     const dx = e.changedTouches[0].clientX - start.x
     const dy = e.changedTouches[0].clientY - start.y
-    // Horizontal franco: mínimo 70px y al menos el doble que lo vertical.
-    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return
+    // Tiene que ser un FLICK deliberado: rápido (<450ms), largo (≥100px) y
+    // francamente horizontal (2,5x lo vertical). Con menos exigencia, el scroll
+    // vertical del feed disparaba cambios de sección sin querer.
+    if (Date.now() - start.t > 450) return
+    if (Math.abs(dx) < 100 || Math.abs(dx) < Math.abs(dy) * 2.5) return
     const idx = SWIPE_TABS.indexOf(location.pathname)
     if (idx === -1) return
     const next = dx < 0 ? idx + 1 : idx - 1
     if (next < 0 || next >= SWIPE_TABS.length) return
     haptic('tap')
-    navigate(SWIPE_TABS[next], { state: { tabDir: dx < 0 ? 'push' : 'pop' } })
+    // startTransition: si la página destino (lazy) todavía no cargó su chunk,
+    // React mantiene la actual visible hasta que esté lista y recién entonces
+    // conmuta CON la animación — sin esto se veía el fallback negro ~1s y la
+    // transición no se percibía.
+    startTransition(() => navigate(SWIPE_TABS[next], { state: { tabDir: dx < 0 ? 'push' : 'pop' } }))
   }
 
   // Onboarding de funciones (3 slides): una vez, apenas hay sesión.
@@ -273,7 +280,11 @@ export default function App() {
         <FavoritesProvider>
         <NotificationsProvider>
         <UnreadChatsProvider>
-        <BrowserRouter>
+        {/* v7_startTransition: toda navegación se envuelve en startTransition —
+            si la página destino (lazy) no cargó su chunk, la actual queda
+            visible hasta que esté lista, en vez del fallback negro que se
+            comía la animación de slide (~1s en frío). */}
+        <BrowserRouter future={{ v7_startTransition: true }}>
         <PageviewTracker />
         <UpdatePrompt />
         <Routes>
