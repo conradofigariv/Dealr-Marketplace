@@ -596,7 +596,7 @@ export default function Home() {
       <div style={pullStyle} onTransitionEnd={() => setSettling(false)}>
       <header className="px-4 pb-1 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-bold tracking-tight text-white">Dealr</h1>
+          <h1 className="text-[1.75rem] font-bold tracking-tight text-white">Dealr</h1>
           <div className="flex items-center">
             {/* Buscar dejó de ser toggle (hay barra fija abajo) y Mapa vive en
                 el panel Filtrar/Ordenar/Mapa. */}
@@ -623,12 +623,12 @@ export default function Home() {
           ref={zoneButtonRef}
           onClick={() => setZoneMenuRect(zoneButtonRef.current!.getBoundingClientRect())}
           disabled={locating}
-          className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
+          className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
         >
           {locating ? (
-            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-neutral-500/40 border-t-neutral-300" />
+            <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-500/40 border-t-neutral-300" />
           ) : (
-            <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
               <circle cx="12" cy="10" r="3" />
             </svg>
@@ -832,8 +832,8 @@ export default function Home() {
           rect={zoneMenuRect}
           onClose={() => setZoneMenuRect(null)}
           anchor={
-            <span className="flex h-full items-center gap-1.5 whitespace-nowrap text-xs font-medium text-white">
-              <svg viewBox="0 0 24 24" className="h-3.5 w-3.5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <span className="flex h-full items-center gap-1.5 whitespace-nowrap text-sm font-medium text-white">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
                 <circle cx="12" cy="10" r="3" />
               </svg>
