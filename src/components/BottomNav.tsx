@@ -1,4 +1,4 @@
-import { NavLink } from 'react-router-dom'
+import { NavLink, useLocation } from 'react-router-dom'
 import { useUnreadChats } from '../hooks/useUnreadChats'
 import { haptic } from '../lib/notify'
 
@@ -49,15 +49,21 @@ const tabs = [
 // Nav flotante tipo píldora, solo íconos (estilo Savee)
 export default function BottomNav() {
   const { count } = useUnreadChats()
+  const location = useLocation()
+  // Dirección de la transición: ir a una pestaña a la DERECHA de la actual
+  // entra desde la derecha (push) y viceversa — la animación acompaña el lado
+  // hacia el que te movés en la barra (el Shell lee `tabDir` del state).
+  const currentIdx = tabs.findIndex((t) => t.to === location.pathname)
   return (
     <nav className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2">
       <div className="flex items-center gap-2 rounded-full bg-neutral-900/90 px-3 py-2 ring-1 ring-white/10 backdrop-blur-md">
-        {tabs.map((tab) => (
+        {tabs.map((tab, idx) => (
           <NavLink
             key={tab.to}
             to={tab.to}
             end={tab.to === '/'}
             aria-label={tab.label}
+            state={currentIdx !== -1 ? { tabDir: idx > currentIdx ? 'push' : 'pop' } : undefined}
             onClick={() => haptic('tap')}
             className={({ isActive }) =>
               `relative rounded-full p-2.5 transition ${isActive ? 'text-white' : 'text-neutral-500'}`

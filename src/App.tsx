@@ -1,4 +1,4 @@
-import { lazy, Suspense, Component, useEffect, useState, type ReactNode } from 'react'
+import { lazy, Suspense, Component, useEffect, useRef, useState, type ReactNode, type TouchEvent as ReactTouchEvent } from 'react'
 import { BrowserRouter, Routes, Route, Outlet, useLocation, useNavigationType, useNavigate, Navigate } from 'react-router-dom'
 import { AuthProvider, useAuth } from './hooks/useAuth'
 import { FavoritesProvider } from './hooks/useFavorites'
@@ -9,6 +9,7 @@ import { hasSeenWelcome } from './lib/welcome'
 import { hasSeenIntro, REPLAY_INTRO_EVENT } from './lib/intro'
 import './lib/pwaInstall' // registra el listener de instalación temprano
 import { capturePageview } from './lib/analytics'
+import { haptic } from './lib/notify'
 import BottomNav from './components/BottomNav'
 import UpdatePrompt from './components/UpdatePrompt'
 import IntroSlides from './components/IntroSlides'
@@ -83,12 +84,48 @@ function PageviewTracker() {
   return null
 }
 
+// Pestañas navegables con swipe, en el orden de la barra. "Vender" (/publicar)
+// queda afuera a propósito: es un formulario — entrar por accidente molesta y
+// salir por accidente pierde lo cargado. A esa se llega tocando.
+const SWIPE_TABS = ['/', '/explorar', '/chats', '/perfil']
+
 function Shell() {
   const location = useLocation()
   const navType = useNavigationType()
   const navigate = useNavigate()
   const { profile, session, refreshProfile } = useAuth()
   const [showIntro, setShowIntro] = useState(false)
+  const swipeRef = useRef<{ x: number; y: number } | null>(null)
+
+  // Swipe horizontal entre secciones de la barra: deslizar a la izquierda va a
+  // la pestaña siguiente (entra desde la derecha) y viceversa — la animación
+  // acompaña el lado hacia el que efectivamente te movés.
+  function onTabTouchStart(e: ReactTouchEvent) {
+    swipeRef.current = null
+    if (!SWIPE_TABS.includes(location.pathname)) return
+    const t = e.target as HTMLElement
+    // No arrancar el gesto donde ya hay interacción horizontal u overlays:
+    // filas/rieles con scroll horizontal, mapas Leaflet, inputs y capas fixed
+    // (modales, intro, viewers) — ahí el swipe significa otra cosa.
+    if (t.closest('.overflow-x-auto, .leaflet-container, input, textarea, .fixed')) return
+    swipeRef.current = { x: e.touches[0].clientX, y: e.touches[0].clientY }
+  }
+
+  function onTabTouchEnd(e: ReactTouchEvent) {
+    const start = swipeRef.current
+    swipeRef.current = null
+    if (!start) return
+    const dx = e.changedTouches[0].clientX - start.x
+    const dy = e.changedTouches[0].clientY - start.y
+    // Horizontal franco: mínimo 70px y al menos el doble que lo vertical.
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 2) return
+    const idx = SWIPE_TABS.indexOf(location.pathname)
+    if (idx === -1) return
+    const next = dx < 0 ? idx + 1 : idx - 1
+    if (next < 0 || next >= SWIPE_TABS.length) return
+    haptic('tap')
+    navigate(SWIPE_TABS[next], { state: { tabDir: dx < 0 ? 'push' : 'pop' } })
+  }
 
   // Onboarding de funciones (3 slides): una vez, apenas hay sesión.
   useEffect(() => {
@@ -164,12 +201,20 @@ function Shell() {
   // El hilo de chat, el detalle y el mapa manejan su propio chrome a pantalla completa
   const hideNav = /^\/(chats|p)\/.+/.test(location.pathname) || location.pathname === '/mapa'
   // Volver (POP) entra desde la izquierda; avanzar, desde la derecha (iOS).
-  const pageAnim = navType === 'POP' ? 'page-pop' : 'page-push'
+  // Si la navegación trae dirección explícita (swipe o tap de pestaña), manda
+  // esa — pero NUNCA en un POP del historial: ahí el state es el guardado de
+  // la visita anterior y usarlo animaría para el lado equivocado.
+  const tabDir = navType !== 'POP' ? (location.state as { tabDir?: 'push' | 'pop' } | null)?.tabDir : undefined
+  const pageAnim = (tabDir ?? (navType === 'POP' ? 'pop' : 'push')) === 'pop' ? 'page-pop' : 'page-push'
   // En DESKTOP (lg+) solo el feed se ensancha para respirar; el resto queda en la
   // columna angosta de siempre. Mobile no cambia (las clases base son idénticas).
   const isFeed = location.pathname === '/'
   return (
-    <div className={`mx-auto min-h-dvh overflow-x-hidden bg-black max-w-lg ${isFeed ? 'lg:max-w-4xl' : ''}`}>
+    <div
+      className={`mx-auto min-h-dvh overflow-x-hidden bg-black max-w-lg ${isFeed ? 'lg:max-w-4xl' : ''}`}
+      onTouchStart={onTabTouchStart}
+      onTouchEnd={onTabTouchEnd}
+    >
       <Suspense fallback={<div className="min-h-dvh bg-black" />}>
         <div key={location.pathname} className={pageAnim}>
           <Outlet />
