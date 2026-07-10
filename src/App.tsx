@@ -58,19 +58,25 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
   }
 }
 
-// Code-splitting: el feed carga al instante, el resto bajo demanda
+// Las 4 pestañas de la barra van EAGER (import estático): navegar entre ellas
+// nunca pasa por Suspense — sin fallback negro ni evaluación de módulo en el
+// momento del gesto, la animación de slide corre siempre. Son ~11KB gzip más
+// en el bundle inicial; lo que más se usa tiene que ser instantáneo.
+// (Home ya era eager.)
+import Explorar from './pages/Explorar'
+import Chats from './pages/Chats'
+import Profile from './pages/Profile'
+
+// Code-splitting: el resto bajo demanda
 const Auth = lazy(() => import('./pages/Auth'))
 const Onboarding = lazy(() => import('./pages/Onboarding'))
 const ListingDetail = lazy(() => import('./pages/ListingDetail'))
 const Publish = lazy(() => import('./pages/Publish'))
-const Chats = lazy(() => import('./pages/Chats'))
 const ChatThread = lazy(() => import('./pages/ChatThread'))
-const Profile = lazy(() => import('./pages/Profile'))
 const PublicProfile = lazy(() => import('./pages/PublicProfile'))
 const Feedback = lazy(() => import('./pages/Feedback'))
 const Saved = lazy(() => import('./pages/Saved'))
 const Notifications = lazy(() => import('./pages/Notifications'))
-const Explorar = lazy(() => import('./pages/Explorar'))
 const SavedSearches = lazy(() => import('./pages/SavedSearches'))
 const MapView = lazy(() => import('./pages/MapView'))
 const Admin = lazy(() => import('./pages/Admin'))
@@ -154,9 +160,6 @@ function Shell() {
     const preload = () => {
       void import('./pages/ListingDetail')
       void import('./pages/ChatThread')
-      void import('./pages/Chats')
-      void import('./pages/Profile')
-      void import('./pages/Explorar')
       void import('./pages/Notifications')
       void import('./pages/Saved')
       void import('./pages/Publish')
