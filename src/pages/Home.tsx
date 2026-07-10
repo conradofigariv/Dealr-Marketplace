@@ -89,7 +89,6 @@ export default function Home() {
   const [listings, setListings] = useState<Listing[]>(pending ? [] : feedCache?.listings ?? [])
   const [categories, setCategories] = useState<Category[]>(categoriesCache)
   const [search, setSearch] = useState(pending?.search ?? feedCache?.search ?? '')
-  const [searchOpen, setSearchOpen] = useState(Boolean(pending?.search ?? feedCache?.search))
   const [categoryId, setCategoryId] = useState<number | null>(pending?.categoryId ?? feedCache?.categoryId ?? null)
   const [onlyVerified, setOnlyVerified] = useState(feedCache?.onlyVerified ?? false)
   const [onlyAuctions, setOnlyAuctions] = useState(feedCache?.onlyAuctions ?? false)
@@ -103,6 +102,9 @@ export default function Home() {
   const [locating, setLocating] = useState(false)
   const [zoneMenuRect, setZoneMenuRect] = useState<DOMRect | null>(null)
   const zoneButtonRef = useRef<HTMLButtonElement>(null)
+  // Menú "Ordenar" del panel de acciones (anclado al botón, como el de zona).
+  const [orderMenuRect, setOrderMenuRect] = useState<DOMRect | null>(null)
+  const orderButtonRef = useRef<HTMLButtonElement>(null)
   const [pickingOnMap, setPickingOnMap] = useState(false)
   const [mapPick, setMapPick] = useState<LatLng | null>(null)
   const [mapPickLabel, setMapPickLabel] = useState<string | undefined>(undefined)
@@ -596,31 +598,8 @@ export default function Home() {
         <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold tracking-tight text-white">Dealr</h1>
           <div className="flex items-center">
-            <button
-              onClick={() => {
-                setSearchOpen(!searchOpen)
-                if (searchOpen) setSearch('')
-              }}
-              aria-label="Buscar"
-              className="p-2.5 text-white"
-            >
-              {searchOpen ? (
-                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <path d="M6 6l12 12M18 6 6 18" />
-                </svg>
-              ) : (
-                <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
-                  <circle cx="11" cy="11" r="7" />
-                  <path d="m20 20-3.5-3.5" />
-                </svg>
-              )}
-            </button>
-            <Link to="/mapa" aria-label="Ver en el mapa" className="p-2.5 text-white">
-              <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" />
-                <path d="M9 4v14M15 6v14" />
-              </svg>
-            </Link>
+            {/* Buscar dejó de ser toggle (hay barra fija abajo) y Mapa vive en
+                el panel Filtrar/Ordenar/Mapa. */}
             <Link to="/guardados" aria-label="Guardados" className="p-2.5 text-white">
               <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
@@ -657,24 +636,71 @@ export default function Home() {
           {locating ? 'Buscando ubicación…' : buyerLabel ?? 'Definí tu zona'}
         </button>
 
-        {searchOpen && (
+        {/* Barra de búsqueda fija, debajo de la ubicación */}
+        <div className="mt-2.5 flex items-center gap-2.5 rounded-full bg-neutral-900 px-4 py-2.5 ring-1 ring-neutral-800">
+          <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+            <circle cx="11" cy="11" r="7" />
+            <path d="m20 20-3.5-3.5" />
+          </svg>
           <input
-            autoFocus
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar productos"
-            className="input-line mt-2 text-lg"
+            className="w-full bg-transparent text-sm text-white placeholder-neutral-500 outline-none"
           />
-        )}
+          {search && (
+            <button onClick={() => setSearch('')} aria-label="Limpiar búsqueda" className="shrink-0 text-neutral-500">
+              <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+                <path d="M6 6l12 12M18 6 6 18" />
+              </svg>
+            </button>
+          )}
+        </div>
+
+        {/* Panel de acciones estilo ZonaProp: Filtrar | Ordenar | Mapa */}
+        <div className="mt-2.5 flex items-stretch divide-x divide-neutral-800 rounded-2xl bg-neutral-900/60 ring-1 ring-neutral-800">
+          <button
+            onClick={() => setFiltersOpen(true)}
+            className={`flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold transition active:bg-neutral-900 ${activeFilters ? 'text-white' : 'text-neutral-300'}`}
+          >
+            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M22 3H2l8 9.5V21l4-2v-6.5L22 3Z" />
+            </svg>
+            Filtrar
+            {activeFilters > 0 && (
+              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-black">
+                {activeFilters}
+              </span>
+            )}
+          </button>
+          <button
+            ref={orderButtonRef}
+            onClick={() => setOrderMenuRect(orderButtonRef.current!.getBoundingClientRect())}
+            className={`flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold transition active:bg-neutral-900 ${order !== 'recent' ? 'text-white' : 'text-neutral-300'}`}
+          >
+            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />
+            </svg>
+            Ordenar
+          </button>
+          <Link
+            to="/mapa"
+            className="flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold text-neutral-300 transition active:bg-neutral-900"
+          >
+            <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" />
+              <path d="M9 4v14M15 6v14" />
+            </svg>
+            Mapa
+          </Link>
+        </div>
       </header>
 
-      {/* Fila de categorías (navegación). Los controles (Filtros/Orden/
-          Verificados) ya NO van acá: "Filtros" queda FIJO a la derecha (no se
-          pierde al final del scroll) y adentro tiene orden + verificados. */}
+      {/* Fila de categorías (navegación), debajo del panel de acciones. */}
       <div className="relative">
         <div
           ref={catScrollRef}
-          className="no-scrollbar flex touch-pan-x select-none items-center gap-5 overflow-x-auto py-3 pl-24 pr-4 md:cursor-grab md:active:cursor-grabbing"
+          className="no-scrollbar flex touch-pan-x select-none items-center gap-5 overflow-x-auto px-4 py-3 md:cursor-grab md:active:cursor-grabbing"
         >
           <button
             onClick={() => {
@@ -711,25 +737,6 @@ export default function Home() {
                 {cat.name}
               </button>
             ))}
-        </div>
-        {/* "Filtros" fijo a la izquierda, con degradado para que las categorías
-            pasen por detrás. pointer-events-none en el contenedor para no
-            bloquear el scroll; solo el botón recibe toques. */}
-        <div className="pointer-events-none absolute inset-y-0 left-0 flex items-center bg-gradient-to-r from-black via-black to-transparent pl-4 pr-10">
-          <button
-            onClick={() => setFiltersOpen(true)}
-            className={`pointer-events-auto flex shrink-0 items-center gap-1 text-sm font-semibold transition ${activeFilters ? 'text-white' : 'text-neutral-400'}`}
-          >
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M3 5h18M6 12h12M10 19h4" />
-            </svg>
-            Filtros
-            {activeFilters > 0 && (
-              <span className="flex h-4 min-w-4 items-center justify-center rounded-full bg-white px-1 text-[10px] font-bold text-black">
-                {activeFilters}
-              </span>
-            )}
-          </button>
         </div>
       </div>
 
@@ -855,6 +862,25 @@ export default function Home() {
             Confirmar
           </button>
         </Modal>
+      )}
+
+      {orderMenuRect && (
+        <ActionMenu
+          rect={orderMenuRect}
+          onClose={() => setOrderMenuRect(null)}
+          anchor={
+            <span className="flex h-full w-full items-center justify-center gap-2 text-sm font-semibold text-white">
+              <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />
+              </svg>
+              Ordenar
+            </span>
+          }
+          actions={orderOptions.map((o) => ({
+            label: `${order === o.value ? '✓ ' : ''}${o.label}`,
+            onClick: () => setOrder(o.value as FeedOrder),
+          }))}
+        />
       )}
 
       {filtersOpen && (
