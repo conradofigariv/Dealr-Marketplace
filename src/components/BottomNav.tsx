@@ -63,6 +63,11 @@ export default function BottomNav() {
             to={tab.to}
             end={tab.to === '/'}
             aria-label={tab.label}
+            // replace: cambiar de pestaña NO apila historial (como una app
+            // nativa). Sin esto, el gesto de borde de iOS (atrás/adelante)
+            // recorría todos los taps de pestañas previos y parecía que el
+            // swipe entre secciones seguía existiendo.
+            replace={currentIdx !== -1}
             state={currentIdx !== -1 ? { tabDir: idx > currentIdx ? 'push' : 'pop' } : undefined}
             onClick={() => haptic('tap')}
             className={({ isActive }) =>
