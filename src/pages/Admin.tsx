@@ -27,6 +27,91 @@ const tableByType: Partial<Record<ReportTargetType, string>> = {
   question: 'questions',
 }
 
+// Agregados del RPC admin_metrics (00044).
+interface Metrics {
+  visitors_today: number
+  visitors_7d: number
+  visitors_total: number
+  users_today: number
+  users_7d: number
+  users_total: number
+  viewers_7d: number
+  viewers_total: number
+  buyers_7d: number
+  buyers_total: number
+  sellers_7d: number
+  sellers_total: number
+  listings_active: number
+  listings_total: number
+}
+
+// Porcentaje de conversión entre dos etapas del funnel ("—" sin base).
+function pct(part: number, base: number): string {
+  if (!base) return '—'
+  return `${Math.round((part / base) * 100)}%`
+}
+
+function MetricsPanel({ m }: { m: Metrics }) {
+  // Funnel de los últimos 7 días: cada etapa con su barra relativa a visitas.
+  const funnel = [
+    { label: 'Visitaron la app', value: m.visitors_7d },
+    { label: 'Se registraron', value: m.users_7d },
+    { label: 'Vieron un producto', value: m.viewers_7d },
+    { label: 'Iniciaron un chat', value: m.buyers_7d },
+    { label: 'Publicaron algo', value: m.sellers_7d },
+  ]
+  const base = funnel[0].value
+  return (
+    <div className="space-y-3 px-5 pb-4">
+      {/* Tarjetas: hoy / 7 días / total */}
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { title: 'Visitas hoy', value: m.visitors_today, sub: `${m.visitors_7d} en 7d` },
+          { title: 'Usuarios nuevos hoy', value: m.users_today, sub: `${m.users_7d} en 7d` },
+          { title: 'Usuarios totales', value: m.users_total, sub: `${m.visitors_total} visitantes` },
+        ].map((c) => (
+          <div key={c.title} className="surface p-3">
+            <p className="text-[11px] leading-tight text-neutral-500">{c.title}</p>
+            <p className="mt-1 text-2xl font-bold text-white">{c.value}</p>
+            <p className="text-[11px] text-neutral-600">{c.sub}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Funnel 7 días */}
+      <div className="surface p-4">
+        <div className="mb-3 flex items-baseline justify-between">
+          <h2 className="text-sm font-semibold text-white">Funnel · últimos 7 días</h2>
+          <span className="text-[11px] text-neutral-500">% sobre visitas</span>
+        </div>
+        <div className="space-y-2.5">
+          {funnel.map((f) => (
+            <div key={f.label}>
+              <div className="mb-1 flex items-baseline justify-between text-xs">
+                <span className="text-neutral-300">{f.label}</span>
+                <span className="font-semibold text-white">
+                  {f.value} <span className="ml-1 font-normal text-neutral-500">{pct(f.value, base)}</span>
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-neutral-800">
+                <div
+                  className="h-full rounded-full bg-emerald-500"
+                  style={{ width: base ? `${Math.max(2, (f.value / base) * 100)}%` : '0%' }}
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
+          Conversión visita→registro (7d): <strong className="text-neutral-300">{pct(m.users_7d, m.visitors_7d)}</strong> ·
+          registro→publicó (total): <strong className="text-neutral-300">{pct(m.sellers_total, m.users_total)}</strong> ·
+          publicaciones activas: <strong className="text-neutral-300">{m.listings_active}</strong> de {m.listings_total}
+        </p>
+      </div>
+    </div>
+  )
+}
+
 export default function Admin() {
   const navigate = useNavigate()
   const { profile, loading } = useAuth()
@@ -34,6 +119,8 @@ export default function Admin() {
   const [reports, setReports] = useState<Report[]>([])
   const [fetched, setFetched] = useState(false)
   const [showResolved, setShowResolved] = useState(false)
+  const [metrics, setMetrics] = useState<Metrics | null>(null)
+  const [metricsError, setMetricsError] = useState('')
 
   // Gate: solo admins.
   useEffect(() => {
@@ -54,6 +141,23 @@ export default function Admin() {
   useEffect(() => {
     if (profile?.is_admin) load()
   }, [profile, load])
+
+  // Métricas del funnel (RPC 00044). Si la migración no está aplicada, se
+  // muestra el aviso en vez de romper el panel.
+  useEffect(() => {
+    if (!profile?.is_admin) return
+    supabase.rpc('admin_metrics').then(({ data, error }) => {
+      if (error) {
+        setMetricsError(
+          /function|schema cache/i.test(error.message)
+            ? 'Métricas no disponibles: falta aplicar la migración 00044 en Supabase.'
+            : error.message,
+        )
+        return
+      }
+      setMetrics(data as Metrics)
+    })
+  }, [profile])
 
   async function view(r: Report) {
     // Soporte: no hay contenido que ver, vamos al perfil de quien escribió.
@@ -115,10 +219,15 @@ export default function Admin() {
           </svg>
         </button>
         <h1 className="text-xl font-bold tracking-tight text-white">
-          Reportes {pending > 0 && <span className="text-red-400">({pending})</span>}
+          Panel de admin {pending > 0 && <span className="text-red-400">({pending})</span>}
         </h1>
       </header>
 
+      {/* Métricas + funnel de adquisición */}
+      {metrics && <MetricsPanel m={metrics} />}
+      {metricsError && <p className="px-5 pb-3 text-xs text-amber-400">{metricsError}</p>}
+
+      <h2 className="px-5 pb-1 text-sm font-semibold text-white">Reportes</h2>
       <div className="mb-2 px-5">
         <button
           onClick={() => setShowResolved((v) => !v)}
