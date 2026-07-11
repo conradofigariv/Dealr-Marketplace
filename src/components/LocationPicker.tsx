@@ -70,11 +70,16 @@ export default function LocationPicker({ value, onChange }: Props) {
     // GPS) como valor del formulario.
     if (!value) emit(start)
     // El contenedor puede montar con tamaño 0 (dentro de un form que aún
-    // ajusta layout): forzamos el recálculo.
+    // ajusta layout, o dentro de un Modal que anima su entrada): recálculo
+    // inicial + ResizeObserver para cualquier cambio posterior.
     setTimeout(() => map.invalidateSize(), 0)
+    const ro =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => map.invalidateSize()) : null
+    if (ro && containerRef.current) ro.observe(containerRef.current)
 
     return () => {
       clearTimeout(geocodeTimer.current)
+      ro?.disconnect()
       map.remove()
       mapRef.current = null
       markerRef.current = null
