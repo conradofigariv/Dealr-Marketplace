@@ -169,10 +169,10 @@ textarea {
   }
 }
 .page-push {
-  animation: pagePush 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: pagePush 0.41s cubic-bezier(0.32, 0.72, 0, 1);
 }
 .page-pop {
-  animation: pagePop 0.34s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: pagePop 0.41s cubic-bezier(0.32, 0.72, 0, 1);
 }
 
 /* Transición entre pasos del wizard de publicar: el paso nuevo entra

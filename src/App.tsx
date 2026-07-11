@@ -147,7 +147,7 @@ function Shell() {
       const c = contentRef.current
       const o = overlayRef.current
       if (!d) return
-      const t = settle ? 'transform 0.3s cubic-bezier(0.32, 0.72, 0, 1)' : 'none'
+      const t = settle ? 'transform 0.36s cubic-bezier(0.32, 0.72, 0, 1)' : 'none'
       if (c) {
         c.style.transition = t
         c.style.transform = `translateX(${off}px)`
@@ -264,13 +264,13 @@ function Shell() {
           window.scrollTo(0, 0)
           haptic('tap')
           // El overlay tapa el remount un instante (evita el parpadeo de carga).
-          window.setTimeout(cleanupDrag, 260)
-        }, 300)
+          window.setTimeout(cleanupDrag, 310)
+        }, 360)
       } else {
         dragRef.current = d
         setTransforms(0, true)
         dragRef.current = null
-        window.setTimeout(cleanupDrag, 320)
+        window.setTimeout(cleanupDrag, 380)
       }
     }
 
