@@ -56,6 +56,12 @@ export function invalidateFeedCache() {
   feedCache = null
 }
 
+// Llegar al feed por swipe interactivo lo muestra desde arriba (la vista previa
+// del gesto se ve así); esto evita que el remount "salte" al scroll cacheado.
+export function resetFeedScroll() {
+  if (feedCache) feedCache.scrollY = 0
+}
+
 // Abrir el feed con un estado prearmado (desde Explorar o Búsquedas guardadas).
 // Home lo consume al montar, pisando la caché.
 export interface FeedQuery {
@@ -125,8 +131,11 @@ export default function Home() {
   // nativo ya hace el arrastre con momentum estilo iOS.
   const catScrollRef = useDragScroll<HTMLDivElement>()
 
-  // Restaurar scroll una sola vez, antes del primer paint
+  // Restaurar scroll una sola vez, antes del primer paint. NUNCA cuando Home se
+  // monta como vista previa del swipe entre pestañas (__dealrPreview): mover la
+  // ventana en pleno arrastre haría saltar la página que el usuario está viendo.
   useLayoutEffect(() => {
+    if ((window as unknown as Record<string, unknown>).__dealrPreview) return
     if (feedCache && !restoredScroll.current) {
       restoredScroll.current = true
       window.scrollTo(0, feedCache.scrollY)
