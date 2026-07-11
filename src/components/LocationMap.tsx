@@ -40,8 +40,14 @@ export default function LocationMap({ point, seed }: Props) {
       fillOpacity: 0.12,
     }).addTo(map)
     setTimeout(() => map.invalidateSize(), 0)
+    // Recalcular ante cualquier cambio de tamaño del contenedor (la página
+    // monta durante la transición animada; ver ListingsMap para el detalle).
+    const ro =
+      typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => map.invalidateSize()) : null
+    if (ro && containerRef.current) ro.observe(containerRef.current)
 
     return () => {
+      ro?.disconnect()
       map.remove()
       mapRef.current = null
     }

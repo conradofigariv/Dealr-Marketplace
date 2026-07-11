@@ -50,11 +50,19 @@ export default function ListingsMap({ listings, center, selectedId, onSelect }: 
     mapRef.current = map
     L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map)
     setTimeout(() => map.invalidateSize(), 0)
-    // El contenedor puede animar su entrada (transición de pantalla, 0.34s):
-    // recalculamos tamaño otra vez al terminar para que los tiles cubran todo.
-    const settleTimer = setTimeout(() => map.invalidateSize(), 400)
+    // El contenedor CAMBIA de tamaño al terminar la transición de pantalla:
+    // mientras el ancestro anima con transform, este `fixed inset-0` se mide
+    // contra ÉL (containing block) y no contra el viewport; al terminar salta
+    // al tamaño real. Un ResizeObserver recalcula ante CUALQUIER cambio, sin
+    // timers atados a la duración de la animación (un timer fijo de 400ms se
+    // rompió cuando la transición pasó de 0.34s a 0.41s: tiles grises).
+    const ro = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(() => map.invalidateSize()) : null
+    if (ro && containerRef.current) ro.observe(containerRef.current)
+    // Respaldo por si el navegador no tiene ResizeObserver.
+    const settleTimer = setTimeout(() => map.invalidateSize(), 600)
     return () => {
       clearTimeout(settleTimer)
+      ro?.disconnect()
       map.remove()
       mapRef.current = null
       markersRef.current.clear()
