@@ -9,6 +9,7 @@ import { hasSeenWelcome } from './lib/welcome'
 import { hasSeenIntro, REPLAY_INTRO_EVENT } from './lib/intro'
 import './lib/pwaInstall' // registra el listener de instalación temprano
 import { capturePageview } from './lib/analytics'
+import { trackVisit } from './lib/visit'
 import { haptic } from './lib/notify'
 import BottomNav from './components/BottomNav'
 import UpdatePrompt from './components/UpdatePrompt'
@@ -435,6 +436,8 @@ export default function App() {
     sessionStorage.removeItem('chunk-reload')
     // Limpiar el badge de notificaciones al abrir la app
     if ('clearAppBadge' in navigator) navigator.clearAppBadge()
+    // Visita anónima del día (funnel del panel de admin)
+    trackVisit()
   }, [])
   if (!supabaseConfigured || supabaseUrlInvalid) return <SetupNotice />
   return (
