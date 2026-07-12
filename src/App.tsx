@@ -10,6 +10,7 @@ import { hasSeenIntro, REPLAY_INTRO_EVENT } from './lib/intro'
 import './lib/pwaInstall' // registra el listener de instalación temprano
 import { capturePageview } from './lib/analytics'
 import { trackVisit } from './lib/visit'
+import CotillonListener from './components/CotillonListener'
 import { haptic } from './lib/notify'
 import BottomNav from './components/BottomNav'
 import UpdatePrompt from './components/UpdatePrompt'
@@ -394,6 +395,7 @@ function Shell() {
       )}
       {!hideNav && <BottomNav />}
       {showIntro && <IntroSlides onDone={() => setShowIntro(false)} />}
+      <CotillonListener />
     </div>
   )
 }
