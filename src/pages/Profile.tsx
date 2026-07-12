@@ -15,6 +15,7 @@ import InstallButton from '../components/InstallButton'
 import SupportModal from '../components/SupportModal'
 import TermsModal from '../components/TermsModal'
 import { useToast } from '../components/Toast'
+import { canUseCotillon, sendCotillon } from '../lib/cotillon'
 import { checkForUpdate } from '../lib/swUpdate'
 import { replayIntro } from '../lib/intro'
 import { invalidateFeedCache } from './Home'
@@ -69,8 +70,22 @@ export default function Profile() {
   const [reactivateDays, setReactivateDays] = useState(3)
   const [reactivating, setReactivating] = useState(false)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
+  const [sendingCotillon, setSendingCotillon] = useState(false)
   const avatarInput = useRef<HTMLInputElement>(null)
   const toast = useToast()
+
+  // Easter egg del cotillón (solo para los dueños; ver lib/cotillon.ts).
+  async function throwCotillon() {
+    setSendingCotillon(true)
+    try {
+      await sendCotillon(profile?.username || 'Alguien')
+      toast('🎉 ¡Cotillón enviado!')
+    } catch {
+      toast('No se pudo enviar. ¿Está online del otro lado?')
+    } finally {
+      setSendingCotillon(false)
+    }
+  }
 
   // Chequeo manual de versión nueva. Si la encuentra, UpdatePrompt muestra el
   // aviso para actualizar; si no, avisamos que ya está al día.
@@ -696,6 +711,23 @@ export default function Profile() {
                 <path d="m9 18 6-6-6-6" />
               </svg>
             </button>
+            {canUseCotillon(session?.user?.email) && (
+              <button
+                onClick={throwCotillon}
+                disabled={sendingCotillon}
+                className="flex w-full items-center justify-between rounded-xl bg-gradient-to-r from-amber-500/15 to-pink-500/15 px-4 py-3.5 text-left ring-1 ring-amber-500/30 transition hover:ring-amber-500/50 disabled:opacity-60"
+              >
+                <span className="font-medium text-amber-300">🎉 Mandar cotillón</span>
+                {sendingCotillon ? (
+                  <span className="h-4 w-4 animate-spin rounded-full border-2 border-amber-500/40 border-t-amber-300" />
+                ) : (
+                  <svg viewBox="0 0 24 24" className="h-4 w-4 text-amber-400/70" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m5 12 7-7 7 7" />
+                    <path d="M12 19V5" />
+                  </svg>
+                )}
+              </button>
+            )}
             <button
               onClick={checkUpdate}
               disabled={checkingUpdate}
