@@ -1,9 +1,10 @@
 -- ==============================================================
 -- apply_pending.sql — TODAS las migraciones pendientes en orden.
 -- Pegar entero en Supabase → SQL Editor y correr. Idempotente.
--- Incluye lo que NO está en apply_all.sql (00008–00029).
+-- Incluye lo que NO está en apply_all.sql (00008–00029): 00025 + 00030→00044.
 -- Después correr supabase/health_check.sql para confirmar OK.
--- OJO: 00025 debe ir antes que 00033/00035 (reescriben place_bid) — ya ordenado.
+-- OJO: 00025 debe ir antes que 00033/00035, y 00041 después de ambas
+-- (todas reescriben place_bid) — ya ordenado así.
 -- ==============================================================
 
 
@@ -811,3 +812,660 @@ as $$
 $$;
 grant execute on function public.listings_near(double precision, double precision, double precision, int, int) to anon, authenticated;
 
+
+
+-- ============================================================
+-- 00041_security_hardening
+-- ============================================================
+-- =============================================================
+-- 00041 — Hardening de seguridad pre-lanzamiento (QA P0).
+--
+-- Cierra 5 agujeros encontrados en la revisión de seguridad:
+--
+-- 1) `is_admin` era auto-editable: cualquier usuario podía hacerse admin con
+--    `update profiles set is_admin=true` (la columna quedó fuera de
+--    protect_profile_columns) y con eso leer/borrar contenido de todos vía las
+--    policies "admin modera" (00024). Ídem `is_minor`/`account_restricted`
+--    (00038) y `auction_strikes`/`auction_banned_until` (00025).
+--
+-- 2) El gate de menores (+18) vivía solo en el front: un restringido podía
+--    publicar/ofertar/chatear llamando a la API directo. Ahora `is_restricted()`
+--    se chequea en las policies de insert de listings/offers/conversations y en
+--    `place_bid`.
+--
+-- 3) La policy "marcar leido el receptor" permitía UPDATE de CUALQUIER columna
+--    de los mensajes del otro (body incluido): un participante podía reescribir
+--    o "borrar" lo que dijo la contraparte. Se restringe con GRANT a nivel de
+--    columna: authenticated solo puede updatear `read_at` (editar/borrar lo
+--    propio sigue vía RPCs edit_message/delete_message, security definer).
+--
+-- 4) El dueño de una publicación podía falsificar columnas de confianza con un
+--    update directo (bids_count=99, verified=true, mover auction_ends_at...).
+--    Nuevo trigger `protect_listing_columns` que las pinnea salvo cuando el
+--    update viene de un RPC interno (flag de sesión `dealr.internal`, mismo
+--    patrón que `dealr.scoring` de 00039). Se reescriben los RPCs/triggers
+--    legítimos que las tocan para que seteen el flag: place_bid,
+--    close_auctions, reassign_auction, increment_listing_views,
+--    sync_favorites_count. El relanzado de subastas (que el front hacía con
+--    update directo) pasa a un RPC nuevo `relaunch_auction`.
+--
+-- 5) `report_auction_no_show` baneaba al comprador automáticamente (strike +
+--    1/3/6/12 meses) con la sola palabra del vendedor → vía de represalia.
+--    Ahora SIEMPRE es disputa: marca el listing y avisa a los admins, que
+--    deciden. (El chequeo de ban en place_bid queda: un admin puede banear a
+--    mano seteando auction_banned_until con service role.)
+--
+-- Idempotente. OJO: aplicar DESPUÉS de 00025/00033/00035 (reescribe place_bid
+-- por encima de la versión de 00035, que es la vigente).
+-- =============================================================
+
+-- ─── 1) profiles: pinnear TODAS las columnas sensibles ──────────────────────
+create or replace function public.protect_profile_columns()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- Recálculo interno de scores (00039): permitido.
+  if current_setting('dealr.scoring', true) = '1' then
+    return new;
+  end if;
+  if auth.uid() is not null then
+    new.phone_verified := old.phone_verified;
+    new.identity_verified := old.identity_verified;
+    new.identity_verified_at := old.identity_verified_at;
+    new.didit_session_id := old.didit_session_id;
+    new.seller_score := old.seller_score;
+    new.buyer_score := old.buyer_score;
+    new.seller_ratings_count := old.seller_ratings_count;
+    new.buyer_ratings_count := old.buyer_ratings_count;
+    -- Nuevas (00041): moderación y castigos no se auto-editan.
+    new.is_admin := old.is_admin;
+    new.is_minor := old.is_minor;
+    new.account_restricted := old.account_restricted;
+    new.auction_strikes := old.auction_strikes;
+    new.auction_banned_until := old.auction_banned_until;
+  end if;
+  return new;
+end;
+$$;
+
+-- ─── 2) Gate de cuenta restringida, respaldado en la DB ─────────────────────
+-- security definer → no recursiona con la RLS de profiles (mismo patrón que
+-- is_admin() de 00024).
+create or replace function public.is_restricted()
+returns boolean
+language sql stable security definer set search_path = public
+as $$
+  select coalesce(
+    (select account_restricted from public.profiles where id = auth.uid()),
+    false
+  );
+$$;
+grant execute on function public.is_restricted() to anon, authenticated;
+
+-- Publicar, ofertar e iniciar chats de compra: no para cuentas restringidas.
+drop policy if exists "publicar requiere sesion" on public.listings;
+create policy "publicar requiere sesion" on public.listings
+  for insert with check (auth.uid() = seller_id and not public.is_restricted());
+
+drop policy if exists "ofertar requiere sesion" on public.offers;
+create policy "ofertar requiere sesion" on public.offers
+  for insert with check (
+    auth.uid() = buyer_id
+    and not public.is_restricted()
+    and exists (select 1 from public.listings l where l.id = listing_id and l.status = 'active' and l.seller_id <> auth.uid())
+  );
+
+drop policy if exists "inicia el comprador" on public.conversations;
+create policy "inicia el comprador" on public.conversations
+  for insert with check (
+    auth.uid() = buyer_id
+    and buyer_id <> seller_id
+    and not public.is_restricted()
+    and exists (select 1 from public.listings l where l.id = listing_id and l.seller_id = seller_id)
+  );
+
+-- ─── 3) messages: el receptor solo puede tocar read_at ──────────────────────
+-- GRANT a nivel de columna: aunque la policy de UPDATE matchee la fila, un
+-- update que incluya body/image_path/edited_at/deleted_at falla con permission
+-- denied. Editar/borrar mensajes PROPIOS sigue funcionando: los RPCs
+-- edit_message/delete_message (00021) son security definer (corren como owner).
+revoke update on table public.messages from authenticated;
+grant update (read_at) on table public.messages to authenticated;
+
+-- La policy queda igual pero con with check explícito (no cambia filas de lugar).
+drop policy if exists "marcar leido el receptor" on public.messages;
+create policy "marcar leido el receptor" on public.messages
+  for update using (
+    sender_id <> auth.uid()
+    and exists (
+      select 1 from public.conversations c
+      where c.id = conversation_id and auth.uid() in (c.buyer_id, c.seller_id)
+    )
+  ) with check (
+    sender_id <> auth.uid()
+    and exists (
+      select 1 from public.conversations c
+      where c.id = conversation_id and auth.uid() in (c.buyer_id, c.seller_id)
+    )
+  );
+
+-- ─── 4) listings: columnas de confianza solo por vía interna ────────────────
+-- Pinnea las columnas que fabrican prueba social / estado de subasta. Los
+-- updates sin sesión (cron, service role, webhooks) pasan; los RPCs internos
+-- setean `dealr.internal` (transaction-local) antes de tocar la tabla.
+create or replace function public.protect_listing_columns()
+returns trigger
+language plpgsql
+as $$
+begin
+  if current_setting('dealr.internal', true) = '1' then
+    return new;
+  end if;
+  if auth.uid() is not null then
+    new.verified := old.verified;
+    new.current_bid := old.current_bid;
+    new.bids_count := old.bids_count;
+    new.auction_closed := old.auction_closed;
+    new.auction_ends_at := old.auction_ends_at;
+    new.views_count := old.views_count;
+    new.favorites_count := old.favorites_count;
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists protect_listing_columns_tg on public.listings;
+create trigger protect_listing_columns_tg
+  before update on public.listings
+  for each row execute function public.protect_listing_columns();
+
+-- ─── 4a) place_bid (versión 00035 + restricción + flag interno) ─────────────
+create or replace function public.place_bid(p_listing uuid, p_amount numeric)
+returns text
+language plpgsql security definer set search_path = public
+as $$
+declare
+  l public.listings%rowtype;
+  prev_top uuid;
+  banned timestamptz;
+  restricted boolean;
+  min_next numeric;
+begin
+  if auth.uid() is null then return 'Iniciá sesión para ofertar'; end if;
+  select auction_banned_until, account_restricted into banned, restricted
+  from public.profiles where id = auth.uid();
+  if coalesce(restricted, false) then
+    return 'Tu cuenta no puede participar de compras ni subastas.';
+  end if;
+  if banned is not null and banned > now() then
+    return 'No podés ofertar en subastas hasta el ' || to_char(banned, 'DD/MM/YYYY') || ' (no retiraste una compra anterior).';
+  end if;
+  select * into l from public.listings where id = p_listing for update;
+  if not found then return 'La publicación no existe'; end if;
+  if not l.is_auction then return 'No es una subasta'; end if;
+  if l.status <> 'active' or l.auction_closed then return 'La subasta no está disponible'; end if;
+  if now() >= l.auction_ends_at then return 'La subasta terminó'; end if;
+  if auth.uid() = l.seller_id then return 'No podés ofertar en tu propia subasta'; end if;
+  if l.current_bid is null then
+    if p_amount < l.price then return 'La oferta mínima es el precio inicial'; end if;
+  else
+    min_next := l.current_bid + greatest(coalesce(l.auction_min_increment, 0), 1);
+    if p_amount < min_next then
+      return 'Tenés que ofertar al menos $' || floor(min_next)::text;
+    end if;
+  end if;
+  select bidder_id into prev_top from public.bids where listing_id = p_listing order by amount desc limit 1;
+  insert into public.bids (listing_id, bidder_id, amount) values (p_listing, auth.uid(), p_amount);
+  perform set_config('dealr.internal', '1', true);
+  update public.listings
+  set current_bid = p_amount,
+      bids_count = bids_count + 1,
+      auction_ends_at = case
+        when auction_ends_at - now() < interval '30 seconds' then now() + interval '30 seconds'
+        else auction_ends_at
+      end
+  where id = p_listing;
+  insert into public.notifications (user_id, type, title, body, link)
+  values (l.seller_id, 'bid', 'Nueva oferta', 'Ofertaron en "' || l.title || '"', '/p/' || p_listing);
+  if prev_top is not null and prev_top <> auth.uid() then
+    insert into public.notifications (user_id, type, title, body, link)
+    values (prev_top, 'outbid', 'Te superaron la oferta', 'Hay una oferta mayor en "' || l.title || '"', '/p/' || p_listing);
+  end if;
+  return null;
+end;
+$$;
+grant execute on function public.place_bid(uuid, numeric) to authenticated;
+
+-- ─── 4b) close_auctions (00017, + flag; el cliente la llama con sesión) ─────
+create or replace function public.close_auctions()
+returns void
+language plpgsql security definer set search_path = public
+as $$
+declare
+  a public.listings%rowtype;
+  winner uuid;
+  conv uuid;
+begin
+  perform set_config('dealr.internal', '1', true);
+  for a in select * from public.listings where is_auction and not auction_closed and auction_ends_at <= now() loop
+    select bidder_id into winner from public.bids where listing_id = a.id order by amount desc, created_at asc limit 1;
+    if winner is not null then
+      update public.listings set auction_closed = true, status = 'sold', sold_to = winner where id = a.id;
+      select id into conv from public.conversations where listing_id = a.id and buyer_id = winner;
+      if conv is null then
+        insert into public.conversations (listing_id, buyer_id, seller_id) values (a.id, winner, a.seller_id) returning id into conv;
+      end if;
+      insert into public.notifications (user_id, type, title, body, link) values
+        (winner, 'auction_won', 'Ganaste la subasta', 'Ganaste "' || a.title || '". Coordiná la entrega con el vendedor.', '/chats/' || conv),
+        (a.seller_id, 'auction_won', 'Tu subasta cerró', 'Se cerró "' || a.title || '" con una oferta ganadora. Coordiná con el comprador.', '/chats/' || conv);
+    else
+      update public.listings set auction_closed = true, status = 'expired' where id = a.id;
+    end if;
+  end loop;
+end;
+$$;
+
+-- ─── 4c) reassign_auction (00017, + flag) ───────────────────────────────────
+create or replace function public.reassign_auction(p_listing uuid)
+returns text
+language plpgsql security definer set search_path = public
+as $$
+declare
+  l public.listings%rowtype;
+  prev_winner uuid;
+  nxt record;
+  conv uuid;
+begin
+  select * into l from public.listings where id = p_listing for update;
+  if not found then return 'No existe'; end if;
+  if auth.uid() <> l.seller_id then return 'Solo el vendedor'; end if;
+  if not l.is_auction or not l.auction_closed then return 'La subasta no cerró todavía'; end if;
+  if not l.auction_cascade then return 'La opción de ofrecer al siguiente no está activa'; end if;
+  prev_winner := l.sold_to;
+  select bidder_id, amount into nxt
+  from public.bids
+  where listing_id = p_listing
+    and bidder_id <> all (l.auction_passed)
+    and (prev_winner is null or bidder_id <> prev_winner)
+  order by amount desc, created_at asc
+  limit 1;
+  perform set_config('dealr.internal', '1', true);
+  if nxt.bidder_id is null then
+    update public.listings set status = 'expired', sold_to = null where id = p_listing;
+    return 'No quedan más postores';
+  end if;
+  update public.listings
+  set sold_to = nxt.bidder_id,
+      current_bid = nxt.amount,
+      auction_passed = case when prev_winner is not null then array_append(l.auction_passed, prev_winner) else l.auction_passed end
+  where id = p_listing;
+  select id into conv from public.conversations where listing_id = p_listing and buyer_id = nxt.bidder_id;
+  if conv is null then
+    insert into public.conversations (listing_id, buyer_id, seller_id) values (p_listing, nxt.bidder_id, l.seller_id) returning id into conv;
+  end if;
+  insert into public.notifications (user_id, type, title, body, link)
+  values (nxt.bidder_id, 'auction_won', 'Quedó disponible para vos', '"' || l.title || '" quedó disponible a tu oferta. Coordiná con el vendedor.', '/chats/' || conv);
+  return null;
+end;
+$$;
+grant execute on function public.reassign_auction(uuid) to authenticated;
+
+-- ─── 4d) increment_listing_views (00014, + flag) ────────────────────────────
+create or replace function public.increment_listing_views(listing_id uuid)
+returns void
+language plpgsql
+security definer set search_path = public
+as $$
+declare
+  rows integer;
+begin
+  if auth.uid() is null then
+    return;
+  end if;
+  insert into public.listing_views (listing_id, viewer_id)
+  values (increment_listing_views.listing_id, auth.uid())
+  on conflict do nothing;
+  get diagnostics rows = row_count;
+  if rows > 0 then
+    perform set_config('dealr.internal', '1', true);
+    update public.listings
+    set views_count = views_count + 1
+    where id = increment_listing_views.listing_id;
+  end if;
+end;
+$$;
+
+-- ─── 4e) sync_favorites_count (00010, + flag) ───────────────────────────────
+create or replace function public.sync_favorites_count()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  perform set_config('dealr.internal', '1', true);
+  if tg_op = 'INSERT' then
+    update public.listings set favorites_count = favorites_count + 1 where id = new.listing_id;
+  elsif tg_op = 'DELETE' then
+    update public.listings set favorites_count = greatest(favorites_count - 1, 0) where id = old.listing_id;
+  end if;
+  return null;
+end;
+$$;
+
+-- ─── 4f) relaunch_auction: relanzar una subasta terminada (reemplaza el
+--         update directo del front, que el trigger nuevo bloquearía) ─────────
+create or replace function public.relaunch_auction(p_listing uuid, p_days int)
+returns text
+language plpgsql security definer set search_path = public
+as $$
+declare
+  l public.listings%rowtype;
+begin
+  if auth.uid() is null then return 'Iniciá sesión'; end if;
+  if p_days is null or p_days < 1 or p_days > 30 then return 'Duración inválida'; end if;
+  select * into l from public.listings where id = p_listing for update;
+  if not found then return 'No existe'; end if;
+  if auth.uid() <> l.seller_id then return 'Solo el vendedor'; end if;
+  if not l.is_auction then return 'No es una subasta'; end if;
+  if l.status = 'active' and not l.auction_closed and l.auction_ends_at > now() then
+    return 'La subasta sigue en curso';
+  end if;
+  perform set_config('dealr.internal', '1', true);
+  update public.listings
+  set status = 'active',
+      last_renewed_at = now(),
+      sold_to = null,
+      auction_closed = false,
+      auction_ends_at = now() + make_interval(days => p_days),
+      current_bid = null,
+      bids_count = 0,
+      auction_passed = '{}',
+      buyer_confirmed_pickup = false,
+      seller_confirmed_pickup = false,
+      seller_reported_no_show = false,
+      pickup_disputed = false
+  where id = p_listing;
+  -- Las pujas viejas no deben contar como "mejor postor" de la subasta nueva.
+  delete from public.bids where listing_id = p_listing;
+  return null;
+end;
+$$;
+grant execute on function public.relaunch_auction(uuid, int) to authenticated;
+
+-- ─── 5) No-show de subastas: SIEMPRE disputa al admin (sin ban automático) ──
+create or replace function public.report_auction_no_show(p_listing uuid)
+returns text
+language plpgsql security definer set search_path = public
+as $$
+declare
+  l public.listings%rowtype;
+begin
+  select * into l from public.listings where id = p_listing for update;
+  if not found then return 'No existe'; end if;
+  if auth.uid() <> l.seller_id then return 'Solo el vendedor'; end if;
+  if not l.is_auction then return 'No es una subasta'; end if;
+  if l.sold_to is null then return 'La subasta no tiene ganador'; end if;
+  if l.seller_reported_no_show then return 'Ya lo reportaste'; end if;
+
+  -- Sin castigo automático: queda como disputa y deciden los admins (que
+  -- pueden banear a mano seteando auction_banned_until si corresponde).
+  update public.listings set seller_reported_no_show = true, pickup_disputed = true where id = p_listing;
+
+  insert into public.notifications (user_id, type, title, body, link, actor_id)
+  select p.id, 'report', 'Reporte de no-retiro',
+         'El vendedor reporta que no retiraron "' || l.title || '". Revisá el caso.', '/admin', l.seller_id
+  from public.profiles p where p.is_admin;
+
+  insert into public.notifications (user_id, type, title, body, link)
+  values (
+    l.sold_to, 'report', 'Reportaron un problema con tu compra',
+    'El vendedor indica que no retiraste "' || l.title || '". Si ya coordinaste o hay un malentendido, respondé por el chat.',
+    '/p/' || p_listing
+  );
+  return null;
+end;
+$$;
+grant execute on function public.report_auction_no_show(uuid) to authenticated;
+
+
+-- ============================================================
+-- 00042_inmuebles_campos_faltantes
+-- ============================================================
+-- =============================================================
+-- 00042 — Inmuebles: campos faltantes (auditoría final de categorías)
+--
+-- 1) "Superficie total (m²)": la columna generada `inmueble_sup` existe desde
+--    00022 (lee structured_fields->>'superficie_m2'), pero la reescritura de
+--    00034 dejó solo "superficie cubierta" y la key `superficie_m2` desapareció
+--    → columna huérfana y sin filtro de superficie total. Se agrega el campo
+--    (con slider que usa esa columna), insertado justo después de la cubierta.
+--
+-- 2) "Formas de pago": Inmuebles quedó como la ÚNICA categoría sin el campo
+--    común (la reescritura de 00034 no lo incluyó y 00036 solo actualizaba a
+--    quien ya lo tenía). Se agrega al final, igual que en el resto (multiselect
+--    Efectivo/Transferencia/Tarjeta). "Acepta envío" NO se agrega a propósito:
+--    no tiene sentido para una propiedad.
+--
+-- Idempotente (chequea contención por key antes de tocar).
+-- =============================================================
+
+-- 1) Superficie total, insertada después de superficie_cubierta_m2 (posición
+--    calculada dinámicamente para no depender del orden exacto del array).
+do $$
+declare
+  rf jsonb;
+  pos int;
+  nuevo jsonb := '{
+    "key": "superficie_m2",
+    "label": "Superficie total (m²)",
+    "type": "text",
+    "required": false,
+    "filterSlider": {"column": "inmueble_sup", "min": 0, "max": 1000, "step": 25, "unit": "m²", "bound": "min"}
+  }'::jsonb;
+begin
+  select required_fields into rf from public.categories where slug = 'alquileres';
+  if rf is null or rf @> '[{"key": "superficie_m2"}]'::jsonb then
+    return; -- no existe la categoría o el campo ya está
+  end if;
+
+  -- índice (0-based) del campo superficie_cubierta_m2; insertar después.
+  select t.ord into pos
+  from jsonb_array_elements(rf) with ordinality as t(el, ord)
+  where t.el->>'key' = 'superficie_cubierta_m2';
+
+  if pos is not null then
+    -- ordinality es 1-based → el índice jsonb del siguiente elemento es `pos`.
+    update public.categories
+    set required_fields = jsonb_insert(required_fields, array[pos::text], nuevo)
+    where slug = 'alquileres';
+  else
+    update public.categories
+    set required_fields = required_fields || jsonb_build_array(nuevo)
+    where slug = 'alquileres';
+  end if;
+end;
+$$;
+
+-- 2) Formas de pago (mismo shape que el común de 00001), al final del array.
+update public.categories
+set required_fields = required_fields || '[{
+  "key": "formas_de_pago",
+  "label": "Formas de pago",
+  "type": "multiselect",
+  "required": true,
+  "options": ["Efectivo", "Transferencia", "Tarjeta"]
+}]'::jsonb
+where slug = 'alquileres'
+  and not required_fields @> '[{"key": "formas_de_pago"}]'::jsonb;
+
+
+-- ============================================================
+-- 00043_saved_search_filters
+-- ============================================================
+-- =============================================================
+-- 00043 — Búsquedas guardadas: persistir los filtros de categoría.
+--
+-- Antes, "Guardar búsqueda con alerta" solo guardaba término/categoría/precio/
+-- condición: los filtros finos (campos select/boolean, rangos numéricos y
+-- multiselect de amenities) se DESCARTABAN en silencio, y la alerta de
+-- publicación nueva tampoco los consideraba. Ahora se guardan y el trigger de
+-- matching los aplica con la misma semántica que el feed:
+--   fields       {key: valor}                  → igualdad sobre structured_fields->>key
+--   field_ranges {key: {column, min, max}}     → rango numérico (num_from_text
+--                                                 sobre la key, la MISMA función
+--                                                 de las columnas generadas)
+--   multi        {key: [opciones]}             → contención (todas las elegidas)
+--
+-- El radio de distancia NO se persiste: es relativo a la ubicación del
+-- comprador en el momento (client-side), no un atributo de la búsqueda.
+--
+-- Requiere 00022 (num_from_text). Idempotente.
+-- =============================================================
+
+alter table public.saved_searches
+  add column if not exists fields jsonb,
+  add column if not exists field_ranges jsonb,
+  add column if not exists multi jsonb;
+
+create or replace function public.notify_saved_search_matches()
+returns trigger
+language plpgsql
+security definer set search_path = public
+as $$
+begin
+  insert into public.notifications (user_id, type, title, body, link)
+  select s.user_id, 'saved_search', 'Nueva publicación para tu búsqueda', new.title, '/p/' || new.id
+  from public.saved_searches s
+  where s.user_id <> new.seller_id
+    and (s.category_id is null or s.category_id = new.category_id)
+    and (s.query is null or new.title ilike '%' || s.query || '%' or new.description ilike '%' || s.query || '%')
+    -- currency y condition son enums: hay que castear a text para comparar
+    -- contra las columnas de texto de saved_searches.
+    and (s.currency is null or new.currency::text = s.currency)
+    and (s.min_price is null or new.price >= s.min_price)
+    and (s.max_price is null or new.price <= s.max_price)
+    and (s.conditions is null or array_length(s.conditions, 1) is null or new.condition::text = any (s.conditions))
+    -- Campos por igualdad: TODOS los pares guardados tienen que coincidir.
+    and (s.fields is null or not exists (
+      select 1 from jsonb_each_text(s.fields) f(k, v)
+      where new.structured_fields->>f.k is distinct from f.v
+    ))
+    -- Rangos numéricos: el valor del aviso (parseado con num_from_text, igual
+    -- que las columnas generadas) tiene que caer dentro de todos los rangos.
+    -- Un aviso SIN el campo no matchea un rango (igual que el feed).
+    and (s.field_ranges is null or not exists (
+      select 1 from jsonb_each(s.field_ranges) r(k, spec)
+      where (
+        nullif(spec->>'min', '') is not null
+        and coalesce(public.num_from_text(new.structured_fields->>r.k), -1) < (spec->>'min')::numeric
+      ) or (
+        nullif(spec->>'max', '') is not null
+        and (
+          public.num_from_text(new.structured_fields->>r.k) is null
+          or public.num_from_text(new.structured_fields->>r.k) > (spec->>'max')::numeric
+        )
+      )
+    ))
+    -- Multiselect: el aviso tiene que contener TODAS las opciones elegidas
+    -- (misma contención @> que usa el feed, aprovecha el GIN de 00034).
+    and (s.multi is null or not exists (
+      select 1 from jsonb_each(s.multi) m(k, opts)
+      where jsonb_array_length(opts) > 0
+        and not (new.structured_fields @> jsonb_build_object(m.k, opts))
+    ));
+  return null;
+end;
+$$;
+
+
+-- ============================================================
+-- 00044_admin_metrics
+-- ============================================================
+-- =============================================================
+-- 00044 — Panel de métricas del admin (funnel de adquisición).
+--
+-- 1) `site_visits`: visitas ANÓNIMAS a la app. La DB no se enteraba de los
+--    visitantes sin cuenta (eso vivía solo en PostHog); esta tabla registra
+--    un visitante por día con una clave aleatoria de localStorage (uuid, sin
+--    ningún dato personal). El front llama `track_visit` al abrir la app
+--    (una vez por día por dispositivo; el PK dedupea igual).
+--
+-- 2) RPC `admin_metrics()`: agregados para el panel /admin, solo para admins
+--    (guard is_admin() de 00024). Funnel: visitas → registros → vieron
+--    producto → iniciaron chat → publicaron.
+--
+-- Nota: como toda métrica client-side, un malicioso podría inflar visitas
+-- llamando al RPC con claves inventadas. Para un panel interno alcanza; si
+-- algún día importa, se filtra por IP/rate en un edge.
+-- Idempotente.
+-- =============================================================
+
+create table if not exists public.site_visits (
+  visitor_key text not null,
+  day date not null default current_date,
+  created_at timestamptz not null default now(),
+  primary key (visitor_key, day)
+);
+
+alter table public.site_visits enable row level security;
+
+-- Nadie lee la tabla directo salvo el admin (los agregados van por RPC).
+drop policy if exists "solo admin lee visitas" on public.site_visits;
+create policy "solo admin lee visitas" on public.site_visits
+  for select using (public.is_admin());
+
+-- El insert va SOLO por el RPC (security definer); sin policy de insert.
+revoke all on table public.site_visits from anon, authenticated;
+grant select on table public.site_visits to authenticated;
+
+-- Registrar visita: anónimo o logueado. p_key es un uuid generado por el
+-- cliente (localStorage) — el tipo uuid valida el formato solo.
+create or replace function public.track_visit(p_key uuid)
+returns void
+language sql
+security definer set search_path = public
+as $$
+  insert into public.site_visits (visitor_key, day)
+  values (p_key::text, current_date)
+  on conflict do nothing;
+$$;
+grant execute on function public.track_visit(uuid) to anon, authenticated;
+
+-- Métricas agregadas para el panel (solo admins).
+create or replace function public.admin_metrics()
+returns jsonb
+language plpgsql
+stable
+security definer set search_path = public
+as $$
+begin
+  if not public.is_admin() then
+    raise exception 'Solo para administradores';
+  end if;
+
+  return jsonb_build_object(
+    -- Visitas (dispositivos únicos)
+    'visitors_today', (select count(*) from public.site_visits where day = current_date),
+    'visitors_7d',    (select count(distinct visitor_key) from public.site_visits where day > current_date - 7),
+    'visitors_total', (select count(distinct visitor_key) from public.site_visits),
+    -- Registros
+    'users_today', (select count(*) from public.profiles where created_at >= current_date),
+    'users_7d',    (select count(*) from public.profiles where created_at >= current_date - 7),
+    'users_total', (select count(*) from public.profiles),
+    -- Vieron al menos un producto (solo logueados: listing_views los registra así)
+    'viewers_7d',    (select count(distinct viewer_id) from public.listing_views where created_at >= now() - interval '7 days'),
+    'viewers_total', (select count(distinct viewer_id) from public.listing_views),
+    -- Iniciaron un chat de compra
+    'buyers_7d',    (select count(distinct buyer_id) from public.conversations where created_at >= now() - interval '7 days' and kind is distinct from 'welcome'),
+    'buyers_total', (select count(distinct buyer_id) from public.conversations where kind is distinct from 'welcome'),
+    -- Publicaron algo
+    'sellers_7d',    (select count(distinct seller_id) from public.listings where created_at >= now() - interval '7 days'),
+    'sellers_total', (select count(distinct seller_id) from public.listings),
+    -- Inventario
+    'listings_active', (select count(*) from public.listings where status = 'active'),
+    'listings_total',  (select count(*) from public.listings)
+  );
+end;
+$$;
+grant execute on function public.admin_metrics() to authenticated;
