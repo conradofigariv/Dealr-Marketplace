@@ -685,50 +685,70 @@ export default function ListingDetail() {
       <div className="space-y-6 px-5 py-6">
         <div>
           {auction ? (
-            <div>
-              <div className="flex items-baseline gap-2">
-                <p className="text-3xl font-bold text-white">{formatPrice(listing.current_bid ?? listing.price, listing.currency)}</p>
-                <span className="text-xs text-neutral-500">{listing.current_bid != null ? 'oferta actual' : 'precio inicial'}</span>
-              </div>
-              <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm">
-                <span className="glow-badge rounded-full bg-amber-500/15 px-2 py-0.5 text-xs font-semibold text-amber-400">Subasta</span>
-                <span className="text-neutral-400">{listing.bids_count} {listing.bids_count === 1 ? 'oferta' : 'ofertas'}</span>
-                <span className="text-neutral-600">·</span>
-                <span
-                  className={
-                    auctionEnded
-                      ? 'text-neutral-500'
-                      : critical
-                        ? 'font-bold text-red-400 [animation:glowBadge_1s_ease-in-out_infinite]'
-                        : urgent
-                          ? 'font-bold text-amber-400'
-                          : 'font-semibold text-white'
-                  }
-                >
-                  {auctionEnded ? 'Finalizada' : `Termina en ${timeLeftLabel(listing.auction_ends_at!, now)}`}
-                </span>
-                {extended && (
-                  <span className="ctx-pop-in rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-black">
-                    ⏱ +30s
+            /* Tarjeta de subasta: cabecera (badge + countdown), oferta actual
+               grande, métricas en fichas y el historial integrado abajo. */
+            <div className="overflow-hidden rounded-2xl bg-gradient-to-b from-amber-500/[0.07] to-neutral-900/40 ring-1 ring-amber-500/20">
+              <div className="flex items-center justify-between gap-2 px-4 pt-4">
+                <span className="glow-badge rounded-full bg-amber-500/15 px-2.5 py-1 text-[11px] font-bold uppercase tracking-wide text-amber-400">Subasta</span>
+                <div className="flex items-center gap-2">
+                  {extended && (
+                    <span className="ctx-pop-in rounded-full bg-amber-500 px-2 py-0.5 text-xs font-bold text-black">
+                      ⏱ +30s
+                    </span>
+                  )}
+                  <span
+                    className={`rounded-full px-3 py-1 text-sm ${
+                      auctionEnded
+                        ? 'bg-neutral-800/80 text-neutral-500'
+                        : critical
+                          ? 'bg-red-500/15 font-bold text-red-400 [animation:glowBadge_1s_ease-in-out_infinite]'
+                          : urgent
+                            ? 'bg-amber-500/15 font-bold text-amber-400'
+                            : 'bg-neutral-800/80 font-semibold text-white'
+                    }`}
+                  >
+                    {auctionEnded ? 'Finalizada' : `⏱ ${timeLeftLabel(listing.auction_ends_at!, now)}`}
                   </span>
-                )}
-                {watchers > 1 && !auctionEnded && (
-                  <span className="flex items-center gap-1 text-xs text-neutral-400">
-                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:glowBadge_2s_ease-in-out_infinite]" />
-                    {watchers} mirando
-                  </span>
-                )}
+                </div>
               </div>
-              {!auctionEnded && (
-                <p className="mt-1.5 text-xs text-neutral-500">
-                  Próxima oferta mínima: <span className="font-semibold text-neutral-300">{formatPrice(minNextBid, listing.currency)}</span>
-                  {listing.auction_min_increment > 0 && ` · salto de ${formatPrice(listing.auction_min_increment, listing.currency)}`}
+
+              <div className="px-4 pb-4 pt-3">
+                <p className="text-[11px] font-medium uppercase tracking-wide text-neutral-500">
+                  {listing.current_bid != null ? 'Oferta actual' : 'Precio inicial'}
                 </p>
-              )}
+                <div className="mt-0.5 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+                  <p className="text-4xl font-bold tracking-tight text-white">{formatPrice(listing.current_bid ?? listing.price, listing.currency)}</p>
+                  <span className="text-sm text-neutral-400">
+                    {listing.bids_count} {listing.bids_count === 1 ? 'oferta' : 'ofertas'}
+                  </span>
+                  {watchers > 1 && !auctionEnded && (
+                    <span className="flex items-center gap-1 text-xs text-neutral-400">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 [animation:glowBadge_2s_ease-in-out_infinite]" />
+                      {watchers} mirando
+                    </span>
+                  )}
+                </div>
+
+                {!auctionEnded && (
+                  <div className="mt-3 grid grid-cols-2 gap-2">
+                    <div className="rounded-xl bg-black/40 px-3 py-2.5 ring-1 ring-neutral-800">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">Próxima mínima</p>
+                      <p className="mt-0.5 text-base font-bold text-amber-300">{formatPrice(minNextBid, listing.currency)}</p>
+                    </div>
+                    <div className="rounded-xl bg-black/40 px-3 py-2.5 ring-1 ring-neutral-800">
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-neutral-500">Salto entre ofertas</p>
+                      <p className="mt-0.5 text-base font-bold text-white">
+                        {listing.auction_min_increment > 0 ? formatPrice(listing.auction_min_increment, listing.currency) : '—'}
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
               {/* Historial de ofertas (anonimizado, RPC 00045): lo ven el
                   dueño y cualquier visitante. La primera fila es la ganadora. */}
               {bidHistory.length > 0 && (
-                <div className="mt-3 overflow-hidden rounded-2xl bg-neutral-900/60 ring-1 ring-neutral-800">
+                <div className="border-t border-neutral-800/80">
                   <button
                     onClick={() => setHistoryOpen((v) => !v)}
                     className="flex w-full items-center justify-between px-4 py-3"
@@ -746,7 +766,7 @@ export default function ListingDetail() {
                     </svg>
                   </button>
                   {historyOpen && (
-                    <ul className="border-t border-neutral-800/80 px-4 py-1">
+                    <ul className="px-4 pb-2">
                       {bidHistory.map((b, i) => (
                         <li
                           key={`${b.created_at}-${b.amount}`}
@@ -755,6 +775,9 @@ export default function ListingDetail() {
                           <span className={b.is_me ? 'font-semibold text-amber-300' : 'text-neutral-300'}>
                             Postor {b.bidder_num}
                             {b.is_me && ' (vos)'}
+                            {i === 0 && !auctionEnded && (
+                              <span className="ml-1.5 rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-bold text-emerald-400">GANANDO</span>
+                            )}
                           </span>
                           <span className="ml-auto shrink-0 text-xs text-neutral-600">{timeAgo(b.created_at)}</span>
                           <span className={`shrink-0 font-semibold ${i === 0 ? 'text-amber-400' : 'text-white'}`}>
