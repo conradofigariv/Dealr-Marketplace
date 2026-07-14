@@ -71,6 +71,18 @@ export default function Profile() {
   const [reactivating, setReactivating] = useState(false)
   const [checkingUpdate, setCheckingUpdate] = useState(false)
   const [sendingCotillon, setSendingCotillon] = useState(false)
+  // "Mis ofertas": subastas donde pujé (bids, RLS deja leer las propias) y
+  // publicaciones donde hice una oferta (offers). Agrupadas por publicación.
+  const [myOffers, setMyOffers] = useState<
+    {
+      listing: Listing
+      myMax: number
+      latest: string
+      kind: 'bid' | 'offer'
+      offerStatus?: string
+    }[]
+  >([])
+  const [myOffersOpen, setMyOffersOpen] = useState(false)
   const avatarInput = useRef<HTMLInputElement>(null)
   const toast = useToast()
 
@@ -117,6 +129,57 @@ export default function Profile() {
       .eq('seller_id', session.user.id)
       .order('created_at', { ascending: false })
     setListings(data ?? [])
+  }
+
+  // Cargar "Mis ofertas": pujas de subasta propias + ofertas en precio fijo.
+  // Se agrupan por publicación quedándose con el monto máximo y la fecha más
+  // reciente. Best-effort: cualquier error deja la sección vacía.
+  useEffect(() => {
+    if (!session) return
+    const uid = session.user.id
+    const LISTING_COLS = 'id, title, photos, price, currency, status, is_auction, current_bid, auction_closed, auction_ends_at, sold_to'
+    Promise.all([
+      supabase.from('bids').select(`amount, created_at, listing:listings(${LISTING_COLS})`).eq('bidder_id', uid),
+      supabase.from('offers').select(`amount, created_at, status, listing:listings(${LISTING_COLS})`).eq('buyer_id', uid),
+    ]).then(([bidsRes, offersRes]) => {
+      const map = new Map<string, (typeof myOffers)[number]>()
+      const add = (row: { amount: number; created_at: string; status?: string; listing: Listing | null }, kind: 'bid' | 'offer') => {
+        const l = row.listing
+        if (!l) return
+        const prev = map.get(`${kind}-${l.id}`)
+        if (prev) {
+          prev.myMax = Math.max(prev.myMax, row.amount)
+          if (row.created_at > prev.latest) {
+            prev.latest = row.created_at
+            if (kind === 'offer') prev.offerStatus = row.status
+          }
+        } else {
+          map.set(`${kind}-${l.id}`, { listing: l, myMax: row.amount, latest: row.created_at, kind, offerStatus: row.status })
+        }
+      }
+      for (const r of (bidsRes.data as never[]) ?? []) add(r, 'bid')
+      for (const r of (offersRes.data as never[]) ?? []) add(r, 'offer')
+      setMyOffers([...map.values()].sort((a, b) => (a.latest < b.latest ? 1 : -1)))
+    })
+  }, [session])
+
+  // Chip de estado de cada oferta mía.
+  function offerChip(o: (typeof myOffers)[number]): { label: string; cls: string } {
+    const l = o.listing
+    if (o.kind === 'bid') {
+      const ended = l.auction_closed || l.status !== 'active' || (l.auction_ends_at != null && new Date(l.auction_ends_at).getTime() <= Date.now())
+      if (ended) {
+        return l.sold_to === session?.user.id
+          ? { label: '🏆 Ganaste', cls: 'bg-emerald-500/15 text-emerald-400' }
+          : { label: 'Finalizada', cls: 'bg-neutral-800 text-neutral-500' }
+      }
+      return l.current_bid != null && l.current_bid <= o.myMax
+        ? { label: 'Ganando', cls: 'bg-emerald-500/15 text-emerald-400' }
+        : { label: 'Superado', cls: 'bg-red-500/15 text-red-400' }
+    }
+    if (o.offerStatus === 'accepted') return { label: 'Aceptada', cls: 'bg-emerald-500/15 text-emerald-400' }
+    if (o.offerStatus === 'rejected') return { label: 'Rechazada', cls: 'bg-neutral-800 text-neutral-500' }
+    return { label: 'Pendiente', cls: 'bg-amber-500/15 text-amber-400' }
   }
 
   useEffect(() => {
@@ -542,6 +605,63 @@ export default function Profile() {
               </div>
             )}
           </div>
+          {/* Mis ofertas: subastas donde pujé y publicaciones donde oferté.
+              Solo aparece si hay alguna. */}
+          {myOffers.length > 0 && (
+            <div className="overflow-hidden rounded-2xl bg-neutral-900 ring-1 ring-neutral-800">
+              <button
+                onClick={() => setMyOffersOpen((v) => !v)}
+                className="flex w-full items-center justify-between px-4 py-3.5"
+              >
+                <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+                  <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="m14 13-8.5 8.5a2.12 2.12 0 1 1-3-3L11 10" />
+                    <path d="m16 16 6-6" />
+                    <path d="m8 8 6-6" />
+                    <path d="m9 7 8 8" />
+                    <path d="m21 11-8-8" />
+                  </svg>
+                  Mis ofertas
+                  <span className="text-xs font-normal text-neutral-500">({myOffers.length})</span>
+                </span>
+                <svg viewBox="0 0 24 24" className={`h-5 w-5 text-neutral-500 transition ${myOffersOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="m9 18 6-6-6-6" />
+                </svg>
+              </button>
+              {myOffersOpen && (
+                <ul className="sheet-in space-y-4 border-t border-neutral-800 px-4 py-4">
+                  {myOffers.map((o) => {
+                    const chip = offerChip(o)
+                    return (
+                      <li key={`${o.kind}-${o.listing.id}`} className="flex gap-4">
+                        <Link to={`/p/${o.listing.id}`} className="h-16 w-16 shrink-0 overflow-hidden rounded-xl bg-neutral-800">
+                          {o.listing.photos?.[0] && (
+                            <img src={photoUrl(o.listing.photos[0])} alt="" className="h-full w-full object-cover" />
+                          )}
+                        </Link>
+                        <div className="min-w-0 flex-1">
+                          <Link to={`/p/${o.listing.id}`} className="block truncate text-sm font-semibold text-white">
+                            {o.listing.title}
+                          </Link>
+                          <p className="mt-0.5 text-xs text-neutral-500">
+                            {o.kind === 'bid' ? 'Tu puja' : 'Tu oferta'}:{' '}
+                            <span className="font-semibold text-white">{formatPrice(o.myMax, o.listing.currency)}</span>
+                            {o.kind === 'bid' && o.listing.current_bid != null && (
+                              <> · actual {formatPrice(o.listing.current_bid, o.listing.currency)}</>
+                            )}
+                          </p>
+                          <div className="mt-1.5 flex items-center gap-2">
+                            <span className={`rounded-full px-2 py-0.5 text-[11px] font-bold ${chip.cls}`}>{chip.label}</span>
+                            <span className="text-[11px] text-neutral-600">{timeAgo(o.latest)}</span>
+                          </div>
+                        </div>
+                      </li>
+                    )
+                  })}
+                </ul>
+              )}
+            </div>
+          )}
           <Link
             to="/opiniones"
             className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
