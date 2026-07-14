@@ -6,6 +6,8 @@ import { translateAuthError } from '../lib/authErrors'
 import { markWelcomeSeen } from '../lib/welcome'
 import { preloadOnboardingImages } from '../lib/intro'
 import { ONBOARDING_IMAGES } from '../components/IntroSlides'
+import { isInAppBrowser } from '../lib/inAppBrowser'
+import InAppBrowserBanner from '../components/InAppBrowserBanner'
 
 type Channel = 'email' | 'phone'
 
@@ -28,6 +30,8 @@ export default function Auth() {
   const back = navState?.back ?? '/'
   const [channel, setChannel] = useState<Channel>('email')
   const [showEmailForm, setShowEmailForm] = useState(false)
+  // WebView de FB/IG: sin Google (lo bloquean), el email al frente.
+  const inApp = isInAppBrowser()
   const [identifier, setIdentifier] = useState('')
   const [code, setCode] = useState('')
   const [linkSent, setLinkSent] = useState(false)
@@ -140,6 +144,11 @@ export default function Auth() {
 
         {!linkSent && !showEmailForm ? (
           <div className="space-y-8">
+            {/* En el navegador embebido de FB/IG, Google bloquea su OAuth
+                (disallowed_useragent): escondemos el botón y empujamos al
+                email, que ahí sí funciona. El banner explica cómo escapar. */}
+            {inApp && <InAppBrowserBanner />}
+            {!inApp && (
             <button type="button" onClick={googleSignIn} disabled={busy} className="btn-primary flex items-center justify-center gap-3">
               <svg viewBox="0 0 48 48" className="h-5 w-5 shrink-0">
                 <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
@@ -149,6 +158,20 @@ export default function Auth() {
               </svg>
               {busy ? 'Conectando…' : 'Continuar con Google'}
             </button>
+            )}
+            {inApp ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowEmailForm(true)
+                  setError('')
+                  setRawError('')
+                }}
+                className="btn-primary flex items-center justify-center gap-2"
+              >
+                Continuar con mi email
+              </button>
+            ) : (
             <button
               type="button"
               onClick={() => {
@@ -160,6 +183,7 @@ export default function Auth() {
             >
               Usar mi email
             </button>
+            )}
             <button
               type="button"
               onClick={() => navigate(back, { replace: true })}

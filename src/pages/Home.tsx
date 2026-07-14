@@ -13,6 +13,7 @@ import Modal from '../components/Modal'
 import ActionMenu from '../components/ActionMenu'
 import EmptyState from '../components/EmptyState'
 import { useToast } from '../components/Toast'
+import InAppBrowserBanner from '../components/InAppBrowserBanner'
 import { vibrate, haptic, playSound } from '../lib/notify'
 import {
   getCachedBuyerLocation,
@@ -717,6 +718,10 @@ export default function Home() {
           </Link>
         </div>
       </header>
+
+      {/* WebView de FB/IG (link compartido en grupos): invita a escapar al
+          navegador real, donde el registro es fácil y la PWA instalable. */}
+      {!session && <InAppBrowserBanner compact />}
 
       {/* Fila de categorías (navegación), debajo del panel de acciones. */}
       <div className="relative">
