@@ -743,6 +743,67 @@ export default function ListingDetail() {
                     </div>
                   </div>
                 )}
+
+                {/* Controles de ofertar DENTRO de la tarjeta (en el flujo de la
+                    página, nada flotante: la barra fixed se comía quirks de
+                    posicionamiento en iOS y quedaba "flotando" a media pantalla). */}
+                {!isOwner && (
+                  <div className="mt-3">
+                    {iWon ? (
+                      <button onClick={openChat} className="w-full rounded-full bg-amber-500 py-3 text-sm font-bold text-black">
+                        🏆 Ganaste — coordinar con el vendedor
+                      </button>
+                    ) : auctionEnded || listing.status !== 'active' ? (
+                      <p className="rounded-full bg-neutral-900 py-3 text-center text-sm font-medium text-neutral-400 ring-1 ring-neutral-800">
+                        Subasta finalizada
+                      </p>
+                    ) : (
+                      <>
+                        {outbid && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              // Re-puja rápida: prellena con la oferta mínima (actual + salto).
+                              setBidAmount(String(minNextBid))
+                              setOutbid(false)
+                              haptic('tap')
+                            }}
+                            className="ctx-pop-in mb-2 flex w-full items-center justify-center gap-1.5 rounded-full bg-red-500/15 py-2 text-sm font-bold text-red-400 ring-1 ring-red-500/30"
+                          >
+                            Te superaron la oferta · Tocá para mejorar
+                          </button>
+                        )}
+                        {/* Puja rápida: el siguiente escalón en un toque. */}
+                        <button
+                          type="button"
+                          onClick={() => submitBid(minNextBid)}
+                          disabled={bidBusy}
+                          className="mb-2 w-full rounded-full bg-amber-500 py-3 text-sm font-bold text-black transition active:scale-[0.98] disabled:opacity-50"
+                        >
+                          Ofertar {formatPrice(minNextBid, listing.currency)}
+                        </button>
+                        <form onSubmit={placeBid} className="flex items-center gap-2">
+                          <div className={`flex flex-1 items-center gap-1.5 rounded-full bg-neutral-900 px-4 ring-1 ${outbid ? 'ring-red-500/50' : 'ring-neutral-700'}`}>
+                            <span className="text-sm font-semibold text-neutral-500">{listing.currency === 'USD' ? 'US$' : '$'}</span>
+                            <input
+                              type="number"
+                              min="0"
+                              step="any"
+                              required
+                              value={bidAmount}
+                              onChange={(e) => setBidAmount(e.target.value)}
+                              placeholder={`${minNextBid} o más`}
+                              className="w-full bg-transparent py-3 text-sm font-semibold text-white outline-none"
+                            />
+                          </div>
+                          <button disabled={bidBusy} className="shrink-0 rounded-full bg-neutral-800 px-5 py-3 text-sm font-bold text-white ring-1 ring-neutral-700 disabled:opacity-50">
+                            Ofertar
+                          </button>
+                        </form>
+                      </>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Historial de ofertas (anonimizado, RPC 00045): lo ven el
@@ -1111,65 +1172,6 @@ export default function ListingDetail() {
           </button>
         )}
       </div>
-
-      {/* Barra de acciones del comprador — subasta */}
-      {!isOwner && auction && (
-        <div className="fixed bottom-0 left-1/2 z-20 w-full max-w-lg -translate-x-1/2 bg-gradient-to-t from-black via-black/95 to-transparent px-5 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-8">
-          {iWon ? (
-            <button onClick={openChat} className="w-full rounded-full bg-amber-500 py-3 text-sm font-bold text-black">
-              🏆 Ganaste — coordinar con el vendedor
-            </button>
-          ) : auctionEnded || listing.status !== 'active' ? (
-            <p className="rounded-full bg-neutral-900 py-3 text-center text-sm font-medium text-neutral-400 ring-1 ring-neutral-800">
-              Subasta finalizada
-            </p>
-          ) : (
-            <>
-              {outbid && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    // Re-puja rápida: prellena con la oferta mínima (actual + salto).
-                    setBidAmount(String(minNextBid))
-                    setOutbid(false)
-                    haptic('tap')
-                  }}
-                  className="ctx-pop-in mb-2 flex w-full items-center justify-center gap-1.5 rounded-full bg-red-500/15 py-2 text-sm font-bold text-red-400 ring-1 ring-red-500/30"
-                >
-                  Te superaron la oferta · Tocá para mejorar
-                </button>
-              )}
-              {/* Puja rápida: el siguiente escalón en un toque. */}
-              <button
-                type="button"
-                onClick={() => submitBid(minNextBid)}
-                disabled={bidBusy}
-                className="mb-2 w-full rounded-full bg-amber-500 py-3 text-sm font-bold text-black transition active:scale-[0.98] disabled:opacity-50"
-              >
-                Ofertar {formatPrice(minNextBid, listing.currency)}
-              </button>
-              <form onSubmit={placeBid} className="flex items-center gap-2">
-                <div className={`flex flex-1 items-center gap-1.5 rounded-full bg-neutral-900 px-4 ring-1 ${outbid ? 'ring-red-500/50' : 'ring-neutral-700'}`}>
-                  <span className="text-sm font-semibold text-neutral-500">{listing.currency === 'USD' ? 'US$' : '$'}</span>
-                  <input
-                    type="number"
-                    min="0"
-                    step="any"
-                    required
-                    value={bidAmount}
-                    onChange={(e) => setBidAmount(e.target.value)}
-                    placeholder={`${minNextBid} o más`}
-                    className="w-full bg-transparent py-3 text-sm font-semibold text-white outline-none"
-                  />
-                </div>
-                <button disabled={bidBusy} className="shrink-0 rounded-full bg-neutral-800 px-5 py-3 text-sm font-bold text-white ring-1 ring-neutral-700 disabled:opacity-50">
-                  Ofertar
-                </button>
-              </form>
-            </>
-          )}
-        </div>
-      )}
 
       {/* Barra de acciones del comprador — precio fijo */}
       {!isOwner && !auction && listing.status === 'active' && (
