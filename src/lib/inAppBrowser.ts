@@ -21,8 +21,11 @@ export function inAppBrowserName(): string {
   return 'la app'
 }
 
-const isAndroid = () =>
+// En Android el intent:// escapa solo; en iOS no hay escape programático y la
+// UI tiene que guiar al menú de la app (⋯ → "Abrir en navegador externo").
+export const canAutoEscape = () =>
   typeof navigator !== 'undefined' && /Android/i.test(navigator.userAgent || '')
+const isAndroid = canAutoEscape
 
 // Intenta abrir la URL actual en el navegador de verdad. En Android los
 // intent:// suelen escapar del WebView de FB/IG hacia el navegador default.
