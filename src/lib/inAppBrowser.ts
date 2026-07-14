@@ -6,7 +6,7 @@
 
 // La PWA instalada corre "standalone" y su UA tampoco dice Safari — NO es un
 // WebView de app ajena, hay que excluirla de la heurística genérica.
-function isStandalonePWA(): boolean {
+export function isStandalonePWA(): boolean {
   return (
     window.matchMedia?.('(display-mode: standalone)').matches ||
     (navigator as { standalone?: boolean }).standalone === true
@@ -36,6 +36,16 @@ export function isInAppBrowser(): boolean {
   // (Falso positivo asumido: Safari en modo privado viejo; banner inocuo.)
   if (/iPhone|iPad|iPod/i.test(ua) && !('serviceWorker' in navigator)) return true
   return false
+}
+
+// iPhone donde NO pudimos confirmar WebView: Reddit (y otros) copian el UA de
+// Safari completo y en iOS moderno hasta tienen serviceWorker — indetectables.
+// Para estos casos la UI muestra un aviso SUAVE una única vez por dispositivo
+// (en Android no hace falta: el marcador "; wv)" es confiable).
+export function isUndetectableIphone(): boolean {
+  if (typeof navigator === 'undefined' || typeof window === 'undefined') return false
+  const ua = navigator.userAgent || ''
+  return /iPhone|iPad|iPod/i.test(ua) && !isStandalonePWA() && !isInAppBrowser()
 }
 
 // Nombre de la app contenedora, para el texto del banner.

@@ -1,11 +1,15 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   isInAppBrowser,
   inAppBrowserName,
   openInExternalBrowser,
   canAutoEscape,
+  isUndetectableIphone,
 } from '../lib/inAppBrowser'
 import { useToast } from './Toast'
+
+// Una vez por dispositivo para la variante suave (iPhone indetectable).
+const SOFT_SEEN_KEY = 'dealr_soft_browser_tip'
 
 // Banner "estás en el navegador de Facebook/Instagram": invita a abrir Dealr
 // en el navegador real, donde el login es fácil (contraseñas guardadas,
@@ -20,7 +24,63 @@ export default function InAppBrowserBanner({ compact = false }: { compact?: bool
   const [dismissed, setDismissed] = useState(
     () => sessionStorage.getItem('dealr_iab_dismissed') === '1',
   )
-  if (!isInAppBrowser() || (compact && dismissed)) return null
+  const detected = isInAppBrowser()
+  // Variante SUAVE: iPhone donde no podemos saber si es WebView (Reddit copia
+  // el UA de Safari entero). Solo en Home (compact) y UNA vez por dispositivo.
+  const soft =
+    !detected &&
+    compact &&
+    isUndetectableIphone() &&
+    localStorage.getItem(SOFT_SEEN_KEY) !== '1'
+  const [softVisible, setSoftVisible] = useState(true)
+
+  // La variante suave se marca vista al renderizarse: literalmente una única
+  // vez por dispositivo, aunque no la toquen.
+  useEffect(() => {
+    if (soft) localStorage.setItem(SOFT_SEEN_KEY, '1')
+  }, [soft])
+
+  if (soft && softVisible) {
+    return (
+      <div className="mx-4 mb-2 rounded-2xl bg-neutral-900 p-4 ring-1 ring-neutral-800">
+        <div className="flex items-start gap-3">
+          <span className="mt-0.5 text-lg leading-none">💡</span>
+          <div className="min-w-0 flex-1">
+            <p className="text-[13px] font-semibold leading-snug text-white">
+              ¿Abriste este link desde otra app?
+            </p>
+            <p className="mt-0.5 text-xs leading-snug text-neutral-400">
+              Desde Reddit, Telegram y similares conviene abrir Dealr en Safari o Chrome: entrás
+              más fácil y podés instalar la app. Buscá{' '}
+              <strong className="text-neutral-200">"Abrir en el navegador"</strong> (suele ser 🧭 o
+              el menú ⋯).
+            </p>
+            <div className="mt-2.5 flex items-center gap-2">
+              <button
+                onClick={() => {
+                  navigator.clipboard
+                    ?.writeText(window.location.origin)
+                    .then(() => toast('Link copiado — pegalo en Safari o Chrome'))
+                    .catch(() => {})
+                }}
+                className="rounded-full bg-white px-4 py-2 text-[13px] font-bold text-black transition active:scale-95"
+              >
+                Copiar link
+              </button>
+              <button
+                onClick={() => setSoftVisible(false)}
+                className="rounded-full px-3 py-2 text-xs font-medium text-neutral-500"
+              >
+                Ya estoy en mi navegador
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  if (!detected || (compact && dismissed)) return null
 
   const appName = inAppBrowserName()
   const auto = canAutoEscape()
