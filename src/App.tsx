@@ -11,6 +11,7 @@ import './lib/pwaInstall' // registra el listener de instalación temprano
 import { capturePageview } from './lib/analytics'
 import { trackVisit } from './lib/visit'
 import CotillonListener from './components/CotillonListener'
+import { isInAppBrowser } from './lib/inAppBrowser'
 import { haptic } from './lib/notify'
 import BottomNav from './components/BottomNav'
 import UpdatePrompt from './components/UpdatePrompt'
@@ -440,6 +441,12 @@ export default function App() {
     if ('clearAppBadge' in navigator) navigator.clearAppBadge()
     // Visita anónima del día (funnel del panel de admin)
     trackVisit()
+    // Diagnóstico de detección de in-app browser: abrir /?debug=ua muestra el
+    // user agent y el veredicto. Para ajustar la lista cuando una app (Reddit,
+    // etc.) no muestra el banner — el UA solo se ve desde el dispositivo real.
+    if (new URLSearchParams(window.location.search).get('debug') === 'ua') {
+      alert(`inApp: ${isInAppBrowser() ? 'SÍ' : 'NO'}\n\n${navigator.userAgent}`)
+    }
   }, [])
   if (!supabaseConfigured || supabaseUrlInvalid) return <SetupNotice />
   return (
