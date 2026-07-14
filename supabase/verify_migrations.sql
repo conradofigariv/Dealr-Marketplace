@@ -129,7 +129,9 @@ with checks(mig, objeto, existe) as (
     ('00044', 'tabla site_visits',
       (to_regclass('public.site_visits') is not null)),
     ('00044', 'RPC admin_metrics',
-      (exists (select 1 from pg_proc where proname='admin_metrics')))
+      (exists (select 1 from pg_proc where proname='admin_metrics'))),
+    ('00045', 'RPC auction_bid_history',
+      (exists (select 1 from pg_proc where proname='auction_bid_history')))
 )
 select mig,
        objeto,
