@@ -24,6 +24,9 @@ export default function InAppBrowserBanner({ compact = false }: { compact?: bool
 
   const appName = inAppBrowserName()
   const auto = canAutoEscape()
+  // App desconocida (ej. Reddit, que copia el UA de Safari): no sabemos cómo
+  // se llama su opción ni dónde está el menú → instrucción genérica.
+  const known = appName !== 'la app'
 
   function copyLink() {
     navigator.clipboard
@@ -43,7 +46,7 @@ export default function InAppBrowserBanner({ compact = false }: { compact?: bool
         <span className="mt-0.5 text-lg leading-none">🧭</span>
         <div className="min-w-0 flex-1">
           <p className="text-[13px] font-semibold leading-snug text-amber-200">
-            Estás en el navegador de {appName}
+            {known ? `Estás en el navegador de ${appName}` : 'Estás en el navegador de otra app'}
           </p>
           {auto ? (
             <>
@@ -70,10 +73,16 @@ export default function InAppBrowserBanner({ compact = false }: { compact?: bool
           ) : (
             <>
               {/* iPhone: la instrucción es el mensaje principal, no letra chica. */}
-              <p className="mt-1.5 text-[15px] font-medium leading-snug text-amber-100">
-                Tocá <span className="mx-0.5 inline-flex h-6 w-8 items-center justify-center rounded-md bg-amber-400/20 align-middle text-base font-bold tracking-widest">⋯</span> arriba a la derecha y elegí{' '}
-                <span className="whitespace-nowrap">"Abrir en navegador externo"</span>
-              </p>
+              {known ? (
+                <p className="mt-1.5 text-[15px] font-medium leading-snug text-amber-100">
+                  Tocá <span className="mx-0.5 inline-flex h-6 w-8 items-center justify-center rounded-md bg-amber-400/20 align-middle text-base font-bold tracking-widest">⋯</span> arriba a la derecha y elegí{' '}
+                  <span className="whitespace-nowrap">"Abrir en navegador externo"</span>
+                </p>
+              ) : (
+                <p className="mt-1.5 text-[15px] font-medium leading-snug text-amber-100">
+                  Buscá la opción <span className="whitespace-nowrap">"Abrir en el navegador"</span> (suele ser 🧭 o el menú ⋯)
+                </p>
+              )}
               <p className="mt-1 text-xs leading-snug text-amber-200/70">
                 Así entrás más fácil y podés instalar la app.
               </p>

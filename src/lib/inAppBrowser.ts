@@ -25,10 +25,16 @@ export function isInAppBrowser(): boolean {
   if (/Android/i.test(ua) && /; wv\)/i.test(ua)) return true
   // Genérico iOS: todo navegador real (Safari, Chrome, Firefox, Edge…) declara
   // "Safari/" en el UA; los WebView embebidos de apps no. Cubre las apps que
-  // no publican su nombre (Reddit viejo, Telegram, etc.).
+  // no publican su nombre.
   if (/iPhone|iPad|iPod/i.test(ua) && /AppleWebKit/i.test(ua) && !/Safari\//i.test(ua)) {
     return true
   }
+  // Genérico iOS 2: Reddit (y otros) COPIAN el UA de Safari entero — por UA
+  // son indetectables. Pero Apple solo da Service Workers a los navegadores
+  // reales (entitlement de browser) y a la PWA instalada (ya excluida arriba);
+  // un WKWebView embebido no los tiene. iPhone sin serviceWorker → WebView.
+  // (Falso positivo asumido: Safari en modo privado viejo; banner inocuo.)
+  if (/iPhone|iPad|iPod/i.test(ua) && !('serviceWorker' in navigator)) return true
   return false
 }
 
