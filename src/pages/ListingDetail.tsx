@@ -99,6 +99,12 @@ export default function ListingDetail() {
   const [photoIndex, setPhotoIndex] = useState(0)
   const [bidAmount, setBidAmount] = useState('')
   const [bidBusy, setBidBusy] = useState(false)
+  // Historial de ofertas (RPC 00045, anonimizado: "Postor N"). Se refresca
+  // solo: depende de bids_count, que Realtime actualiza con cada puja.
+  const [bidHistory, setBidHistory] = useState<
+    { amount: number; created_at: string; bidder_num: number; is_me: boolean }[]
+  >([])
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [now, setNow] = useState(Date.now())
   const [outbid, setOutbid] = useState(false) // me superaron la oferta (en vivo)
   const [extended, setExtended] = useState(false) // el reloj se extendió (anti-snipe)
@@ -302,11 +308,24 @@ export default function ListingDetail() {
     }
   }, [listing?.is_auction, listing?.auction_ends_at, listing?.auction_closed, listing?.sold_to, session?.user.id])
 
-  async function placeBid(e: FormEvent) {
-    e.preventDefault()
+  // Cargar el historial de ofertas (si el RPC no está aplicado, queda vacío
+  // y la sección no se muestra — degradación silenciosa).
+  useEffect(() => {
+    if (!listing?.is_auction || !id || !listing.bids_count) {
+      setBidHistory([])
+      return
+    }
+    supabase.rpc('auction_bid_history', { p_listing: id }).then(({ data, error }) => {
+      if (!error && data) setBidHistory(data as typeof bidHistory)
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id, listing?.is_auction, listing?.bids_count])
+
+  // Ofertar un monto: lo usan el form (monto escrito) y el botón de puja
+  // rápida (siguiente escalón, un toque).
+  async function submitBid(amount: number) {
     if (!session) return navigate('/auth', { state: { from: `/p/${id}`, back: `/p/${id}` } })
     if (profile?.account_restricted) return toast('Tu cuenta tiene funciones restringidas. Dealr es para mayores de 18 años.')
-    const amount = Number(bidAmount)
     // Optimista: marco mi puja ANTES del await. Así, cuando llegue por Realtime
     // el eco de mi propia oferta, myBidRef ya vale `amount` y no se confunde con
     // "me superaron". Si la RPC falla o rebota validación, revierto.
@@ -333,6 +352,11 @@ export default function ListingDetail() {
     haptic('success')
     toast('¡Oferta registrada! Sos el mejor postor.')
     load()
+  }
+
+  function placeBid(e: FormEvent) {
+    e.preventDefault()
+    submitBid(Number(bidAmount))
   }
 
   async function reassignAuction() {
@@ -701,6 +725,47 @@ export default function ListingDetail() {
                   {listing.auction_min_increment > 0 && ` · salto de ${formatPrice(listing.auction_min_increment, listing.currency)}`}
                 </p>
               )}
+              {/* Historial de ofertas (anonimizado, RPC 00045): lo ven el
+                  dueño y cualquier visitante. La primera fila es la ganadora. */}
+              {bidHistory.length > 0 && (
+                <div className="mt-3 overflow-hidden rounded-2xl bg-neutral-900/60 ring-1 ring-neutral-800">
+                  <button
+                    onClick={() => setHistoryOpen((v) => !v)}
+                    className="flex w-full items-center justify-between px-4 py-3"
+                  >
+                    <span className="text-sm font-semibold text-white">
+                      Historial de ofertas
+                      <span className="ml-1.5 font-normal text-neutral-500">({bidHistory.length})</span>
+                    </span>
+                    <svg
+                      viewBox="0 0 24 24"
+                      className={`h-4 w-4 text-neutral-500 transition-transform ${historyOpen ? 'rotate-180' : ''}`}
+                      fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
+                    >
+                      <path d="m6 9 6 6 6-6" />
+                    </svg>
+                  </button>
+                  {historyOpen && (
+                    <ul className="border-t border-neutral-800/80 px-4 py-1">
+                      {bidHistory.map((b, i) => (
+                        <li
+                          key={`${b.created_at}-${b.amount}`}
+                          className="flex items-baseline justify-between gap-3 py-2 text-sm"
+                        >
+                          <span className={b.is_me ? 'font-semibold text-amber-300' : 'text-neutral-300'}>
+                            Postor {b.bidder_num}
+                            {b.is_me && ' (vos)'}
+                          </span>
+                          <span className="ml-auto shrink-0 text-xs text-neutral-600">{timeAgo(b.created_at)}</span>
+                          <span className={`shrink-0 font-semibold ${i === 0 ? 'text-amber-400' : 'text-white'}`}>
+                            {formatPrice(b.amount, listing.currency)}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
+              )}
             </div>
           ) : (
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
@@ -1051,6 +1116,15 @@ export default function ListingDetail() {
                   Te superaron la oferta · Tocá para mejorar
                 </button>
               )}
+              {/* Puja rápida: el siguiente escalón en un toque. */}
+              <button
+                type="button"
+                onClick={() => submitBid(minNextBid)}
+                disabled={bidBusy}
+                className="mb-2 w-full rounded-full bg-amber-500 py-3 text-sm font-bold text-black transition active:scale-[0.98] disabled:opacity-50"
+              >
+                Ofertar {formatPrice(minNextBid, listing.currency)}
+              </button>
               <form onSubmit={placeBid} className="flex items-center gap-2">
                 <div className={`flex flex-1 items-center gap-1.5 rounded-full bg-neutral-900 px-4 ring-1 ${outbid ? 'ring-red-500/50' : 'ring-neutral-700'}`}>
                   <span className="text-sm font-semibold text-neutral-500">{listing.currency === 'USD' ? 'US$' : '$'}</span>
@@ -1061,11 +1135,11 @@ export default function ListingDetail() {
                     required
                     value={bidAmount}
                     onChange={(e) => setBidAmount(e.target.value)}
-                    placeholder={String(minNextBid)}
+                    placeholder={`${minNextBid} o más`}
                     className="w-full bg-transparent py-3 text-sm font-semibold text-white outline-none"
                   />
                 </div>
-                <button disabled={bidBusy} className="shrink-0 rounded-full bg-amber-500 px-5 py-3 text-sm font-bold text-black disabled:opacity-50">
+                <button disabled={bidBusy} className="shrink-0 rounded-full bg-neutral-800 px-5 py-3 text-sm font-bold text-white ring-1 ring-neutral-700 disabled:opacity-50">
                   Ofertar
                 </button>
               </form>
