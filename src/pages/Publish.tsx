@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useAuthGate } from '../hooks/useAuthGate'
 import { compressPhoto } from '../lib/images'
 import { capture } from '../lib/analytics'
 import { conditionLabels, formatPrice } from '../lib/format'
@@ -39,7 +40,7 @@ interface PendingPhoto {
 export default function Publish() {
   const { id } = useParams<{ id?: string }>() // presente => editar
   const navigate = useNavigate()
-  const { session, profile, loading } = useAuth()
+  const { session, profile } = useAuth()
 
   const [categories, setCategories] = useState<Category[]>([])
   const [title, setTitle] = useState('')
@@ -74,9 +75,8 @@ export default function Publish() {
   // Solo los campos que aplican según el valor actual (resuelve los `showIf`).
   const visibleFieldDefs = fieldDefs.filter((def) => fieldVisible(def, fields))
 
-  useEffect(() => {
-    if (!loading && !session) navigate('/auth', { state: { from: id ? `/publicar/${id}` : '/publicar', back: '/' } })
-  }, [loading, session, id, navigate])
+  // Guardia tolerante al resume de la PWA (ver useAuthGate).
+  useAuthGate(id ? `/publicar/${id}` : '/publicar')
 
   useEffect(() => {
     supabase.from('categories').select('*').order('name').then(({ data }) => setCategories(data ?? []))

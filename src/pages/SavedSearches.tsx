@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useAuthGate } from '../hooks/useAuthGate'
 import { conditionLabels, formatPrice } from '../lib/format'
 import type { Category, SavedSearch } from '../lib/types'
 import EmptyState from '../components/EmptyState'
@@ -30,14 +31,13 @@ function summarize(s: SavedSearch, categoryName?: string): string {
 
 export default function SavedSearches() {
   const navigate = useNavigate()
-  const { session, loading } = useAuth()
+  const { session } = useAuth()
   const [searches, setSearches] = useState<SavedSearch[]>([])
   const [categories, setCategories] = useState<Record<number, string>>({})
   const [fetched, setFetched] = useState(false)
 
-  useEffect(() => {
-    if (!loading && !session) navigate('/auth', { state: { from: '/busquedas', back: '/' } })
-  }, [loading, session, navigate])
+  // Guardia tolerante al resume de la PWA (ver useAuthGate).
+  useAuthGate('/busquedas')
 
   useEffect(() => {
     if (!session) return

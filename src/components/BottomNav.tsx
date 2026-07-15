@@ -71,7 +71,11 @@ export default function BottomNav() {
             state={currentIdx !== -1 ? { tabDir: idx > currentIdx ? 'push' : 'pop' } : undefined}
             onClick={() => haptic('tap')}
             className={({ isActive }) =>
-              `relative rounded-full p-2.5 transition ${isActive ? 'text-white' : 'text-neutral-500'}`
+              // "Vender" es EL llamado a la acción del negocio: círculo ámbar
+              // brillante que sobresale del resto de la barra.
+              tab.to === '/publicar'
+                ? 'relative mx-0.5 rounded-full bg-gradient-to-b from-amber-400 to-amber-500 p-3 text-black shadow-[0_0_18px_rgba(245,158,11,0.45)] ring-1 ring-amber-300/60 transition active:scale-95'
+                : `relative rounded-full p-2.5 transition ${isActive ? 'text-white' : 'text-neutral-500'}`
             }
           >
             <svg
@@ -79,7 +83,7 @@ export default function BottomNav() {
               className="h-6 w-6"
               fill="none"
               stroke="currentColor"
-              strokeWidth="1.8"
+              strokeWidth={tab.to === '/publicar' ? 2.6 : 1.8}
               strokeLinecap="round"
               strokeLinejoin="round"
             >

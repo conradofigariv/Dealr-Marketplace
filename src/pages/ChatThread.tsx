@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { RealtimeChannel } from '@supabase/supabase-js'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useAuthGate } from '../hooks/useAuthGate'
 import { formatPrice, isOnline, lastSeenLabel } from '../lib/format'
 import { compressPhoto, mirrorImage } from '../lib/images'
 import { vibrate, haptic } from '../lib/notify'
@@ -63,7 +64,7 @@ function MessageContextMenu({
 export default function ChatThread() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
-  const { session, profile, loading } = useAuth()
+  const { session, profile } = useAuth()
   const toast = useToast()
   const isAdmin = Boolean(profile?.is_admin)
 
@@ -145,9 +146,8 @@ export default function ChatThread() {
     conversation?.kind !== 'welcome' &&
     (saleConfirmed || (messages.length >= 4 && new Set(messages.map((m) => m.sender_id)).size >= 2))
 
-  useEffect(() => {
-    if (!loading && !session) navigate('/auth', { state: { from: `/chats/${id}`, back: '/' } })
-  }, [loading, session, id, navigate])
+  // Guardia tolerante al resume de la PWA (ver useAuthGate).
+  useAuthGate(`/chats/${id}`)
 
   function loadConversation() {
     if (!id) return

@@ -1,23 +1,22 @@
 import { useEffect, useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useAuthGate } from '../hooks/useAuthGate'
 import { useFavorites } from '../hooks/useFavorites'
 import type { Listing } from '../lib/types'
 import ListingCard from '../components/ListingCard'
 import EmptyState from '../components/EmptyState'
 
 export default function Saved() {
-  const navigate = useNavigate()
-  const { session, loading } = useAuth()
+  const { session } = useAuth()
   // Releer al volver: reordena/quita lo que se haya destogggleado en otra pantalla.
   const { ids } = useFavorites()
   const [listings, setListings] = useState<Listing[]>([])
   const [fetched, setFetched] = useState(false)
 
-  useEffect(() => {
-    if (!loading && !session) navigate('/auth', { state: { from: '/guardados', back: '/' } })
-  }, [loading, session, navigate])
+  // Guardia tolerante al resume de la PWA (ver useAuthGate).
+  useAuthGate('/guardados')
 
   useEffect(() => {
     if (!session) return

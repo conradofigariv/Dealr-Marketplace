@@ -1,6 +1,6 @@
 import { useEffect, type ReactElement } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
-import { useAuth } from '../hooks/useAuth'
+import { Link } from 'react-router-dom'
+import { useAuthGate } from '../hooks/useAuthGate'
 import { useNotifications } from '../hooks/useNotifications'
 import { photoUrl } from '../lib/supabase'
 import { timeAgo } from '../lib/format'
@@ -147,13 +147,10 @@ function NotificationIcon({ n }: { n: AppNotification }) {
 }
 
 export default function Notifications() {
-  const navigate = useNavigate()
-  const { session, loading } = useAuth()
   const { items, loaded, markAllRead, refresh } = useNotifications()
 
-  useEffect(() => {
-    if (!loading && !session) navigate('/auth', { state: { from: '/notificaciones', back: '/' } })
-  }, [loading, session, navigate])
+  // Guardia tolerante al resume de la PWA (ver useAuthGate).
+  useAuthGate('/notificaciones')
 
   // Al abrir el centro: refrescamos (para traer el avatar del actor de las que
   // llegaron por Realtime) y marcamos todo como leído.
