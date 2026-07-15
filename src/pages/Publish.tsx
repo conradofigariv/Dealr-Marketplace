@@ -194,8 +194,13 @@ export default function Publish() {
   function goBack() {
     setError('')
     window.scrollTo(0, 0)
-    if (step === 1) navigate(-1)
-    else {
+    if (step === 1) {
+      // Al entrar por la pestaña "Vender" la navegación es con replace (sin
+      // historial detrás) y navigate(-1) no va a ningún lado: caemos a Home.
+      // react-router guarda el índice del historial en history.state.idx.
+      if ((window.history.state?.idx ?? 0) > 0) navigate(-1)
+      else navigate('/', { replace: true })
+    } else {
       setStepDir('back')
       setStep((s) => s - 1)
     }
