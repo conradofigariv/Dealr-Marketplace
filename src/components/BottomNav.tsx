@@ -71,16 +71,16 @@ export default function BottomNav() {
             state={currentIdx !== -1 ? { tabDir: idx > currentIdx ? 'push' : 'pop' } : undefined}
             onClick={() => haptic('tap')}
             className={({ isActive }) =>
-              // "Vender" es EL llamado a la acción del negocio: círculo ámbar
-              // brillante que sobresale del resto de la barra.
+              // "Vender" es EL llamado a la acción del negocio: píldora ámbar
+              // brillante con etiqueta, sobresale del resto de la barra.
               tab.to === '/publicar'
-                ? 'relative mx-0.5 rounded-full bg-gradient-to-b from-amber-400 to-amber-500 p-3 text-black shadow-[0_0_18px_rgba(245,158,11,0.45)] ring-1 ring-amber-300/60 transition active:scale-95'
+                ? 'relative mx-0.5 flex items-center gap-1 rounded-full bg-gradient-to-b from-amber-400 to-amber-500 py-2.5 pl-2.5 pr-3.5 text-black shadow-[0_0_18px_rgba(245,158,11,0.45)] ring-1 ring-amber-300/60 transition active:scale-95'
                 : `relative rounded-full p-2.5 transition ${isActive ? 'text-white' : 'text-neutral-500'}`
             }
           >
             <svg
               viewBox="0 0 24 24"
-              className="h-6 w-6"
+              className={tab.to === '/publicar' ? 'h-5 w-5' : 'h-6 w-6'}
               fill="none"
               stroke="currentColor"
               strokeWidth={tab.to === '/publicar' ? 2.6 : 1.8}
@@ -89,6 +89,7 @@ export default function BottomNav() {
             >
               {tab.icon}
             </svg>
+            {tab.to === '/publicar' && <span className="text-sm font-bold">Vender</span>}
             {tab.to === '/chats' && count > 0 && (
               <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white ring-2 ring-neutral-900">
                 {count > 9 ? '9+' : count}
