@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react'
-import { Link, useLocation, useNavigate } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useAuthGate } from '../hooks/useAuthGate'
 import { timeAgo, isOnline } from '../lib/format'
 import type { Conversation } from '../lib/types'
 import EmptyState from '../components/EmptyState'
@@ -22,8 +23,7 @@ interface PreviewRow {
 }
 
 export default function Chats() {
-  const { session, loading } = useAuth()
-  const navigate = useNavigate()
+  const { session } = useAuth()
   const location = useLocation()
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [meta, setMeta] = useState<Record<string, ConvMeta>>({})
@@ -31,9 +31,8 @@ export default function Chats() {
   const [searchOpen, setSearchOpen] = useState(false)
   const [query, setQuery] = useState('')
 
-  useEffect(() => {
-    if (!loading && !session) navigate('/auth', { state: { from: location.pathname, back: '/' } })
-  }, [loading, session, location.pathname, navigate])
+  // Guardia tolerante al resume de la PWA (ver useAuthGate).
+  useAuthGate(location.pathname)
 
   const load = useCallback(async () => {
     if (!session) return

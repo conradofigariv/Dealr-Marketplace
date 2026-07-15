@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
+import { useAuthGate } from '../hooks/useAuthGate'
 import { formatPrice, timeAgo } from '../lib/format'
 import { compressAvatar } from '../lib/images'
 import type { Listing } from '../lib/types'
@@ -117,9 +118,8 @@ export default function Profile() {
     }
   }
 
-  useEffect(() => {
-    if (!loading && !session) navigate('/auth', { state: { from: '/perfil', back: '/' } })
-  }, [loading, session, navigate])
+  // Guardia tolerante al resume de la PWA (ver useAuthGate).
+  useAuthGate('/perfil')
 
   async function loadListings() {
     if (!session) return
