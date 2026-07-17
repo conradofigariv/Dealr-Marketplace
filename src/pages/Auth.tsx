@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../lib/authErrors'
-import { markWelcomeSeen } from '../lib/welcome'
 import { preloadOnboardingImages } from '../lib/intro'
 import { ONBOARDING_IMAGES } from '../components/IntroSlides'
 import { isInAppBrowser } from '../lib/inAppBrowser'
@@ -46,11 +45,9 @@ export default function Auth() {
   const [gisFailed, setGisFailed] = useState(false)
   const [gisError, setGisError] = useState('')
 
-  // Mostrada al menos una vez: la próxima apertura va directo al feed.
-  // Y precargamos las fotos del onboarding: mientras el usuario inicia sesión
+  // Precarga las fotos del onboarding: mientras el usuario inicia sesión
   // quedan en caché, así los slides post-login aparecen al instante.
   useEffect(() => {
-    markWelcomeSeen()
     preloadOnboardingImages(ONBOARDING_IMAGES)
   }, [])
 
