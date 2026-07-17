@@ -1,4 +1,4 @@
-import { useEffect, useState, type FormEvent } from 'react'
+import { useEffect, useRef, useState, type FormEvent } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
@@ -8,6 +8,7 @@ import { preloadOnboardingImages } from '../lib/intro'
 import { ONBOARDING_IMAGES } from '../components/IntroSlides'
 import { isInAppBrowser } from '../lib/inAppBrowser'
 import InAppBrowserBanner from '../components/InAppBrowserBanner'
+import { renderGoogleButton, googleClientId } from '../lib/googleAuth'
 
 type Channel = 'email' | 'phone'
 
@@ -39,6 +40,10 @@ export default function Auth() {
   const [error, setError] = useState('')
   const [rawError, setRawError] = useState('')
   const [busy, setBusy] = useState(false)
+  // Botón nativo de Google (googleAuth.ts): si GIS no carga (red, ad-blocker,
+  // VITE_GOOGLE_CLIENT_ID sin configurar) cae al botón viejo con redirect.
+  const googleBtnRef = useRef<HTMLDivElement>(null)
+  const [gisFailed, setGisFailed] = useState(false)
 
   // Mostrada al menos una vez: la próxima apertura va directo al feed.
   // Y precargamos las fotos del onboarding: mientras el usuario inicia sesión
@@ -60,7 +65,10 @@ export default function Auth() {
     return () => clearTimeout(t)
   }, [resendIn])
 
-  async function googleSignIn() {
+  // Fallback: redirect de página completa a través de Supabase (muestra
+  // "xxxx.supabase.co" en el consentimiento). Se usa solo si GIS no está
+  // configurado o falló al cargar — ver renderGoogleButton más abajo.
+  async function googleSignInFallback() {
     setBusy(true)
     setError('')
     setRawError('')
@@ -75,6 +83,32 @@ export default function Auth() {
     }
     // si no hubo error, el navegador ya está redirigiendo a Google
   }
+
+  // Login con Google sin salir de la página (googleAuth.ts): el botón nativo
+  // entrega un ID token que canjeamos con Supabase directo, sin redirect. El
+  // consentimiento muestra "Dealr" + el dominio de Vercel, no supabase.co.
+  useEffect(() => {
+    if (inApp || !googleClientId || !googleBtnRef.current) return
+    let cancelled = false
+    renderGoogleButton(googleBtnRef.current, async (idToken) => {
+      setBusy(true)
+      setError('')
+      setRawError('')
+      const { error: err } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken })
+      setBusy(false)
+      if (err) {
+        setError(translateAuthError(err.message))
+        setRawError(err.message)
+      }
+      // si no hubo error, el listener global de sesión navega a `from`.
+    }).catch(() => {
+      if (!cancelled) setGisFailed(true)
+    })
+    return () => {
+      cancelled = true
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [inApp])
 
   // El teléfono verificado es la señal de confianza base de Dealr.
   function normalizedPhone() {
@@ -148,16 +182,22 @@ export default function Auth() {
                 (disallowed_useragent): escondemos el botón y empujamos al
                 email, que ahí sí funciona. El banner explica cómo escapar. */}
             {inApp && <InAppBrowserBanner />}
-            {!inApp && (
-            <button type="button" onClick={googleSignIn} disabled={busy} className="btn-primary flex items-center justify-center gap-3">
-              <svg viewBox="0 0 48 48" className="h-5 w-5 shrink-0">
-                <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
-                <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
-                <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
-                <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C40.971 35.205 44 30 44 24c0-1.341-.138-2.65-.389-3.917z" />
-              </svg>
-              {busy ? 'Conectando…' : 'Continuar con Google'}
-            </button>
+            {!inApp && googleClientId && !gisFailed && (
+              // Botón NATIVO de Google (googleAuth.ts): dibujado por su propio
+              // script dentro de este div. min-h evita el salto de layout
+              // mientras GIS termina de cargar y lo completa.
+              <div ref={googleBtnRef} className="flex min-h-[52px] w-full items-center justify-center" />
+            )}
+            {!inApp && (!googleClientId || gisFailed) && (
+              <button type="button" onClick={googleSignInFallback} disabled={busy} className="btn-primary flex items-center justify-center gap-3">
+                <svg viewBox="0 0 48 48" className="h-5 w-5 shrink-0">
+                  <path fill="#FFC107" d="M43.611 20.083H42V20H24v8h11.303c-1.649 4.657-6.08 8-11.303 8-6.627 0-12-5.373-12-12s5.373-12 12-12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 12.955 4 4 12.955 4 24s8.955 20 20 20 20-8.955 20-20c0-1.341-.138-2.65-.389-3.917z" />
+                  <path fill="#FF3D00" d="M6.306 14.691l6.571 4.819C14.655 15.108 18.961 12 24 12c3.059 0 5.842 1.154 7.961 3.039l5.657-5.657C34.046 6.053 29.268 4 24 4 16.318 4 9.656 8.337 6.306 14.691z" />
+                  <path fill="#4CAF50" d="M24 44c5.166 0 9.86-1.977 13.409-5.192l-6.19-5.238C29.211 35.091 26.715 36 24 36c-5.202 0-9.619-3.317-11.283-7.946l-6.522 5.025C9.505 39.556 16.227 44 24 44z" />
+                  <path fill="#1976D2" d="M43.611 20.083H42V20H24v8h11.303c-.792 2.237-2.231 4.166-4.087 5.571l6.19 5.238C40.971 35.205 44 30 44 24c0-1.341-.138-2.65-.389-3.917z" />
+                </svg>
+                {busy ? 'Conectando…' : 'Continuar con Google'}
+              </button>
             )}
             {inApp ? (
               <button
