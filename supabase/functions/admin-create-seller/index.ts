@@ -53,10 +53,12 @@ Deno.serve(async (req) => {
   // 2) Leer input.
   let email = ''
   let name = ''
+  let appUrl: string | undefined
   try {
     const body = await req.json()
     email = String(body.email ?? '').trim().toLowerCase()
     name = String(body.name ?? '').trim()
+    appUrl = String(body.appUrl ?? '').replace(/\/+$/, '') || undefined
   } catch {
     return json({ error: 'Body inválido' }, 400)
   }
@@ -68,32 +70,49 @@ Deno.serve(async (req) => {
   const { data: clash } = await admin.from('profiles').select('id').eq('username', username).maybeSingle()
   if (clash) username = toUsername(username.slice(0, 24) + '-' + Math.floor(Math.random() * 9000 + 1000))
 
-  // 4) Crear la cuenta (email confirmado, sin mandar mail). Si el email ya
-  // existe, reusamos esa cuenta.
-  const { data: created, error: createErr } = await admin.auth.admin.createUser({
-    email,
-    email_confirm: true,
-    user_metadata: { username, full_name: name },
-  })
-
-  if (created?.user) {
-    return json({ user_id: created.user.id, username, reused: false })
-  }
-
-  // Email ya registrado → buscar la cuenta existente y reusarla.
-  const alreadyExists = createErr?.message?.toLowerCase().includes('already') || createErr?.status === 422
-  if (alreadyExists) {
-    // Buscamos por email entre los usuarios (paginado; la app es chica).
+  // Reusar cuenta si el email ya existe (paginado; la app es chica).
+  async function findExisting(): Promise<{ user_id: string; username: string } | null> {
     for (let page = 1; page <= 20; page++) {
       const { data: list } = await admin.auth.admin.listUsers({ page, perPage: 200 })
       const found = list?.users?.find((u) => u.email?.toLowerCase() === email)
       if (found) {
         const { data: prof } = await admin.from('profiles').select('username').eq('id', found.id).maybeSingle()
-        return json({ user_id: found.id, username: prof?.username ?? username, reused: true })
+        return { user_id: found.id, username: prof?.username ?? username }
       }
       if (!list || list.users.length < 200) break
     }
+    return null
   }
 
-  return json({ error: createErr?.message ?? 'No se pudo crear la cuenta' }, 500)
+  // 4) Preferimos INVITAR: crea la cuenta Y manda el mail de acceso (usa el
+  // SMTP configurado en Supabase). El vendedor recibe un link para entrar.
+  const invite = await admin.auth.admin.inviteUserByEmail(email, {
+    data: { username, full_name: name },
+    redirectTo: appUrl,
+  })
+  if (invite.data?.user && !invite.error) {
+    return json({ user_id: invite.data.user.id, username, reused: false, emailed: true })
+  }
+  if (invite.error?.message?.toLowerCase().includes('already') || invite.error?.status === 422) {
+    const existing = await findExisting()
+    if (existing) return json({ ...existing, reused: true, emailed: false })
+  }
+
+  // El invite falló (típicamente porque no hay SMTP configurado): creamos la
+  // cuenta igual, sin mail, para no bloquear el flujo. El admin le pasa el
+  // acceso por WhatsApp; emailed:false se lo avisa.
+  const { data: created, error: createErr } = await admin.auth.admin.createUser({
+    email,
+    email_confirm: true,
+    user_metadata: { username, full_name: name },
+  })
+  if (created?.user) {
+    return json({ user_id: created.user.id, username, reused: false, emailed: false })
+  }
+  if (createErr?.message?.toLowerCase().includes('already') || createErr?.status === 422) {
+    const existing = await findExisting()
+    if (existing) return json({ ...existing, reused: true, emailed: false })
+  }
+
+  return json({ error: createErr?.message ?? invite.error?.message ?? 'No se pudo crear la cuenta' }, 500)
 })
