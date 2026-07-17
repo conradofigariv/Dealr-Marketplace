@@ -619,8 +619,11 @@ export default function Home() {
       )}
       <div style={pullStyle} onTransitionEnd={() => setSettling(false)}>
       <header className="px-4 pb-1 pt-[max(1.25rem,env(safe-area-inset-top))]">
-        <div className="flex items-center justify-between">
-          <Logo size={28} />
+        {/* Logo centrado (absoluto) con los íconos de acción a la derecha. */}
+        <div className="relative flex h-11 items-center justify-end">
+          <div className="pointer-events-none absolute left-1/2 -translate-x-1/2">
+            <Logo size={32} />
+          </div>
           <div className="flex items-center">
             {/* Buscar dejó de ser toggle (hay barra fija abajo) y Mapa vive en
                 el panel Filtrar/Ordenar/Mapa. */}
