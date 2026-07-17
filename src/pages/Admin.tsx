@@ -217,7 +217,7 @@ export default function Admin() {
     e.preventDefault()
     setCreatingSeller(true)
     const { data, error } = await supabase.functions.invoke('admin-create-seller', {
-      body: { email: sellerEmail.trim(), name: sellerName.trim() },
+      body: { email: sellerEmail.trim(), name: sellerName.trim(), appUrl: window.location.origin },
     })
     setCreatingSeller(false)
     if (error) {
@@ -231,7 +231,14 @@ export default function Admin() {
       return toast(msg)
     }
     if (data?.error) return toast(data.error)
-    toast(data.reused ? 'Vendedor existente — publicando en su cuenta' : `Cuenta creada para ${data.username}`)
+    // emailed = si le llegó el mail de acceso (depende de tener SMTP en Supabase).
+    toast(
+      data.reused
+        ? 'Vendedor existente — publicando en su cuenta'
+        : data.emailed
+          ? `Cuenta creada — le mandamos el acceso por mail`
+          : `Cuenta creada. No se envió mail (configurá SMTP); pasale el acceso por WhatsApp`,
+    )
     navigate('/publicar', { state: { onBehalf: { id: data.user_id, name: data.username } } })
   }
 
