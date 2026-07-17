@@ -673,7 +673,7 @@ export default function Home() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Buscar productos"
-            className="w-full bg-transparent text-sm text-white placeholder-neutral-500 outline-none"
+            className="w-full bg-transparent text-base text-white placeholder-neutral-500 outline-none"
           />
           {search && (
             <button onClick={() => setSearch('')} aria-label="Limpiar búsqueda" className="shrink-0 text-neutral-500">
@@ -688,7 +688,7 @@ export default function Home() {
         <div className="mt-2.5 flex items-stretch divide-x divide-neutral-800 rounded-2xl bg-neutral-900/60 ring-1 ring-neutral-800">
           <button
             onClick={() => setFiltersOpen(true)}
-            className={`flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold transition active:bg-neutral-900 ${activeFilters ? 'text-white' : 'text-neutral-300'}`}
+            className={`flex flex-1 items-center justify-center gap-2 py-3 text-base font-semibold transition active:bg-neutral-900 ${activeFilters ? 'text-white' : 'text-neutral-300'}`}
           >
             <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M22 3H2l8 9.5V21l4-2v-6.5L22 3Z" />
@@ -703,7 +703,7 @@ export default function Home() {
           <button
             ref={orderButtonRef}
             onClick={() => setOrderMenuRect(orderButtonRef.current!.getBoundingClientRect())}
-            className={`flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold transition active:bg-neutral-900 ${order !== 'recent' ? 'text-white' : 'text-neutral-300'}`}
+            className={`flex flex-1 items-center justify-center gap-2 py-3 text-base font-semibold transition active:bg-neutral-900 ${order !== 'recent' ? 'text-white' : 'text-neutral-300'}`}
           >
             <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />
@@ -712,7 +712,7 @@ export default function Home() {
           </button>
           <Link
             to="/mapa"
-            className="flex flex-1 items-center justify-center gap-2 py-3 text-sm font-semibold text-neutral-300 transition active:bg-neutral-900"
+            className="flex flex-1 items-center justify-center gap-2 py-3 text-base font-semibold text-neutral-300 transition active:bg-neutral-900"
           >
             <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M9 4 3 6v14l6-2 6 2 6-2V4l-6 2-6-2Z" />
@@ -738,7 +738,7 @@ export default function Home() {
               setCategoryId(null)
               setOnlyAuctions(false)
             }}
-            className={`shrink-0 text-sm font-medium transition ${!categoryId && !onlyAuctions ? 'text-white' : 'text-neutral-500'}`}
+            className={`shrink-0 text-base font-medium transition ${!categoryId && !onlyAuctions ? 'text-white' : 'text-neutral-500'}`}
           >
             Todo
           </button>
@@ -747,7 +747,7 @@ export default function Home() {
               setOnlyAuctions(true)
               setCategoryId(null)
             }}
-            className={`shrink-0 text-sm font-semibold transition ${onlyAuctions ? 'glow-text text-amber-400' : 'text-neutral-500'}`}
+            className={`shrink-0 text-base font-semibold transition ${onlyAuctions ? 'glow-text text-amber-400' : 'text-neutral-500'}`}
           >
             Subastas
           </button>
@@ -761,7 +761,7 @@ export default function Home() {
                   setCategoryId(categoryId === cat.id ? null : cat.id)
                   setOnlyAuctions(false)
                 }}
-                className={`shrink-0 text-sm font-medium transition ${
+                className={`shrink-0 text-base font-medium transition ${
                   categoryId === cat.id ? 'text-white' : 'text-neutral-500'
                 }`}
               >
@@ -776,7 +776,7 @@ export default function Home() {
           <button
             onClick={saveSearch}
             disabled={savedSearch}
-            className={`flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-xs font-semibold transition ${
+            className={`flex w-full items-center justify-center gap-2 rounded-full py-2.5 text-sm font-semibold transition ${
               savedSearch ? 'bg-neutral-900 text-neutral-400' : 'bg-neutral-900 text-white ring-1 ring-neutral-800 active:bg-neutral-800'
             }`}
           >
@@ -805,7 +805,7 @@ export default function Home() {
           el feed se presenta como recomendación. */}
       {defaultView && !showSkeleton && withDistance.length > 0 && (
         <div className="px-4 pb-2 pt-1">
-          <h2 className="text-sm font-semibold text-white">Recomendado para vos</h2>
+          <h2 className="text-base font-semibold text-white">Recomendado para vos</h2>
         </div>
       )}
 
@@ -821,7 +821,7 @@ export default function Home() {
             icon={<path d="M11 4a7 7 0 1 0 0 14 7 7 0 0 0 0-14ZM21 21l-4.35-4.35" />}
             title="No encontramos publicaciones con esos filtros."
           >
-            <p className="text-xs text-neutral-500">Probá con otros filtros o una búsqueda más amplia.</p>
+            <p className="text-sm text-neutral-500">Probá con otros filtros o una búsqueda más amplia.</p>
           </EmptyState>
         ) : (
           /* Primera impresión con catálogo chico: invitar a publicar, no un
@@ -830,10 +830,10 @@ export default function Home() {
             icon={<path d="M12 5v14M5 12h14" />}
             title="Todavía no hay publicaciones por acá."
           >
-            <p className="text-xs text-neutral-500">Sé de los primeros: publicá algo que ya no uses.</p>
+            <p className="text-sm text-neutral-500">Sé de los primeros: publicá algo que ya no uses.</p>
             <Link
               to="/publicar"
-              className="mt-4 inline-block rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black transition active:scale-[0.98]"
+              className="mt-4 inline-block rounded-full bg-white px-6 py-2.5 text-base font-semibold text-black transition active:scale-[0.98]"
             >
               Vender algo
             </Link>
@@ -902,7 +902,7 @@ export default function Home() {
           rect={orderMenuRect}
           onClose={() => setOrderMenuRect(null)}
           anchor={
-            <span className="flex h-full w-full items-center justify-center gap-2 text-sm font-semibold text-white">
+            <span className="flex h-full w-full items-center justify-center gap-2 text-base font-semibold text-white">
               <svg viewBox="0 0 24 24" className="h-[18px] w-[18px]" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="m8 9 4-4 4 4M8 15l4 4 4-4" />
               </svg>
