@@ -135,7 +135,9 @@ with checks(mig, objeto, existe) as (
     ('00046', 'RPC admin_auction_disputes',
       (exists (select 1 from pg_proc where proname='admin_auction_disputes'))),
     ('00046', 'RPC admin_ban_auction',
-      (exists (select 1 from pg_proc where proname='admin_ban_auction')))
+      (exists (select 1 from pg_proc where proname='admin_ban_auction'))),
+    ('00047', 'handle_new_user copia avatar de Google',
+      (exists (select 1 from pg_proc where proname='handle_new_user' and prosrc like '%picture%')))
 )
 select mig,
        objeto,
