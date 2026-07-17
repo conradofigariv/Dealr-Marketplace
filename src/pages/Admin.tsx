@@ -141,6 +141,11 @@ export default function Admin() {
   const [disputes, setDisputes] = useState<Dispute[]>([])
   const [banningId, setBanningId] = useState<string | null>(null) // listing con el picker de meses abierto
   const [disputeBusy, setDisputeBusy] = useState(false)
+  // Concierge: crear vendedor + publicar en su nombre.
+  const [conciergeOpen, setConciergeOpen] = useState(false)
+  const [sellerEmail, setSellerEmail] = useState('')
+  const [sellerName, setSellerName] = useState('')
+  const [creatingSeller, setCreatingSeller] = useState(false)
 
   // Gate: solo admins.
   useEffect(() => {
@@ -198,6 +203,31 @@ export default function Admin() {
     if (error || data) return toast(error ? error.message : (data as string))
     toast(`${d.buyer_username} suspendido ${months} ${months === 1 ? 'mes' : 'meses'}`)
     setDisputes((prev) => prev.filter((x) => x.listing_id !== d.listing_id))
+  }
+
+  // Crea (o reusa) la cuenta del vendedor por email y abre Publicar en su
+  // nombre. La cuenta es reclamable: el vendedor entra con magic link a ese
+  // email y encuentra su publicación y mensajes.
+  async function createSellerAndPublish(e: React.FormEvent) {
+    e.preventDefault()
+    setCreatingSeller(true)
+    const { data, error } = await supabase.functions.invoke('admin-create-seller', {
+      body: { email: sellerEmail.trim(), name: sellerName.trim() },
+    })
+    setCreatingSeller(false)
+    if (error) {
+      // invoke pone los 4xx/5xx en `error`; el body con el mensaje viene en
+      // error.context (una Response). Lo leemos para mostrar el motivo real.
+      let msg = 'No se pudo crear el vendedor'
+      try {
+        const body = await (error as { context?: Response }).context?.json()
+        if (body?.error) msg = body.error
+      } catch { /* sin cuerpo legible */ }
+      return toast(msg)
+    }
+    if (data?.error) return toast(data.error)
+    toast(data.reused ? 'Vendedor existente — publicando en su cuenta' : `Cuenta creada para ${data.username}`)
+    navigate('/publicar', { state: { onBehalf: { id: data.user_id, name: data.username } } })
   }
 
   async function dismissDispute(d: Dispute) {
@@ -272,6 +302,54 @@ export default function Admin() {
           Panel de admin {pending > 0 && <span className="text-red-400">({pending})</span>}
         </h1>
       </header>
+
+      {/* Concierge: crear vendedor + publicar en su nombre */}
+      <div className="mb-4 px-5">
+        {conciergeOpen ? (
+          <form onSubmit={createSellerAndPublish} className="surface space-y-3 p-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-white">Publicar en nombre de un vendedor</h2>
+              <button type="button" onClick={() => setConciergeOpen(false)} className="text-xs text-neutral-500">
+                Cerrar
+              </button>
+            </div>
+            <p className="text-xs text-neutral-500">
+              Se crea una cuenta real con el email del vendedor (reclamable con magic link). La publicación queda a su nombre, no al tuyo.
+            </p>
+            <input
+              type="text"
+              required
+              value={sellerName}
+              onChange={(e) => setSellerName(e.target.value)}
+              placeholder="Nombre del vendedor"
+              className="w-full rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white outline-none ring-1 ring-neutral-800 focus:ring-neutral-600"
+            />
+            <input
+              type="email"
+              required
+              value={sellerEmail}
+              onChange={(e) => setSellerEmail(e.target.value)}
+              placeholder="Email del vendedor"
+              autoCapitalize="none"
+              autoCorrect="off"
+              className="w-full rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white outline-none ring-1 ring-neutral-800 focus:ring-neutral-600"
+            />
+            <button
+              disabled={creatingSeller}
+              className="w-full rounded-full bg-amber-500 py-3 text-sm font-bold text-black disabled:opacity-50"
+            >
+              {creatingSeller ? 'Creando…' : 'Crear cuenta y publicar →'}
+            </button>
+          </form>
+        ) : (
+          <button
+            onClick={() => setConciergeOpen(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-full bg-amber-500/15 py-3 text-sm font-bold text-amber-400 ring-1 ring-amber-500/30"
+          >
+            + Publicar en nombre de un vendedor
+          </button>
+        )}
+      </div>
 
       {/* Métricas + funnel de adquisición */}
       {metrics && <MetricsPanel m={metrics} />}
