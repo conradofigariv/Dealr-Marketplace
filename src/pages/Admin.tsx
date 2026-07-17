@@ -45,6 +45,22 @@ interface Metrics {
   listings_total: number
 }
 
+// Disputa de no-retiro de subasta (RPC admin_auction_disputes, 00046).
+interface Dispute {
+  listing_id: string
+  title: string
+  created_at: string
+  buyer_id: string
+  buyer_username: string
+  buyer_avatar: string | null
+  buyer_strikes: number
+  buyer_banned_until: string | null
+  buyer_confirmed: boolean
+  seller_id: string
+  seller_username: string
+  conversation_id: string | null
+}
+
 // Porcentaje de conversión entre dos etapas del funnel ("—" sin base).
 function pct(part: number, base: number): string {
   if (!base) return '—'
@@ -121,6 +137,10 @@ export default function Admin() {
   const [showResolved, setShowResolved] = useState(false)
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [metricsError, setMetricsError] = useState('')
+  // Disputas de no-retiro de subasta (RPC 00046).
+  const [disputes, setDisputes] = useState<Dispute[]>([])
+  const [banningId, setBanningId] = useState<string | null>(null) // listing con el picker de meses abierto
+  const [disputeBusy, setDisputeBusy] = useState(false)
 
   // Gate: solo admins.
   useEffect(() => {
@@ -158,6 +178,36 @@ export default function Admin() {
       setMetrics(data as Metrics)
     })
   }, [profile])
+
+  // Disputas de subasta (RPC 00046). Si la migración no está aplicada, queda
+  // vacío y la sección no aparece (degradación silenciosa).
+  const loadDisputes = useCallback(async () => {
+    const { data, error } = await supabase.rpc('admin_auction_disputes')
+    if (!error && data) setDisputes(data as Dispute[])
+  }, [])
+
+  useEffect(() => {
+    if (profile?.is_admin) loadDisputes()
+  }, [profile, loadDisputes])
+
+  async function banAuction(d: Dispute, months: number) {
+    setDisputeBusy(true)
+    const { data, error } = await supabase.rpc('admin_ban_auction', { p_listing: d.listing_id, p_months: months })
+    setDisputeBusy(false)
+    setBanningId(null)
+    if (error || data) return toast(error ? error.message : (data as string))
+    toast(`${d.buyer_username} suspendido ${months} ${months === 1 ? 'mes' : 'meses'}`)
+    setDisputes((prev) => prev.filter((x) => x.listing_id !== d.listing_id))
+  }
+
+  async function dismissDispute(d: Dispute) {
+    setDisputeBusy(true)
+    const { data, error } = await supabase.rpc('admin_dismiss_dispute', { p_listing: d.listing_id })
+    setDisputeBusy(false)
+    if (error || data) return toast(error ? error.message : (data as string))
+    toast('Disputa descartada')
+    setDisputes((prev) => prev.filter((x) => x.listing_id !== d.listing_id))
+  }
 
   async function view(r: Report) {
     // Soporte: no hay contenido que ver, vamos al perfil de quien escribió.
@@ -226,6 +276,87 @@ export default function Admin() {
       {/* Métricas + funnel de adquisición */}
       {metrics && <MetricsPanel m={metrics} />}
       {metricsError && <p className="px-5 pb-3 text-xs text-amber-400">{metricsError}</p>}
+
+      {/* Disputas de subasta (no-retiro). Solo aparece si hay casos. */}
+      {disputes.length > 0 && (
+        <div className="mb-4 px-5">
+          <h2 className="pb-2 text-sm font-semibold text-white">
+            Disputas de subasta <span className="text-red-400">({disputes.length})</span>
+          </h2>
+          <ul className="space-y-2">
+            {disputes.map((d) => {
+              const banned = d.buyer_banned_until && new Date(d.buyer_banned_until) > new Date()
+              return (
+                <li key={d.listing_id} className="surface p-4">
+                  <button onClick={() => navigate(`/p/${d.listing_id}`)} className="block text-left text-sm font-semibold text-white">
+                    {d.title}
+                  </button>
+                  <p className="mt-1 text-xs text-neutral-400">
+                    Ganador:{' '}
+                    <button onClick={() => navigate(`/u/${d.buyer_username}`)} className="font-semibold text-white underline-offset-2 hover:underline">
+                      {d.buyer_username}
+                    </button>
+                    {d.buyer_strikes > 0 && <span className="ml-1 text-red-400">· {d.buyer_strikes} strike{d.buyer_strikes > 1 ? 's' : ''}</span>}
+                    {banned && <span className="ml-1 text-amber-400">· ya suspendido</span>}
+                    <span className="text-neutral-600"> · vendedor {d.seller_username}</span>
+                  </p>
+                  {/* Señal clave: si el comprador YA había confirmado el retiro,
+                      el reporte del vendedor es sospechoso → no banear a ciegas. */}
+                  {d.buyer_confirmed && (
+                    <p className="mt-1.5 rounded-lg bg-amber-500/10 px-2 py-1 text-[11px] text-amber-300 ring-1 ring-amber-500/20">
+                      ⚠ El comprador confirmó que retiró. Revisá el chat antes de suspender.
+                    </p>
+                  )}
+                  <div className="mt-2.5 flex flex-wrap items-center gap-2">
+                    {d.conversation_id && (
+                      <button
+                        onClick={() => navigate(`/chats/${d.conversation_id}`)}
+                        className="rounded-full px-3 py-1 text-[11px] font-semibold text-neutral-300 ring-1 ring-neutral-700"
+                      >
+                        Ver chat
+                      </button>
+                    )}
+                    {banningId === d.listing_id ? (
+                      <>
+                        <span className="text-[11px] text-neutral-500">Suspender:</span>
+                        {[1, 3, 6, 12].map((m) => (
+                          <button
+                            key={m}
+                            onClick={() => banAuction(d, m)}
+                            disabled={disputeBusy}
+                            className="rounded-full bg-red-500/15 px-2.5 py-1 text-[11px] font-bold text-red-400 ring-1 ring-red-500/30 disabled:opacity-50"
+                          >
+                            {m}m
+                          </button>
+                        ))}
+                        <button onClick={() => setBanningId(null)} className="text-[11px] text-neutral-500">
+                          cancelar
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <button
+                          onClick={() => setBanningId(d.listing_id)}
+                          className="rounded-full px-3 py-1 text-[11px] font-semibold text-red-400/90 ring-1 ring-red-500/30"
+                        >
+                          Suspender al ganador
+                        </button>
+                        <button
+                          onClick={() => dismissDispute(d)}
+                          disabled={disputeBusy}
+                          className="rounded-full px-3 py-1 text-[11px] font-semibold text-neutral-400 ring-1 ring-neutral-700 disabled:opacity-50"
+                        >
+                          Descartar
+                        </button>
+                      </>
+                    )}
+                  </div>
+                </li>
+              )
+            })}
+          </ul>
+        </div>
+      )}
 
       <h2 className="px-5 pb-1 text-sm font-semibold text-white">Reportes</h2>
       <div className="mb-2 px-5">
