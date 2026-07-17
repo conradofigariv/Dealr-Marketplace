@@ -19,6 +19,7 @@ declare global {
           initialize: (config: {
             client_id: string
             callback: (response: { credential: string }) => void
+            nonce?: string
             use_fedcm_for_prompt?: boolean
           }) => void
           renderButton: (
@@ -37,6 +38,24 @@ declare global {
       }
     }
   }
+}
+
+// Supabase tiene "Skip nonce checks" desactivado (correcto: sin eso, cualquier
+// ID token robado de OTRO sitio que use el mismo Client ID serviría para
+// entrar). Con el check activo, hay que mandar un nonce de un solo uso: el
+// HASH va a Google (queda grabado en el ID token) y el valor CRUDO se le pasa
+// a Supabase, que lo hashea de nuevo y compara — así prueba que el token es
+// de ESTE intento de login, no uno reciclado. Es el patrón oficial de
+// Supabase para Google Identity Services en web.
+function generateNonce(): string {
+  const bytes = new Uint8Array(32)
+  crypto.getRandomValues(bytes)
+  return Array.from(bytes, (b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+async function sha256Hex(value: string): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
+  return Array.from(new Uint8Array(digest), (b) => b.toString(16).padStart(2, '0')).join('')
 }
 
 let scriptPromise: Promise<void> | null = null
@@ -69,19 +88,24 @@ function loadGoogleScript(): Promise<void> {
 }
 
 // Carga GIS y dibuja el botón nativo de Google dentro de `container`. Llama
-// a `onCredential` con el ID token (JWT) cuando el usuario elige una cuenta.
-// Devuelve una promesa que rechaza si algo falla (Auth.tsx cae al fallback).
+// a `onCredential` con el ID token (JWT) y el nonce crudo (pasarlo tal cual a
+// supabase.auth.signInWithIdToken({..., nonce})) cuando el usuario elige una
+// cuenta. Devuelve una promesa que rechaza si algo falla (Auth.tsx cae al
+// fallback).
 export async function renderGoogleButton(
   container: HTMLElement,
-  onCredential: (idToken: string) => void,
+  onCredential: (idToken: string, nonce: string) => void,
 ): Promise<void> {
   if (!googleClientId) throw new Error('VITE_GOOGLE_CLIENT_ID no configurado')
   await loadGoogleScript()
   const google = window.google
   if (!google) throw new Error('google no disponible tras cargar el script')
+  const nonce = generateNonce()
+  const hashedNonce = await sha256Hex(nonce)
   google.accounts.id.initialize({
     client_id: googleClientId,
-    callback: (response) => onCredential(response.credential),
+    callback: (response) => onCredential(response.credential, nonce),
+    nonce: hashedNonce,
     use_fedcm_for_prompt: true,
   })
   const width = Math.min(400, Math.max(200, container.offsetWidth || 320))
