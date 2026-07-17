@@ -679,6 +679,25 @@ export default function Profile() {
           {profile?.is_admin && (
             <Link
               to="/admin"
+              state={{ openConcierge: true }}
+              className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-amber-500/30"
+            >
+              <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+                <svg viewBox="0 0 24 24" className="h-5 w-5 text-amber-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                  <circle cx="9" cy="7" r="4" />
+                  <path d="M19 8v6M22 11h-6" />
+                </svg>
+                Crear vendedor y publicar
+              </span>
+              <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-500" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="m9 18 6-6-6-6" />
+              </svg>
+            </Link>
+          )}
+          {profile?.is_admin && (
+            <Link
+              to="/admin"
               className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-red-900/50"
             >
               <span className="flex items-center gap-2.5 text-sm font-medium text-white">

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
@@ -130,6 +130,7 @@ function MetricsPanel({ m }: { m: Metrics }) {
 
 export default function Admin() {
   const navigate = useNavigate()
+  const routerLocation = useLocation()
   const { profile, loading } = useAuth()
   const toast = useToast()
   const [reports, setReports] = useState<Report[]>([])
@@ -142,7 +143,11 @@ export default function Admin() {
   const [banningId, setBanningId] = useState<string | null>(null) // listing con el picker de meses abierto
   const [disputeBusy, setDisputeBusy] = useState(false)
   // Concierge: crear vendedor + publicar en su nombre.
-  const [conciergeOpen, setConciergeOpen] = useState(false)
+  // Abre la sección concierge de una si se llegó desde el acceso directo del
+  // perfil ("Crear vendedor y publicar").
+  const [conciergeOpen, setConciergeOpen] = useState(
+    () => (routerLocation.state as { openConcierge?: boolean } | null)?.openConcierge === true,
+  )
   const [sellerEmail, setSellerEmail] = useState('')
   const [sellerName, setSellerName] = useState('')
   const [creatingSeller, setCreatingSeller] = useState(false)
