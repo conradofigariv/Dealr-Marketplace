@@ -44,6 +44,7 @@ export default function Auth() {
   // VITE_GOOGLE_CLIENT_ID sin configurar) cae al botón viejo con redirect.
   const googleBtnRef = useRef<HTMLDivElement>(null)
   const [gisFailed, setGisFailed] = useState(false)
+  const [gisError, setGisError] = useState('')
 
   // Mostrada al menos una vez: la próxima apertura va directo al feed.
   // Y precargamos las fotos del onboarding: mientras el usuario inicia sesión
@@ -88,6 +89,19 @@ export default function Auth() {
   // entrega un ID token que canjeamos con Supabase directo, sin redirect. El
   // consentimiento muestra "Dealr" + el dominio de Vercel, no supabase.co.
   useEffect(() => {
+    // Diagnóstico: /auth?debug=google muestra por qué cae (o no) al botón
+    // nativo, sin tener que adivinar desde afuera (mismo patrón que
+    // ?debug=ua para el in-app browser).
+    if (new URLSearchParams(location.search).get('debug') === 'google') {
+      window.setTimeout(() => {
+        alert(
+          `inApp: ${inApp}\nclientId: ${googleClientId ? googleClientId.slice(0, 12) + '…' : '(vacío — falta VITE_GOOGLE_CLIENT_ID)'}\ngisFailed: ${gisFailed}\ngisError: ${gisError || '(ninguno)'}\nwindow.google: ${typeof window.google}`,
+        )
+      }, 1500)
+    }
+  }, [inApp, gisFailed, gisError, location.search])
+
+  useEffect(() => {
     if (inApp || !googleClientId || !googleBtnRef.current) return
     let cancelled = false
     renderGoogleButton(googleBtnRef.current, async (idToken, nonce) => {
@@ -101,8 +115,11 @@ export default function Auth() {
         setRawError(err.message)
       }
       // si no hubo error, el listener global de sesión navega a `from`.
-    }).catch(() => {
-      if (!cancelled) setGisFailed(true)
+    }).catch((e) => {
+      if (!cancelled) {
+        setGisFailed(true)
+        setGisError(e instanceof Error ? e.message : String(e))
+      }
     })
     return () => {
       cancelled = true
