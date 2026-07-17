@@ -12,7 +12,7 @@ export default defineConfig({
       // (UpdatePrompt). Antes con 'autoUpdate' el build viejo seguía hasta
       // cerrar todas las pestañas — la causa #1 de "deployé y no veo cambios".
       registerType: 'prompt',
-      includeAssets: ['favicon.svg'],
+      includeAssets: ['favicon.svg', 'icon-512-maskable.png'],
       manifest: {
         name: 'Dealr — Marketplace de usados',
         short_name: 'Dealr',
@@ -24,7 +24,11 @@ export default defineConfig({
         icons: [
           { src: '/icon-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/icon-512.png', sizes: '512x512', type: 'image/png' },
-          { src: '/icon-512.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
+          // Variante "maskable" aparte: el martillo va más chico y centrado
+          // (safe zone) para que la máscara circular/squircle de Android no
+          // se lo coma en los bordes — la "any" de arriba usa el tamaño
+          // completo porque ahí no hay recorte.
+          { src: '/icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' },
         ],
       },
       workbox: {

@@ -4,6 +4,7 @@ import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { translateAuthError } from '../lib/authErrors'
 import { preloadOnboardingImages } from '../lib/intro'
+import Logo from '../components/Logo'
 import { ONBOARDING_IMAGES } from '../components/IntroSlides'
 import { isInAppBrowser } from '../lib/inAppBrowser'
 import InAppBrowserBanner from '../components/InAppBrowserBanner'
@@ -188,7 +189,9 @@ export default function Auth() {
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-black/70 via-black/40 to-black/85" />
 
       <div className="z-10 flex flex-1 flex-col justify-center">
-        <h1 className="mb-16 text-center text-6xl font-bold tracking-tight text-white">Dealr</h1>
+        <div className="mb-16 flex justify-center">
+          <Logo size={60} />
+        </div>
 
         {!linkSent && !showEmailForm ? (
           <div className="space-y-8">

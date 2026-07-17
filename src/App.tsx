@@ -4,6 +4,7 @@ import { AuthProvider, useAuth } from './hooks/useAuth'
 import { FavoritesProvider } from './hooks/useFavorites'
 import { NotificationsProvider } from './hooks/useNotifications'
 import { UnreadChatsProvider } from './hooks/useUnreadChats'
+import Logo from './components/Logo'
 import { supabase, supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
 import { hasSeenIntro, REPLAY_INTRO_EVENT } from './lib/intro'
 import './lib/pwaInstall' // registra el listener de instalación temprano
@@ -42,7 +43,7 @@ class ErrorBoundary extends Component<{ children: ReactNode }, { failed: boolean
     if (this.state.failed) {
       return (
         <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-10 text-center">
-          <h1 className="text-3xl font-bold tracking-tight text-white">Dealr</h1>
+          <Logo size={30} />
           <p className="text-sm text-neutral-400">Algo salió mal al cargar esta pantalla.</p>
           <button
             onClick={() => {
@@ -394,7 +395,7 @@ function Shell() {
 function SetupNotice() {
   return (
     <div className="mx-auto flex min-h-dvh max-w-lg flex-col items-center justify-center gap-4 px-10 text-center">
-      <h1 className="text-5xl font-bold tracking-tight text-white">Dealr</h1>
+      <Logo size={48} />
       {supabaseUrlInvalid ? (
         <>
           <p className="text-sm text-neutral-400">
