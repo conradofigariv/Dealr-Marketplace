@@ -17,7 +17,7 @@ export default function AuctionRail({ listings }: { listings: Listing[] }) {
   if (listings.length === 0) return null
   return (
     <div>
-      <h2 className="glow-text mb-3 px-1 text-sm font-semibold text-amber-400">Subastas destacadas</h2>
+      <h2 className="glow-text mb-3 px-1 text-base font-semibold text-amber-400">Subastas destacadas</h2>
       <div className="no-scrollbar -mx-4 flex gap-3 overflow-x-auto px-4">
         {listings.map((l) => (
           <Link key={l.id} to={`/p/${l.id}`} className="w-40 shrink-0">
@@ -36,10 +36,17 @@ export default function AuctionRail({ listings }: { listings: Listing[] }) {
                   {timeLeftLabel(l.auction_ends_at, now)}
                 </span>
               )}
+              {/* Precio como pill amarillo sobre la foto (misma modalidad que
+                  ListingCard, en ámbar por ser subasta). */}
+              <span className="absolute bottom-2 left-2 rounded-full bg-amber-500 px-2.5 py-1 text-xs font-bold text-black shadow-sm">
+                {formatPrice(l.current_bid ?? l.price, l.currency)}
+              </span>
             </div>
-            <p className="mt-1.5 text-xs font-bold text-amber-400">{formatPrice(l.current_bid ?? l.price, l.currency)}</p>
-            <p className="truncate text-xs text-neutral-400">
-              {l.bids_count} {l.bids_count === 1 ? 'oferta' : 'ofertas'} · {l.title}
+            {/* Nombre en blanco + ofertas, con los mismos tamaños que
+                "Recomendado para vos" (ListingCard). */}
+            <p className="mt-1.5 line-clamp-2 text-[0.9rem] font-medium leading-snug text-white">{l.title}</p>
+            <p className="mt-0.5 truncate text-[11px] text-amber-400">
+              {l.bids_count} {l.bids_count === 1 ? 'oferta' : 'ofertas'}
             </p>
           </Link>
         ))}
