@@ -5,7 +5,6 @@ import { FavoritesProvider } from './hooks/useFavorites'
 import { NotificationsProvider } from './hooks/useNotifications'
 import { UnreadChatsProvider } from './hooks/useUnreadChats'
 import { supabase, supabaseConfigured, supabaseUrlInvalid, supabaseUrlConfigured } from './lib/supabase'
-import { hasSeenWelcome } from './lib/welcome'
 import { hasSeenIntro, REPLAY_INTRO_EVENT } from './lib/intro'
 import './lib/pwaInstall' // registra el listener de instalación temprano
 import { capturePageview } from './lib/analytics'
@@ -325,15 +324,6 @@ function Shell() {
     const t = setTimeout(preload, 1500)
     return () => clearTimeout(t)
   }, [])
-
-  // Primera apertura de la app: la bienvenida/login es lo primero que se ve,
-  // pero no es obligatoria. Solo intercepta el feed ("/"); los deep links a
-  // una publicación compartida se abren sin fricción. No espera a `loading`
-  // para evitar un parpadeo del feed (quien ya tiene sesión ya vio la
-  // bienvenida, así que la bandera está puesta).
-  if (!session && location.pathname === '/' && !hasSeenWelcome()) {
-    return <Navigate to="/auth" replace state={{ from: '/', back: '/' }} />
-  }
 
   // Términos y Condiciones: bloquea la app hasta aceptar (va ANTES del onboarding
   // de username). Como el auth es magic link / Google, la cuenta ya existe al
