@@ -14,6 +14,7 @@ import ActionMenu from '../components/ActionMenu'
 import EmptyState from '../components/EmptyState'
 import { useToast } from '../components/Toast'
 import InAppBrowserBanner from '../components/InAppBrowserBanner'
+import Logo from '../components/Logo'
 import { vibrate, haptic, playSound } from '../lib/notify'
 import {
   getCachedBuyerLocation,
@@ -619,7 +620,7 @@ export default function Home() {
       <div style={pullStyle} onTransitionEnd={() => setSettling(false)}>
       <header className="px-4 pb-1 pt-[max(1.25rem,env(safe-area-inset-top))]">
         <div className="flex items-center justify-between">
-          <h1 className="text-[1.75rem] font-bold tracking-tight text-white">Dealr</h1>
+          <Logo size={28} />
           <div className="flex items-center">
             {/* Buscar dejó de ser toggle (hay barra fija abajo) y Mapa vive en
                 el panel Filtrar/Ordenar/Mapa. */}
