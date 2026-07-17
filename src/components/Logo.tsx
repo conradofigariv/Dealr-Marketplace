@@ -58,12 +58,12 @@ export default function Logo({
       <span className="relative inline-block" style={{ color: dark ? '#e89b00' : '#ffb020' }}>
         r
         <DealrMark
-          size={size * 0.4}
+          size={size * 0.7}
           color={dark ? '#e89b00' : '#ffb020'}
           className="absolute"
-          // Acento apoyado arriba a la derecha de la "r", como en el diseño
-          // original (ahí el ícono flota junto al asta de la r).
-          style={{ top: '-0.32em', left: '0.7em' }}
+          // Martillo grande, apoyado ENCIMA de la r y superpuesto (no
+          // flotando aparte) — así se ve en el diseño original.
+          style={{ top: '-0.22em', left: '-0.18em' }}
         />
       </span>
     </span>
