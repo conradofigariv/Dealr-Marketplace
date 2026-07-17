@@ -29,5 +29,9 @@ export const supabase = createClient(
 )
 
 export function photoUrl(path: string): string {
+  // Un avatar de Google (u otra URL absoluta) se usa tal cual; solo las rutas
+  // de Storage se resuelven al bucket. Las fotos de listing nunca son URLs
+  // absolutas, así que este passthrough no las afecta.
+  if (/^https?:\/\//i.test(path)) return path
   return supabase.storage.from('listing-photos').getPublicUrl(path).data.publicUrl
 }

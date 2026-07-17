@@ -213,7 +213,9 @@ export default function Profile() {
       const old = profile.avatar_url
       const { error: dbErr } = await supabase.from('profiles').update({ avatar_url: path }).eq('id', session.user.id)
       if (dbErr) throw dbErr
-      if (old) await supabase.storage.from('listing-photos').remove([old])
+      // Borrar el avatar viejo del storage — salvo que fuera una URL de Google
+      // (no vive en el bucket, no hay nada que borrar).
+      if (old && !/^https?:\/\//i.test(old)) await supabase.storage.from('listing-photos').remove([old])
       await refreshProfile()
     } catch {
       setNameError('No pudimos subir la foto. Probá de nuevo.')
