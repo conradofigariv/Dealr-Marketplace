@@ -324,15 +324,15 @@ export default function Profile() {
     if (loading || !session) return <div className="min-h-dvh bg-black" />
     return (
       <div className="flex min-h-dvh flex-col items-center justify-center gap-4 px-10 text-center">
-        <p className="text-sm text-neutral-400">No pudimos cargar tu perfil.</p>
-        {profileError && <p className="break-words text-xs text-neutral-600">{profileError}</p>}
+        <p className="text-base text-neutral-400">No pudimos cargar tu perfil.</p>
+        {profileError && <p className="break-words text-sm text-neutral-600">{profileError}</p>}
         <button
           onClick={() => refreshProfile()}
-          className="rounded-full bg-white px-6 py-2.5 text-sm font-semibold text-black"
+          className="rounded-full bg-white px-6 py-2.5 text-base font-semibold text-black"
         >
           Reintentar
         </button>
-        <button onClick={logout} className="text-sm text-neutral-500">
+        <button onClick={logout} className="text-base text-neutral-500">
           Cerrar sesión
         </button>
       </div>
@@ -389,9 +389,9 @@ export default function Profile() {
               onChange={(e) => setNameDraft(e.target.value)}
               minLength={3}
               maxLength={30}
-              className="input-line text-center text-lg font-semibold"
+              className="input-line text-center text-xl font-semibold"
             />
-            <button onClick={saveName} className="shrink-0 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black">
+            <button onClick={saveName} className="shrink-0 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-black">
               OK
             </button>
           </div>
@@ -401,13 +401,13 @@ export default function Profile() {
               setNameDraft(profile.username)
               setEditingName(true)
             }}
-            className="text-xl font-bold text-white"
+            className="text-2xl font-bold text-white"
           >
             {profile.username}
-            <span className="-m-2 ml-0 inline-block p-2 text-sm font-normal text-neutral-400">editar</span>
+            <span className="-m-2 ml-0 inline-block p-2 text-base font-normal text-neutral-400">editar</span>
           </button>
         )}
-        <p className="mt-1 text-xs text-neutral-500">
+        <p className="mt-1 text-sm text-neutral-500">
           En Dealr desde {new Date(profile.created_at).toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })}
         </p>
         {editingZone ? (
@@ -418,9 +418,9 @@ export default function Profile() {
               onChange={(e) => setZoneDraft(e.target.value)}
               maxLength={60}
               placeholder="Ej: Palermo, CABA"
-              className="input-line text-center text-sm"
+              className="input-line text-center text-base"
             />
-            <button onClick={saveZone} className="shrink-0 rounded-full bg-white px-3.5 py-1.5 text-xs font-semibold text-black">
+            <button onClick={saveZone} className="shrink-0 rounded-full bg-white px-3.5 py-1.5 text-sm font-semibold text-black">
               OK
             </button>
           </div>
@@ -430,7 +430,7 @@ export default function Profile() {
               setZoneDraft(profile.zone ?? '')
               setEditingZone(true)
             }}
-            className="mt-1 text-xs text-neutral-500"
+            className="mt-1 text-sm text-neutral-500"
           >
             {profile.zone ? (
               <>
@@ -442,10 +442,10 @@ export default function Profile() {
             )}
           </button>
         )}
-        {nameError && <p className="mt-2 text-xs text-red-400">{nameError}</p>}
+        {nameError && <p className="mt-2 text-sm text-red-400">{nameError}</p>}
         <div className="mt-4 flex justify-center">
           {profile.account_restricted ? (
-            <span className="rounded-full bg-red-500/15 px-3 py-1 text-xs font-bold text-red-400 ring-1 ring-red-500/30">
+            <span className="rounded-full bg-red-500/15 px-3 py-1 text-sm font-bold text-red-400 ring-1 ring-red-500/30">
               Cuenta restringida
             </span>
           ) : (
@@ -457,38 +457,38 @@ export default function Profile() {
       <div className="space-y-6 px-5">
         {profile.account_restricted && (
           <div className="rounded-2xl bg-red-500/10 px-4 py-3 ring-1 ring-red-500/30">
-            <p className="text-sm font-semibold text-red-400">Tu cuenta tiene funciones restringidas.</p>
-            <p className="mt-0.5 text-xs text-red-400/80">
+            <p className="text-base font-semibold text-red-400">Tu cuenta tiene funciones restringidas.</p>
+            <p className="mt-0.5 text-sm text-red-400/80">
               Dealr es para mayores de 18 años. No podés publicar, ofertar ni iniciar compras.
             </p>
           </div>
         )}
         {/* Reputación */}
         <div className="surface p-5">
-          <h2 className="mb-4 text-sm font-semibold text-white">Reputación</h2>
+          <h2 className="mb-4 text-base font-semibold text-white">Reputación</h2>
           <div className="grid grid-cols-2 gap-3 text-center">
             <div>
               {profile.seller_score != null ? (
                 <div className="flex justify-center"><StarRating value={profile.seller_score} /></div>
               ) : (
-                <p className="text-sm text-neutral-600">Sin datos aún</p>
+                <p className="text-base text-neutral-600">Sin datos aún</p>
               )}
-              <p className="mt-1 text-xs text-neutral-500">Vendedor ({profile.seller_ratings_count})</p>
+              <p className="mt-1 text-sm text-neutral-500">Vendedor ({profile.seller_ratings_count})</p>
             </div>
             <div>
               {profile.buyer_score != null ? (
                 <div className="flex justify-center"><StarRating value={profile.buyer_score} /></div>
               ) : (
-                <p className="text-sm text-neutral-600">Sin datos aún</p>
+                <p className="text-base text-neutral-600">Sin datos aún</p>
               )}
-              <p className="mt-1 text-xs text-neutral-500">Comprador ({profile.buyer_ratings_count})</p>
+              <p className="mt-1 text-sm text-neutral-500">Comprador ({profile.buyer_ratings_count})</p>
             </div>
           </div>
-          <p className="mt-4 text-xs text-neutral-600">
+          <p className="mt-4 text-sm text-neutral-600">
             Los puntajes aparecen al acumular 3 calificaciones. Mientras tanto, tus insignias hablan por vos.
           </p>
           {!profile.identity_verified && (
-            <button onClick={() => setVerifyOpen(true)} className="btn-outline mt-4 py-2.5 text-sm">
+            <button onClick={() => setVerifyOpen(true)} className="btn-outline mt-4 py-2.5 text-base">
               Verificar mi identidad
             </button>
           )}
@@ -500,7 +500,7 @@ export default function Profile() {
             to="/guardados"
             className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
           >
-            <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+            <span className="flex items-center gap-2.5 text-base font-medium text-white">
               <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
               </svg>
@@ -514,7 +514,7 @@ export default function Profile() {
             to="/busquedas"
             className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
           >
-            <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+            <span className="flex items-center gap-2.5 text-base font-medium text-white">
               <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <circle cx="11" cy="11" r="7" />
                 <path d="m20 20-3.5-3.5" />
@@ -530,14 +530,14 @@ export default function Profile() {
               onClick={() => setMyListingsOpen((v) => !v)}
               className="flex w-full items-center justify-between px-4 py-3.5"
             >
-              <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+              <span className="flex items-center gap-2.5 text-base font-medium text-white">
                 <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M20.59 13.41 13.42 20.58a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" />
                   <circle cx="7" cy="7" r="1" fill="currentColor" stroke="none" />
                 </svg>
                 Mis publicaciones
                 {listings.length > 0 && (
-                  <span className="text-xs font-normal text-neutral-500">({listings.length})</span>
+                  <span className="text-sm font-normal text-neutral-500">({listings.length})</span>
                 )}
               </span>
               <svg viewBox="0 0 24 24" className={`h-5 w-5 text-neutral-500 transition ${myListingsOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -547,10 +547,10 @@ export default function Profile() {
             {myListingsOpen && (
               <div className="sheet-in border-t border-neutral-800 px-4 py-4">
                 <div className="mb-3 flex items-center justify-end">
-                  <Link to="/publicar" className="text-xs font-semibold text-neutral-400">+ Vender algo</Link>
+                  <Link to="/publicar" className="text-sm font-semibold text-neutral-400">+ Vender algo</Link>
                 </div>
                 {listings.length === 0 ? (
-                  <p className="py-2 text-sm text-neutral-600">Todavía no publicaste nada.</p>
+                  <p className="py-2 text-base text-neutral-600">Todavía no publicaste nada.</p>
                 ) : (
                   <ul className="space-y-4">
                     {listings.map((l) => (
@@ -559,8 +559,8 @@ export default function Profile() {
                           {l.photos[0] && <img src={photoUrl(l.photos[0])} alt="" className="h-full w-full object-cover" />}
                         </Link>
                         <div className="min-w-0 flex-1">
-                          <Link to={`/p/${l.id}`} className="block truncate text-sm font-semibold text-white">{l.title}</Link>
-                          <p className="text-xs text-neutral-500">
+                          <Link to={`/p/${l.id}`} className="block truncate text-base font-semibold text-white">{l.title}</Link>
+                          <p className="text-sm text-neutral-500">
                             {formatPrice(l.price, l.currency)} ·{' '}
                             <span className={l.status === 'active' ? 'text-white' : ''}>{statusLabels[l.status]}</span>
                             {l.status === 'active' && ` · renovada ${timeAgo(l.last_renewed_at)}`}
@@ -615,7 +615,7 @@ export default function Profile() {
                 onClick={() => setMyOffersOpen((v) => !v)}
                 className="flex w-full items-center justify-between px-4 py-3.5"
               >
-                <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+                <span className="flex items-center gap-2.5 text-base font-medium text-white">
                   <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                     <path d="m14 13-8.5 8.5a2.12 2.12 0 1 1-3-3L11 10" />
                     <path d="m16 16 6-6" />
@@ -624,7 +624,7 @@ export default function Profile() {
                     <path d="m21 11-8-8" />
                   </svg>
                   Mis ofertas
-                  <span className="text-xs font-normal text-neutral-500">({myOffers.length})</span>
+                  <span className="text-sm font-normal text-neutral-500">({myOffers.length})</span>
                 </span>
                 <svg viewBox="0 0 24 24" className={`h-5 w-5 text-neutral-500 transition ${myOffersOpen ? 'rotate-90' : ''}`} fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="m9 18 6-6-6-6" />
@@ -642,10 +642,10 @@ export default function Profile() {
                           )}
                         </Link>
                         <div className="min-w-0 flex-1">
-                          <Link to={`/p/${o.listing.id}`} className="block truncate text-sm font-semibold text-white">
+                          <Link to={`/p/${o.listing.id}`} className="block truncate text-base font-semibold text-white">
                             {o.listing.title}
                           </Link>
-                          <p className="mt-0.5 text-xs text-neutral-500">
+                          <p className="mt-0.5 text-sm text-neutral-500">
                             {o.kind === 'bid' ? 'Tu puja' : 'Tu oferta'}:{' '}
                             <span className="font-semibold text-white">{formatPrice(o.myMax, o.listing.currency)}</span>
                             {o.kind === 'bid' && o.listing.current_bid != null && (
@@ -668,7 +668,7 @@ export default function Profile() {
             to="/opiniones"
             className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-neutral-800"
           >
-            <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+            <span className="flex items-center gap-2.5 text-base font-medium text-white">
               <svg viewBox="0 0 24 24" className="h-5 w-5 text-neutral-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z" />
               </svg>
@@ -684,7 +684,7 @@ export default function Profile() {
               state={{ openConcierge: true }}
               className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-amber-500/30"
             >
-              <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+              <span className="flex items-center gap-2.5 text-base font-medium text-white">
                 <svg viewBox="0 0 24 24" className="h-5 w-5 text-amber-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
                   <circle cx="9" cy="7" r="4" />
@@ -702,7 +702,7 @@ export default function Profile() {
               to="/admin"
               className="flex items-center justify-between rounded-2xl bg-neutral-900 px-4 py-3.5 ring-1 ring-red-900/50"
             >
-              <span className="flex items-center gap-2.5 text-sm font-medium text-white">
+              <span className="flex items-center gap-2.5 text-base font-medium text-white">
                 <svg viewBox="0 0 24 24" className="h-5 w-5 text-red-400" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z" />
                 </svg>
@@ -715,14 +715,14 @@ export default function Profile() {
           )}
         </div>
 
-        <button onClick={logout} className="w-full py-3 text-center text-sm text-neutral-500">
+        <button onClick={logout} className="w-full py-3 text-center text-base text-neutral-500">
           Cerrar sesión
         </button>
       </div>
 
       {verifyOpen && (
         <Modal title="Verificar identidad" onClose={() => setVerifyOpen(false)}>
-          <div className="space-y-4 text-sm text-neutral-400">
+          <div className="space-y-4 text-base text-neutral-400">
             <p>
               La verificación valida tu DNI contra RENAPER con una foto del documento y una selfie.
               Es opcional y gratuita, y te da la insignia{' '}
@@ -734,14 +734,14 @@ export default function Profile() {
               solo el resultado de la verificación.
             </p>
             {verifyError && (
-              <p className="rounded-xl bg-neutral-900 p-3.5 text-xs text-neutral-400 ring-1 ring-neutral-800">
+              <p className="rounded-xl bg-neutral-900 p-3.5 text-sm text-neutral-400 ring-1 ring-neutral-800">
                 {verifyError}
               </p>
             )}
             <div className="flex gap-3 pt-1">
               <button
                 onClick={() => setVerifyOpen(false)}
-                className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700"
+                className="flex-1 rounded-full py-3 text-base font-semibold text-neutral-300 ring-1 ring-neutral-700"
               >
                 Ahora no
               </button>
@@ -755,27 +755,27 @@ export default function Profile() {
 
       {deleteTarget && (
         <Modal title="Eliminar publicación" onClose={() => !deleting && setDeleteTarget(null)}>
-          <div className="space-y-5 text-sm text-neutral-400">
+          <div className="space-y-5 text-base text-neutral-400">
             <p>
               Vas a eliminar <strong className="text-white">{deleteTarget.title}</strong> de forma
               permanente. También se borran sus preguntas y ofertas. Los chats se conservan (sin la
               publicación). Esta acción no se puede deshacer.
             </p>
-            <p className="text-xs text-neutral-600">
+            <p className="text-sm text-neutral-600">
               Si solo querés que deje de aparecer, mejor usá <strong className="text-neutral-400">Pausar</strong> o <strong className="text-neutral-400">Ya lo vendí</strong>.
             </p>
             <div className="flex gap-3">
               <button
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700 disabled:opacity-50"
+                className="flex-1 rounded-full py-3 text-base font-semibold text-neutral-300 ring-1 ring-neutral-700 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => deleteListing(deleteTarget)}
                 disabled={deleting}
-                className="flex-1 rounded-full bg-red-500 py-3 text-sm font-semibold text-white disabled:opacity-50"
+                className="flex-1 rounded-full bg-red-500 py-3 text-base font-semibold text-white disabled:opacity-50"
               >
                 {deleting ? 'Eliminando…' : 'Eliminar'}
               </button>
@@ -795,20 +795,20 @@ export default function Profile() {
 
       {reactivateAuctionTarget && (
         <Modal title="Relanzar subasta" onClose={() => !reactivating && setReactivateAuctionTarget(null)}>
-          <div className="space-y-5 text-sm text-neutral-400">
+          <div className="space-y-5 text-base text-neutral-400">
             <p>
               Vas a volver a publicar <strong className="text-white">{reactivateAuctionTarget.title}</strong> como
               una subasta nueva. Las ofertas anteriores se reinician. Elegí cuánto va a durar:
             </p>
             <div>
-              <span className="mb-2 block text-xs font-semibold uppercase tracking-wide text-neutral-500">Duración</span>
+              <span className="mb-2 block text-sm font-semibold uppercase tracking-wide text-neutral-500">Duración</span>
               <div className="flex gap-1.5">
                 {[1, 3, 7].map((d) => (
                   <button
                     key={d}
                     type="button"
                     onClick={() => setReactivateDays(d)}
-                    className={`flex-1 rounded-full py-2.5 text-sm font-semibold transition ${
+                    className={`flex-1 rounded-full py-2.5 text-base font-semibold transition ${
                       reactivateDays === d ? 'bg-white text-black' : 'text-neutral-300 ring-1 ring-neutral-700'
                     }`}
                   >
@@ -821,14 +821,14 @@ export default function Profile() {
               <button
                 onClick={() => setReactivateAuctionTarget(null)}
                 disabled={reactivating}
-                className="flex-1 rounded-full py-3 text-sm font-semibold text-neutral-300 ring-1 ring-neutral-700 disabled:opacity-50"
+                className="flex-1 rounded-full py-3 text-base font-semibold text-neutral-300 ring-1 ring-neutral-700 disabled:opacity-50"
               >
                 Cancelar
               </button>
               <button
                 onClick={() => reactivateAuction(reactivateAuctionTarget, reactivateDays)}
                 disabled={reactivating}
-                className="flex-1 rounded-full bg-white py-3 text-sm font-semibold text-black disabled:opacity-50"
+                className="flex-1 rounded-full bg-white py-3 text-base font-semibold text-black disabled:opacity-50"
               >
                 {reactivating ? 'Publicando…' : 'Relanzar'}
               </button>
@@ -839,7 +839,7 @@ export default function Profile() {
 
       {settingsOpen && (
         <Modal title="Configuración" onClose={() => setSettingsOpen(false)}>
-          <div className="space-y-2 text-sm">
+          <div className="space-y-2 text-base">
             <NotificationSettings />
             {/* Antes: "Privacidad y datos · Próximamente" (fila muerta). Ahora
                 abre los Términos ya aceptados, en modo lectura. */}
@@ -918,7 +918,7 @@ export default function Profile() {
                 setSettingsOpen(false)
                 logout()
               }}
-              className="mt-2 w-full rounded-xl px-4 py-3.5 text-left text-sm font-medium text-red-400/90 ring-1 ring-neutral-800 transition hover:ring-neutral-700"
+              className="mt-2 w-full rounded-xl px-4 py-3.5 text-left text-base font-medium text-red-400/90 ring-1 ring-neutral-800 transition hover:ring-neutral-700"
             >
               Cerrar sesión
             </button>
