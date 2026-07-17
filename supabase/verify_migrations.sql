@@ -131,7 +131,11 @@ with checks(mig, objeto, existe) as (
     ('00044', 'RPC admin_metrics',
       (exists (select 1 from pg_proc where proname='admin_metrics'))),
     ('00045', 'RPC auction_bid_history',
-      (exists (select 1 from pg_proc where proname='auction_bid_history')))
+      (exists (select 1 from pg_proc where proname='auction_bid_history'))),
+    ('00046', 'RPC admin_auction_disputes',
+      (exists (select 1 from pg_proc where proname='admin_auction_disputes'))),
+    ('00046', 'RPC admin_ban_auction',
+      (exists (select 1 from pg_proc where proname='admin_ban_auction')))
 )
 select mig,
        objeto,
