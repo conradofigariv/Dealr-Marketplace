@@ -90,11 +90,11 @@ export default function Auth() {
   useEffect(() => {
     if (inApp || !googleClientId || !googleBtnRef.current) return
     let cancelled = false
-    renderGoogleButton(googleBtnRef.current, async (idToken) => {
+    renderGoogleButton(googleBtnRef.current, async (idToken, nonce) => {
       setBusy(true)
       setError('')
       setRawError('')
-      const { error: err } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken })
+      const { error: err } = await supabase.auth.signInWithIdToken({ provider: 'google', token: idToken, nonce })
       setBusy(false)
       if (err) {
         setError(translateAuthError(err.message))
