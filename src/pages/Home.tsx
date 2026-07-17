@@ -650,7 +650,7 @@ export default function Home() {
           ref={zoneButtonRef}
           onClick={() => setZoneMenuRect(zoneButtonRef.current!.getBoundingClientRect())}
           disabled={locating}
-          className="mt-1 flex w-full items-center justify-center gap-1.5 whitespace-nowrap text-base font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
+          className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-[15px] font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
         >
           {locating ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-500/40 border-t-neutral-300" />
@@ -863,7 +863,9 @@ export default function Home() {
           rect={zoneMenuRect}
           onClose={() => setZoneMenuRect(null)}
           anchor={
-            <span className="flex h-full items-center gap-1.5 whitespace-nowrap text-sm font-medium text-white">
+            // Mismo tamaño (text-[15px]) que el botón real para que el clon de
+            // la animación no cambie de escala al abrirse.
+            <span className="flex h-full items-center gap-1.5 whitespace-nowrap text-[15px] font-medium text-white">
               <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
                 <circle cx="12" cy="10" r="3" />
