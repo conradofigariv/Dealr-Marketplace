@@ -650,7 +650,7 @@ export default function Home() {
           ref={zoneButtonRef}
           onClick={() => setZoneMenuRect(zoneButtonRef.current!.getBoundingClientRect())}
           disabled={locating}
-          className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-sm font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
+          className="mt-1 flex w-full items-center justify-center gap-1.5 whitespace-nowrap text-base font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
         >
           {locating ? (
             <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-500/40 border-t-neutral-300" />
