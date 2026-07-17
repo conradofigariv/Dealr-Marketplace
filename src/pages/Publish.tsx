@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { Link, useNavigate, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthGate } from '../hooks/useAuthGate'
@@ -40,7 +40,14 @@ interface PendingPhoto {
 export default function Publish() {
   const { id } = useParams<{ id?: string }>() // presente => editar
   const navigate = useNavigate()
+  const location_ = useLocation()
   const { session, profile } = useAuth()
+  // Flujo concierge del admin: publicar EN NOMBRE de otro vendedor. Viene por
+  // navigation state desde /admin (tras crear/reusar su cuenta). La
+  // publicación se atribuye a `onBehalf.id` (la policy "admin modera" lo
+  // permite); el resto del formulario es idéntico.
+  const onBehalf = (location_.state as { onBehalf?: { id: string; name: string } } | null)?.onBehalf ?? null
+  const sellerId = onBehalf?.id ?? session?.user.id
 
   const [categories, setCategories] = useState<Category[]>([])
   const [title, setTitle] = useState('')
@@ -223,6 +230,8 @@ export default function Publish() {
           paths.push(photo.path)
           continue
         }
+        // Las fotos van bajo la carpeta de quien sube (el admin en modo
+        // concierge): es solo la ruta de storage, no afecta la atribución.
         const path = `${session.user.id}/${crypto.randomUUID()}.webp`
         const { error: upErr } = await supabase.storage
           .from('listing-photos')
@@ -255,8 +264,9 @@ export default function Publish() {
       }
 
       // Guardar la ubicación elegida como default del perfil si todavía no
-      // tiene una, así la próxima publicación arranca precargada.
-      if (location && profile && profile.lat == null) {
+      // tiene una, así la próxima publicación arranca precargada. NO en modo
+      // concierge: pisaría la ubicación del ADMIN con la del producto ajeno.
+      if (!onBehalf && location && profile && profile.lat == null) {
         await supabase
           .from('profiles')
           .update({ lat: location.lat, lng: location.lng, zone: profile.zone ?? (locationLabel.trim() || null) })
@@ -282,7 +292,7 @@ export default function Publish() {
           : {}
         const { data, error: err } = await supabase
           .from('listings')
-          .insert({ ...payload, ...auctionFields, seller_id: session.user.id })
+          .insert({ ...payload, ...auctionFields, seller_id: sellerId })
           .select('id')
           .single()
         if (err) throw err
@@ -661,6 +671,11 @@ export default function Publish() {
         <p className="mt-2 text-xs font-medium text-neutral-500">
           {stepInfo.name} · Paso {step} de {WIZARD_STEPS.length}
         </p>
+        {onBehalf && (
+          <div className="mt-2 rounded-lg bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-300 ring-1 ring-amber-500/25">
+            Publicando en nombre de <strong>{onBehalf.name}</strong> (modo admin)
+          </div>
+        )}
       </header>
 
       <form onSubmit={handleWizardSubmit} className="px-5 py-5">

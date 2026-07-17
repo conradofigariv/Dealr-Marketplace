@@ -98,7 +98,12 @@ src/
             Auth Onboarding Saved Notifications Feedback Explorar(grid de categorías) SavedSearches(/busquedas) MapView(/mapa)
 api/og.ts   OG para crawlers
 supabase/migrations/, supabase/functions/didit-webhook/ (verificación de identidad, opcional)
+supabase/functions/admin-create-seller/ (concierge: crea cuenta de vendedor por email — service role, gateada a is_admin — para publicar en su nombre desde /admin)
 ```
+
+## Concierge (publicar en nombre de un vendedor)
+
+Para el onboarding manual del admin (growth): en `/admin`, "Publicar en nombre de un vendedor" pide **nombre + email del vendedor** → la Edge Function **`admin-create-seller`** (service role, verifica `is_admin()` por el JWT) crea una cuenta REAL con ese email (`email_confirm=true`, sin mandar mail; el username sale de `user_metadata.username` que lee `handle_new_user`; si el email ya existe, reusa la cuenta) → el front navega a `Publish` en **modo on-behalf** (`location.state.onBehalf = {id, name}`): el mismo formulario de siempre, pero el insert usa `seller_id = onBehalf.id` (la policy "admin modera" `with check (is_admin())` lo permite; las policies son OR) y **no** guarda la ubicación al perfil del admin. Banner ámbar "Publicando en nombre de X". La cuenta es **reclamable**: el vendedor entra con magic link a ese email y encuentra su publicación + mensajes. **Requiere deploy:** `supabase functions deploy admin-create-seller` (usa el service role que Supabase inyecta; sin secrets nuevos). Caveat: hasta que el vendedor reclame la cuenta, los mensajes de compradores quedan sin responder → avisarle por WhatsApp que entre con su mail.
 
 ## Animaciones
 
