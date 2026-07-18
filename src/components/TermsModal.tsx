@@ -188,6 +188,10 @@ export default function TermsModal({
   const [open, setOpen] = useState<number | null>(0)
   const [accepting, setAccepting] = useState(false)
   const [confirmedAge, setConfirmedAge] = useState(false)
+  // Aceptación rápida (como la mayoría de las apps): en el ingreso se ve un
+  // resumen; el texto completo está a un toque. En modo lectura (desde
+  // Configuración) se abre directo el texto completo.
+  const [showFull, setShowFull] = useState(viewOnly)
 
   async function accept() {
     if (!onAccept) return
@@ -219,49 +223,77 @@ export default function TermsModal({
         <p className="text-lg font-bold text-white">Dealr — Términos y Condiciones de Uso</p>
         <p className="mt-0.5 text-xs text-neutral-500">Última actualización: 30 de junio de 2026</p>
 
-        <div className="mt-4 divide-y divide-neutral-900 overflow-hidden rounded-2xl ring-1 ring-neutral-800">
-          {SECTIONS.map((s, i) => {
-            const isOpen = open === i
-            return (
-              <div key={i}>
-                <button
-                  onClick={() => setOpen(isOpen ? null : i)}
-                  className="flex w-full items-center justify-between gap-3 bg-neutral-900/40 px-4 py-3 text-left text-sm font-semibold text-white transition active:bg-neutral-900"
-                >
-                  <span>{s.title}</span>
-                  <svg
-                    viewBox="0 0 24 24"
-                    className={`h-4 w-4 shrink-0 text-neutral-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                  >
-                    <path d="m6 9 6 6 6-6" />
-                  </svg>
-                </button>
-                {isOpen && (
-                  <div className="space-y-3 px-4 py-3 text-[13px] leading-relaxed text-neutral-300">
-                    {s.blocks.map((b, j) =>
-                      'ul' in b ? (
-                        <ul key={j} className="list-disc space-y-1 pl-5">
-                          {b.ul.map((li, k) => (
-                            <li key={k}>{li}</li>
-                          ))}
-                        </ul>
-                      ) : (
-                        <p key={j}>{b.p}</p>
-                      ),
+        {!showFull ? (
+          /* Resumen rápido: lo esencial en 4 puntos + link al texto completo. */
+          <div className="mt-4 space-y-3">
+            <p className="text-sm leading-relaxed text-neutral-300">
+              Dealr es un marketplace local que conecta compradores y vendedores de Córdoba. Las
+              operaciones se cierran entre las partes, por fuera de la app:{' '}
+              <strong className="text-white">Dealr no procesa pagos ni es parte de la compraventa</strong>.
+            </p>
+            <ul className="space-y-2.5 rounded-2xl bg-neutral-900/50 p-4 text-sm leading-snug text-neutral-300 ring-1 ring-neutral-800">
+              <li className="flex gap-2.5"><span className="text-emerald-400">✓</span> Tenés que ser mayor de 18 años.</li>
+              <li className="flex gap-2.5"><span className="text-emerald-400">✓</span> Los productos son de los usuarios: revisá antes de pagar y encontrate en lugares públicos.</li>
+              <li className="flex gap-2.5"><span className="text-emerald-400">✓</span> Prohibido publicar cosas ilegales (armas, drogas, robado, falsificado).</li>
+              <li className="flex gap-2.5"><span className="text-emerald-400">✓</span> Podés calificar, denunciar y bloquear. Moderamos lo que rompe las reglas.</li>
+            </ul>
+            <button
+              onClick={() => setShowFull(true)}
+              className="text-sm font-semibold text-emerald-400 underline-offset-2 hover:underline"
+            >
+              Leer los Términos completos →
+            </button>
+          </div>
+        ) : (
+          <>
+            {!viewOnly && (
+              <button onClick={() => setShowFull(false)} className="mt-3 text-sm font-medium text-neutral-500">
+                ← Volver al resumen
+              </button>
+            )}
+            <div className="mt-4 divide-y divide-neutral-900 overflow-hidden rounded-2xl ring-1 ring-neutral-800">
+              {SECTIONS.map((s, i) => {
+                const isOpen = open === i
+                return (
+                  <div key={i}>
+                    <button
+                      onClick={() => setOpen(isOpen ? null : i)}
+                      className="flex w-full items-center justify-between gap-3 bg-neutral-900/40 px-4 py-3 text-left text-sm font-semibold text-white transition active:bg-neutral-900"
+                    >
+                      <span>{s.title}</span>
+                      <svg
+                        viewBox="0 0 24 24"
+                        className={`h-4 w-4 shrink-0 text-neutral-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      >
+                        <path d="m6 9 6 6 6-6" />
+                      </svg>
+                    </button>
+                    {isOpen && (
+                      <div className="space-y-3 px-4 py-3 text-[13px] leading-relaxed text-neutral-300">
+                        {s.blocks.map((b, j) =>
+                          'ul' in b ? (
+                            <ul key={j} className="list-disc space-y-1 pl-5">
+                              {b.ul.map((li, k) => (
+                                <li key={k}>{li}</li>
+                              ))}
+                            </ul>
+                          ) : (
+                            <p key={j}>{b.p}</p>
+                          ),
+                        )}
+                      </div>
                     )}
                   </div>
-                )}
-              </div>
-            )
-          })}
-        </div>
-
-        <p className="mt-5 text-center text-sm font-semibold text-neutral-400">Dealr — El mercado sin garcas</p>
+                )
+              })}
+            </div>
+          </>
+        )}
       </div>
 
       {/* Footer fijo: confirmación de edad + las dos acciones */}
