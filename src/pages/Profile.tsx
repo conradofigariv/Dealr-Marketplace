@@ -179,6 +179,7 @@ export default function Profile() {
     }
     if (o.offerStatus === 'accepted') return { label: 'Aceptada', cls: 'bg-emerald-500/15 text-emerald-400' }
     if (o.offerStatus === 'rejected') return { label: 'Rechazada', cls: 'bg-neutral-800 text-neutral-500' }
+    if (o.offerStatus === 'expired') return { label: 'Vencida', cls: 'bg-neutral-800 text-neutral-500' }
     return { label: 'Pendiente', cls: 'bg-amber-500/15 text-amber-400' }
   }
 

@@ -159,7 +159,7 @@ export default function Chats() {
                       {photo ? (
                         <img src={photoUrl(photo)} alt="" className="h-full w-full object-cover" />
                       ) : isWelcome && other?.avatar_url ? (
-                        <img src={photoUrl(other.avatar_url)} alt="" className="h-full w-full object-cover" />
+                        <img src={photoUrl(other.avatar_url)} alt="" referrerPolicy="no-referrer" className="h-full w-full object-cover" />
                       ) : isWelcome ? (
                         other?.username?.slice(0, 1).toUpperCase()
                       ) : null}

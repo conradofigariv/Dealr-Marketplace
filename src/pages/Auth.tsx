@@ -122,8 +122,11 @@ export default function Auth() {
     return () => {
       cancelled = true
     }
+    // showEmailForm/linkSent en deps: el contenedor del botón se desmonta al ir
+    // al form de email y se recrea al volver — sin re-correr el efecto, Google
+    // no redibuja el botón y quedaba el espacio vacío.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [inApp])
+  }, [inApp, showEmailForm, linkSent])
 
   // El teléfono verificado es la señal de confianza base de Dealr.
   function normalizedPhone() {
