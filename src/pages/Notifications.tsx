@@ -127,7 +127,7 @@ function NotificationIcon({ n }: { n: AppNotification }) {
       <div className="relative shrink-0">
         <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-full bg-neutral-900 text-base font-bold text-white ring-1 ring-neutral-800">
           {n.actor.avatar_url ? (
-            <img src={photoUrl(n.actor.avatar_url)} alt={n.actor.username} className="h-full w-full object-cover" />
+            <img src={photoUrl(n.actor.avatar_url)} alt={n.actor.username} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
           ) : (
             n.actor.username.slice(0, 1).toUpperCase()
           )}

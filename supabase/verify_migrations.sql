@@ -137,7 +137,9 @@ with checks(mig, objeto, existe) as (
     ('00046', 'RPC admin_ban_auction',
       (exists (select 1 from pg_proc where proname='admin_ban_auction'))),
     ('00047', 'handle_new_user copia avatar de Google',
-      (exists (select 1 from pg_proc where proname='handle_new_user' and prosrc like '%picture%')))
+      (exists (select 1 from pg_proc where proname='handle_new_user' and prosrc like '%picture%'))),
+    ('00048', 'policy de listings incluye a postores',
+      (exists (select 1 from pg_policies where tablename='listings' and policyname='listings activas legibles por todos' and qual like '%bids%')))
 )
 select mig,
        objeto,

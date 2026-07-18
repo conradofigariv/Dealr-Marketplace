@@ -324,10 +324,13 @@ export default function Publish() {
   }
 
   // Compartir la publicación recién creada: share nativo si existe
-  // (abre la hoja del sistema), si no directo a WhatsApp.
+  // (abre la hoja del sistema), si no directo a WhatsApp. En modo concierge
+  // el mensaje va dirigido AL VENDEDOR (avisarle que reclame su cuenta).
   function share() {
     const url = `${window.location.origin}/p/${publishedId}`
-    const text = `${title.trim()} — ${formatPrice(Number(price), currency)}\n${url}`
+    const text = onBehalf
+      ? `¡Hola ${onBehalf.name}! Ya publiqué tu producto en Dealr: ${title.trim()} — ${formatPrice(Number(price), currency)}\n${url}\n\nEntrá con tu email en ${window.location.origin} para ver los mensajes de los compradores.`
+      : `${title.trim()} — ${formatPrice(Number(price), currency)}\n${url}`
     if (navigator.share) {
       navigator.share({ text }).catch(() => {})
     } else {
@@ -372,17 +375,19 @@ export default function Publish() {
         </div>
         <h1 className="text-3xl font-bold tracking-tight text-white">¡Publicado!</h1>
         <p className="mx-auto mt-2 max-w-xs text-sm text-neutral-400">
-          Tu publicación ya está visible para todos. Compartila para venderla más rápido.
+          {onBehalf
+            ? `La publicación de ${onBehalf.name} ya está visible. Avisale por WhatsApp que entre con su mail para responder a los compradores.`
+            : 'Tu publicación ya está visible para todos. Compartila para venderla más rápido.'}
         </p>
         <div className="mt-10 space-y-4">
           <button onClick={share} className="btn-primary flex items-center justify-center gap-2">
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="currentColor">
               <path d="M12 2a10 10 0 0 0-8.6 15.1L2 22l5-1.3A10 10 0 1 0 12 2zm5.3 14.1c-.2.6-1.2 1.2-1.7 1.2-.4.1-1 .1-1.6-.1a14 14 0 0 1-1.5-.5c-2.6-1.1-4.3-3.7-4.4-3.9-.1-.2-1-1.4-1-2.6 0-1.2.6-1.8.9-2 .2-.3.5-.3.7-.3h.5c.2 0 .4 0 .6.4l.9 2c.1.2.1.4 0 .6l-.4.6-.4.5c-.1.1-.3.3-.1.6.2.3.7 1.2 1.5 1.9 1 .9 1.9 1.2 2.2 1.4.3.1.4.1.6-.1l.7-.9c.2-.3.4-.2.7-.1l1.8.8c.3.2.5.2.5.4.1.1.1.6-.1 1.1z" />
             </svg>
-            Compartir por WhatsApp
+            {onBehalf ? 'Avisarle por WhatsApp' : 'Compartir por WhatsApp'}
           </button>
           <Link to={`/p/${publishedId}`} className="btn-outline block py-3 text-center text-sm">
-            Ver mi publicación
+            {onBehalf ? 'Ver la publicación' : 'Ver mi publicación'}
           </Link>
           <button
             onClick={() => {

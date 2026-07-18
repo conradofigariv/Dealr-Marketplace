@@ -13,7 +13,9 @@ export default function Avatar({ profile, size = 'md' }: { profile: Profile; siz
       className={`flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-neutral-900 font-bold text-white ring-1 ring-neutral-800 ${sizes[size]}`}
     >
       {profile.avatar_url ? (
-        <img src={photoUrl(profile.avatar_url)} alt={profile.username} className="h-full w-full object-cover" />
+        // no-referrer: las fotos de cuenta de Google (lh3.googleusercontent.com,
+        // ver 00047) rechazan la carga con referrer de otro sitio.
+        <img src={photoUrl(profile.avatar_url)} alt={profile.username} referrerPolicy="no-referrer" className="h-full w-full object-cover" />
       ) : (
         profile.username.slice(0, 1).toUpperCase()
       )}
