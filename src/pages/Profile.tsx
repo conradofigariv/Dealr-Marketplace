@@ -15,6 +15,7 @@ import NotificationSettings from '../components/NotificationSettings'
 import InstallButton from '../components/InstallButton'
 import SupportModal from '../components/SupportModal'
 import TermsModal from '../components/TermsModal'
+import DeleteAccountModal from '../components/DeleteAccountModal'
 import { useToast } from '../components/Toast'
 import { canUseCotillon, sendCotillon } from '../lib/cotillon'
 import { checkForUpdate } from '../lib/swUpdate'
@@ -61,6 +62,7 @@ export default function Profile() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [termsOpen, setTermsOpen] = useState(false)
   const [supportOpen, setSupportOpen] = useState(false)
+  const [deleteAccountOpen, setDeleteAccountOpen] = useState(false)
   const [myListingsOpen, setMyListingsOpen] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -923,12 +925,24 @@ export default function Profile() {
             >
               Cerrar sesión
             </button>
+            {/* Zona de peligro: separada del resto, no compite visualmente con
+                las acciones normales. */}
+            <button
+              onClick={() => {
+                setSettingsOpen(false)
+                setDeleteAccountOpen(true)
+              }}
+              className="mt-4 w-full rounded-xl px-4 py-3 text-left text-sm font-medium text-neutral-600 transition hover:text-red-400"
+            >
+              Eliminar cuenta
+            </button>
           </div>
         </Modal>
       )}
 
       {supportOpen && <SupportModal onClose={() => setSupportOpen(false)} />}
       {termsOpen && <TermsModal viewOnly onReject={() => setTermsOpen(false)} />}
+      {deleteAccountOpen && <DeleteAccountModal onClose={() => setDeleteAccountOpen(false)} />}
     </div>
   )
 }

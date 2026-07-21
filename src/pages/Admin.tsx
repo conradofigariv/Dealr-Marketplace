@@ -43,6 +43,14 @@ interface Metrics {
   sellers_total: number
   listings_active: number
   listings_total: number
+  deletions_7d: number
+  deletions_total: number
+}
+
+// Desglose de motivos de baja (RPC admin_deletion_reasons, 00049).
+interface DeletionReason {
+  reason: string
+  total: number
 }
 
 // Disputa de no-retiro de subasta (RPC admin_auction_disputes, 00046).
@@ -67,7 +75,7 @@ function pct(part: number, base: number): string {
   return `${Math.round((part / base) * 100)}%`
 }
 
-function MetricsPanel({ m }: { m: Metrics }) {
+function MetricsPanel({ m, deletionReasons }: { m: Metrics; deletionReasons: DeletionReason[] }) {
   // Funnel de los últimos 7 días: cada etapa con su barra relativa a visitas.
   const funnel = [
     { label: 'Visitaron la app', value: m.visitors_7d },
@@ -124,6 +132,26 @@ function MetricsPanel({ m }: { m: Metrics }) {
           publicaciones activas: <strong className="text-neutral-300">{m.listings_active}</strong> de {m.listings_total}
         </p>
       </div>
+
+      {/* Bajas de cuenta (00049): solo aparece si hubo alguna. */}
+      {m.deletions_total > 0 && (
+        <div className="surface p-4">
+          <div className="mb-2.5 flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-white">Bajas de cuenta</h2>
+            <span className="text-[11px] text-neutral-500">
+              {m.deletions_7d} en 7d · {m.deletions_total} en total
+            </span>
+          </div>
+          <div className="space-y-1.5">
+            {deletionReasons.map((r) => (
+              <div key={r.reason} className="flex items-center justify-between text-xs">
+                <span className="text-neutral-300">{r.reason}</span>
+                <span className="font-semibold text-white">{r.total}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -138,6 +166,7 @@ export default function Admin() {
   const [showResolved, setShowResolved] = useState(false)
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [metricsError, setMetricsError] = useState('')
+  const [deletionReasons, setDeletionReasons] = useState<DeletionReason[]>([])
   // Disputas de no-retiro de subasta (RPC 00046).
   const [disputes, setDisputes] = useState<Dispute[]>([])
   const [banningId, setBanningId] = useState<string | null>(null) // listing con el picker de meses abierto
@@ -186,6 +215,10 @@ export default function Admin() {
         return
       }
       setMetrics(data as Metrics)
+    })
+    // Desglose de motivos de baja (00049); best-effort, no rompe si falta.
+    supabase.rpc('admin_deletion_reasons').then(({ data, error }) => {
+      if (!error && data) setDeletionReasons(data as DeletionReason[])
     })
   }, [profile])
 
@@ -364,7 +397,7 @@ export default function Admin() {
       </div>
 
       {/* Métricas + funnel de adquisición */}
-      {metrics && <MetricsPanel m={metrics} />}
+      {metrics && <MetricsPanel m={metrics} deletionReasons={deletionReasons} />}
       {metricsError && <p className="px-5 pb-3 text-xs text-amber-400">{metricsError}</p>}
 
       {/* Disputas de subasta (no-retiro). Solo aparece si hay casos. */}

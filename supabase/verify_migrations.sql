@@ -139,7 +139,11 @@ with checks(mig, objeto, existe) as (
     ('00047', 'handle_new_user copia avatar de Google',
       (exists (select 1 from pg_proc where proname='handle_new_user' and prosrc like '%picture%'))),
     ('00048', 'policy de listings incluye a postores',
-      (exists (select 1 from pg_policies where tablename='listings' and policyname='listings activas legibles por todos' and qual like '%bids%')))
+      (exists (select 1 from pg_policies where tablename='listings' and policyname='listings activas legibles por todos' and qual like '%bids%'))),
+    ('00049', 'tabla account_deletions',
+      (to_regclass('public.account_deletions') is not null)),
+    ('00049', 'RPC admin_deletion_reasons',
+      (exists (select 1 from pg_proc where proname='admin_deletion_reasons')))
 )
 select mig,
        objeto,
