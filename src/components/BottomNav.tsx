@@ -55,7 +55,15 @@ export default function BottomNav() {
   // hacia el que te movés en la barra (el Shell lee `tabDir` del state).
   const currentIdx = tabs.findIndex((t) => t.to === location.pathname)
   return (
-    <nav className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2">
+    // [transform:translateZ(0)]: fuerza una capa de GPU propia para esta barra
+    // fixed. Sin esto, en iOS el backdrop-blur de abajo obliga a Safari a
+    // repintarla en cada frame de scroll; con el feed cargado de fotos, el
+    // hilo principal se atrasa y el compositor "pierde" la barra — se ve
+    // scrolleando con el contenido hasta que el scroll frena. Promoverla a su
+    // propia capa la desacopla del hilo principal (no pisa -translate-x-1/2:
+    // en Tailwind v4 los `translate-*` usan la propiedad `translate`, no
+    // `transform`).
+    <nav className="fixed bottom-[max(1rem,env(safe-area-inset-bottom))] left-1/2 z-30 -translate-x-1/2 [transform:translateZ(0)] [will-change:transform]">
       <div className="flex items-center gap-2 rounded-full bg-neutral-900/90 px-3 py-2 ring-1 ring-white/10 backdrop-blur-md">
         {tabs.map((tab, idx) => (
           <NavLink
