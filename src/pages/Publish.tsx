@@ -782,11 +782,6 @@ export default function Publish() {
           {step === 2 && (
             <>
               <div>
-                <label className={labelClass}>Descripción</label>
-                <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Estado, uso, accesorios incluidos…" className="input-line resize-none" />
-              </div>
-
-              <div>
                 <label className={labelClass}>Categoría</label>
                 <select
                   required
@@ -882,6 +877,14 @@ export default function Publish() {
                   )}
                 </div>
               ))}
+
+              {/* Descripción al final: se completa mejor DESPUÉS de fijar los
+                  datos estructurados (marca/modelo/año/km), sin tener que
+                  volver a subir a seleccionarlos. */}
+              <div>
+                <label className={labelClass}>Descripción</label>
+                <textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Estado, uso, accesorios incluidos…" className="input-line resize-none" />
+              </div>
             </>
           )}
 
