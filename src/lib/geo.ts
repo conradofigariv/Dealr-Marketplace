@@ -105,41 +105,71 @@ export interface GeocodeResult extends LatLng {
   label: string
 }
 
+// Nominatim no entiende las abreviaturas argentinas de tipo de vía ("Bv san
+// juan" no matchea "Boulevard San Juan"). Las expandimos antes de buscar.
+function expandStreetAbbrev(q: string): string {
+  return q
+    .replace(/\b(bv|bvd|blvd|boul)\b\.?/gi, 'Boulevard')
+    .replace(/\b(av|avda|avd)\b\.?/gi, 'Avenida')
+    .replace(/\bgral\b\.?/gi, 'General')
+    .replace(/\bpje\b\.?/gi, 'Pasaje')
+}
+
+// Una tanda de resultados de Nominatim para un texto dado.
+async function nominatim(q: string, near?: LatLng | null): Promise<GeocodeResult[]> {
+  const res = await fetch(
+    `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}` +
+      `&countrycodes=ar&accept-language=es&limit=8&addressdetails=1`,
+  )
+  if (!res.ok) return []
+  const data = (await res.json()) as Array<{
+    lat: string
+    lon: string
+    display_name: string
+    address?: Record<string, string>
+  }>
+  const results = data.map((d) => {
+    const a = d.address ?? {}
+    const road = a.road || a.pedestrian || a.footway || a.residential
+    const house = a.house_number
+    const local = a.suburb || a.neighbourhood || a.city_district || a.town || a.village || a.city || a.county
+    const region = a.state || a.province
+    const parts = road ? [`${road}${house ? ' ' + house : ''}`, local, region] : [local, region]
+    const unique = parts.filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i)
+    return {
+      lat: Number(d.lat),
+      lng: Number(d.lon),
+      label: unique.length ? unique.join(', ') : d.display_name.split(',').slice(0, 2).join(',').trim(),
+    }
+  })
+  if (near) results.sort((a, b) => haversineKm(near, a) - haversineKm(near, b))
+  return results
+}
+
+// Pega el número de casa tipeado al label de un resultado a nivel calle.
+function withHouseNumber(label: string, number: string): string {
+  const [street, ...rest] = label.split(',').map((s) => s.trim())
+  return [`${street} ${number}`, ...rest].join(', ')
+}
+
 export async function geocodeSearch(query: string, near?: LatLng | null): Promise<GeocodeResult[]> {
-  const q = query.trim()
-  if (q.length < 3) return []
+  const raw = query.trim()
+  if (raw.length < 3) return []
   try {
-    const res = await fetch(
-      `https://nominatim.openstreetmap.org/search?format=jsonv2&q=${encodeURIComponent(q)}` +
-        `&countrycodes=ar&accept-language=es&limit=8&addressdetails=1`,
-    )
-    if (!res.ok) return []
-    const data = (await res.json()) as Array<{
-      lat: string
-      lon: string
-      display_name: string
-      address?: Record<string, string>
-    }>
-    const results = data.map((d) => {
-      const a = d.address ?? {}
-      const road = a.road || a.pedestrian || a.footway || a.residential
-      const house = a.house_number
-      const local = a.suburb || a.neighbourhood || a.city_district || a.town || a.village || a.city || a.county
-      const region = a.state || a.province
-      // Si Nominatim devolvió una CALLE (con o sin número), mostramos la
-      // dirección (ej. "Crisol 51, Nueva Córdoba") para que el vendedor vea su
-      // ubicación exacta en la lista. El lat/lng ya viene a nivel dirección.
-      const parts = road ? [`${road}${house ? ' ' + house : ''}`, local, region] : [local, region]
-      const unique = parts.filter(Boolean).filter((v, i, arr) => arr.indexOf(v) === i)
-      return {
-        lat: Number(d.lat),
-        lng: Number(d.lon),
-        label: unique.length ? unique.join(', ') : d.display_name.split(',').slice(0, 2).join(',').trim(),
-      }
-    })
-    // Más cercano primero (si tenemos un punto de referencia).
-    if (near) results.sort((a, b) => haversineKm(near, a) - haversineKm(near, b))
-    return results
+    const q = expandStreetAbbrev(raw)
+    const results = await nominatim(q, near)
+    if (results.length) return results
+
+    // Fallback: si tiene un número de casa al final y no encontró nada
+    // (Córdoba tiene muchos números sin mapear en OSM), buscamos la CALLE
+    // sola y le anexamos el número al label. El pin cae en la calle correcta
+    // y el vendedor lo arrastra al punto exacto.
+    const m = q.match(/^(.*?)[\s,]+(\d{1,5})\s*$/)
+    if (m) {
+      const streetResults = await nominatim(m[1].trim(), near)
+      return streetResults.map((r) => ({ ...r, label: withHouseNumber(r.label, m[2]) }))
+    }
+    return []
   } catch {
     return []
   }
