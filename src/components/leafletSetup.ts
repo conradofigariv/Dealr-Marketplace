@@ -15,4 +15,9 @@ L.Icon.Default.mergeOptions({
 })
 
 export const TILE_URL = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+// Tile CLARO (CARTO Voyager): calles y nombres bien legibles. Solo para el
+// selector de ubicación al publicar (LocationPicker), donde importa elegir con
+// precisión. El resto de los mapas (detalle, MapView) siguen con el oscuro
+// para no romper el tema de la app.
+export const TILE_URL_LIGHT = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png'
 export const TILE_ATTRIBUTION = '© OpenStreetMap · © CARTO'

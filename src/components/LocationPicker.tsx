@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import L from 'leaflet'
-import { TILE_URL, TILE_ATTRIBUTION } from './leafletSetup'
+import { TILE_URL_LIGHT, TILE_ATTRIBUTION } from './leafletSetup'
 import { CORDOBA, reverseGeocode, requestBuyerLocation, geocodeSearch, getCachedBuyerLocation, type LatLng, type GeocodeResult } from '../lib/geo'
 
 // Mapa interactivo para elegir la ubicación al publicar: buscador de ciudad/
@@ -26,6 +26,7 @@ export default function LocationPicker({ value, onChange }: Props) {
   const [searching, setSearching] = useState(false)
   const [locating, setLocating] = useState(false)
   const [locError, setLocError] = useState('')
+  const [fullscreen, setFullscreen] = useState(false)
   // Última etiqueta elegida: evita que el autocompletado vuelva a buscar el
   // texto que acabamos de fijar al elegir un resultado.
   const pickedRef = useRef('')
@@ -53,7 +54,7 @@ export default function LocationPicker({ value, onChange }: Props) {
       attributionControl: true,
     })
     mapRef.current = map
-    L.tileLayer(TILE_URL, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map)
+    L.tileLayer(TILE_URL_LIGHT, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map)
 
     const marker = L.marker([start.lat, start.lng], { draggable: true }).addTo(map)
     markerRef.current = marker
@@ -93,6 +94,13 @@ export default function LocationPicker({ value, onChange }: Props) {
     markerRef.current.setLatLng([value.lat, value.lng])
     mapRef.current.setView([value.lat, value.lng], mapRef.current.getZoom())
   }, [value])
+
+  // Al entrar/salir de pantalla completa, el contenedor cambia de tamaño:
+  // recalculamos (el ResizeObserver también, pero forzamos por las dudas).
+  useEffect(() => {
+    const t = setTimeout(() => mapRef.current?.invalidateSize(), 60)
+    return () => clearTimeout(t)
+  }, [fullscreen])
 
   // Autocompletado: busca con debounce mientras escribís y muestra las
   // coincidencias ordenadas por cercanía (no hace falta apretar "Buscar").
@@ -160,7 +168,15 @@ export default function LocationPicker({ value, onChange }: Props) {
   }
 
   return (
-    <div>
+    // En pantalla completa, el componente entero pasa a un overlay fijo (el
+    // buscador sigue arriba, usable) y el mapa ocupa el resto.
+    <div
+      className={
+        fullscreen
+          ? 'fixed inset-0 z-[900] flex flex-col bg-black px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-[max(1rem,env(safe-area-inset-top))]'
+          : ''
+      }
+    >
       {/* OJO: NO usar <form> acá. Este componente se monta dentro del <form> del
           wizard de Publicar, y un form anidado es HTML inválido → el submit de
           "Buscar"/Enter terminaba enviando el form de afuera y saltaba de paso.
@@ -223,13 +239,13 @@ export default function LocationPicker({ value, onChange }: Props) {
         )}
       </div>
 
-      <div className="relative isolate overflow-hidden rounded-2xl ring-1 ring-neutral-800">
-        <div ref={containerRef} className="h-56 w-full bg-neutral-900" />
+      <div className={`relative isolate overflow-hidden rounded-2xl ring-1 ring-neutral-300 ${fullscreen ? 'flex-1' : ''}`}>
+        <div ref={containerRef} className={`w-full bg-neutral-200 ${fullscreen ? 'h-full' : 'h-56'}`} />
         <button
           type="button"
           onClick={useMyLocation}
           disabled={locating}
-          className="absolute right-3 top-3 z-[400] flex items-center gap-1.5 rounded-full bg-black/70 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm disabled:opacity-80"
+          className="absolute right-3 top-3 z-[400] flex items-center gap-1.5 rounded-full bg-black/75 px-3 py-1.5 text-xs font-semibold text-white backdrop-blur-sm disabled:opacity-80"
         >
           {locating ? (
             <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
@@ -241,10 +257,33 @@ export default function LocationPicker({ value, onChange }: Props) {
           )}
           {locating ? 'Buscando…' : 'Usar mi ubicación'}
         </button>
-        <p className="pointer-events-none absolute bottom-2 left-3 z-[400] text-[11px] text-white/70 drop-shadow">
+        {/* Expandir a pantalla completa (solo cuando NO está expandido; cuando
+            lo está, se cierra con el botón "Listo" de abajo). */}
+        {!fullscreen && (
+          <button
+            type="button"
+            onClick={() => setFullscreen(true)}
+            aria-label="Pantalla completa"
+            className="absolute bottom-3 right-3 z-[400] flex h-9 w-9 items-center justify-center rounded-full bg-black/75 text-white backdrop-blur-sm"
+          >
+            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
+            </svg>
+          </button>
+        )}
+        <p className="pointer-events-none absolute bottom-2 left-3 z-[400] rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white backdrop-blur-sm">
           Tocá el mapa o arrastrá el pin para ajustar
         </p>
       </div>
+      {fullscreen && (
+        <button
+          type="button"
+          onClick={() => setFullscreen(false)}
+          className="btn-primary mt-3 shrink-0"
+        >
+          Listo
+        </button>
+      )}
       {locError && <p className="mt-2 text-xs text-amber-400">{locError}</p>}
     </div>
   )
