@@ -9,7 +9,9 @@ const DAY_KEY = 'dealr_visit_day'
 
 export function trackVisit() {
   try {
-    const today = new Date().toISOString().slice(0, 10)
+    // Día ARGENTINO (no UTC): alinea el throttle local con el corte de la DB
+    // (track_visit data por medianoche argentina, 00050). en-CA da YYYY-MM-DD.
+    const today = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' })
     if (localStorage.getItem(DAY_KEY) === today) return // ya contamos hoy
     let key = localStorage.getItem(KEY)
     if (!key) {

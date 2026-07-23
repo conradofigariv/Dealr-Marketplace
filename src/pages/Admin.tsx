@@ -29,22 +29,35 @@ const tableByType: Partial<Record<ReportTargetType, string>> = {
 
 // Agregados del RPC admin_metrics (00044).
 interface Metrics {
-  visitors_today: number
-  visitors_7d: number
+  days: number
+  // Ventana seleccionada (según p_days)
+  visitors: number
+  users: number
+  viewers: number
+  buyers: number
+  sellers: number
+  deletions: number
+  // Totales (no dependen del período)
   visitors_total: number
-  users_today: number
-  users_7d: number
   users_total: number
-  viewers_7d: number
   viewers_total: number
-  buyers_7d: number
   buyers_total: number
-  sellers_7d: number
   sellers_total: number
+  deletions_total: number
   listings_active: number
   listings_total: number
-  deletions_7d: number
-  deletions_total: number
+}
+
+// Períodos del selector. days=1 (hoy) / 7 / 15 / 30 (mes), con corte del día
+// a medianoche argentina (lo resuelve el RPC admin_metrics, 00050).
+const PERIODS = [
+  { d: 1, label: 'Hoy' },
+  { d: 7, label: '7 días' },
+  { d: 15, label: '15 días' },
+  { d: 30, label: 'Mes' },
+]
+function periodLabel(d: number): string {
+  return d === 1 ? 'hoy' : d === 30 ? 'último mes' : `últimos ${d} días`
 }
 
 // Desglose de motivos de baja (RPC admin_deletion_reasons, 00049).
@@ -75,24 +88,49 @@ function pct(part: number, base: number): string {
   return `${Math.round((part / base) * 100)}%`
 }
 
-function MetricsPanel({ m, deletionReasons }: { m: Metrics; deletionReasons: DeletionReason[] }) {
-  // Funnel de los últimos 7 días: cada etapa con su barra relativa a visitas.
+function MetricsPanel({
+  m,
+  deletionReasons,
+  days,
+  setDays,
+}: {
+  m: Metrics
+  deletionReasons: DeletionReason[]
+  days: number
+  setDays: (d: number) => void
+}) {
+  // Funnel del período elegido: cada etapa con su barra relativa a visitas.
   const funnel = [
-    { label: 'Visitaron la app', value: m.visitors_7d },
-    { label: 'Se registraron', value: m.users_7d },
-    { label: 'Vieron un producto', value: m.viewers_7d },
-    { label: 'Iniciaron un chat', value: m.buyers_7d },
-    { label: 'Publicaron algo', value: m.sellers_7d },
+    { label: 'Visitaron la app', value: m.visitors },
+    { label: 'Se registraron', value: m.users },
+    { label: 'Vieron un producto', value: m.viewers },
+    { label: 'Iniciaron un chat', value: m.buyers },
+    { label: 'Publicaron algo', value: m.sellers },
   ]
   const base = funnel[0].value
   return (
     <div className="space-y-3 px-5 pb-4">
-      {/* Tarjetas: hoy / 7 días / total */}
+      {/* Selector de período */}
+      <div className="flex gap-1.5">
+        {PERIODS.map((p) => (
+          <button
+            key={p.d}
+            onClick={() => setDays(p.d)}
+            className={`flex-1 rounded-full py-2 text-xs font-semibold transition ${
+              days === p.d ? 'bg-white text-black' : 'bg-neutral-900 text-neutral-400 ring-1 ring-neutral-800'
+            }`}
+          >
+            {p.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tarjetas del período (con el total como referencia) */}
       <div className="grid grid-cols-3 gap-2">
         {[
-          { title: 'Visitas hoy', value: m.visitors_today, sub: `${m.visitors_7d} en 7d` },
-          { title: 'Usuarios nuevos hoy', value: m.users_today, sub: `${m.users_7d} en 7d` },
-          { title: 'Usuarios totales', value: m.users_total, sub: `${m.visitors_total} visitantes` },
+          { title: 'Visitas', value: m.visitors, sub: `${m.visitors_total} total` },
+          { title: 'Usuarios nuevos', value: m.users, sub: `${m.users_total} total` },
+          { title: 'Publicaron', value: m.sellers, sub: `${m.sellers_total} total` },
         ].map((c) => (
           <div key={c.title} className="surface p-3">
             <p className="text-[11px] leading-tight text-neutral-500">{c.title}</p>
@@ -102,10 +140,10 @@ function MetricsPanel({ m, deletionReasons }: { m: Metrics; deletionReasons: Del
         ))}
       </div>
 
-      {/* Funnel 7 días */}
+      {/* Funnel del período */}
       <div className="surface p-4">
         <div className="mb-3 flex items-baseline justify-between">
-          <h2 className="text-sm font-semibold text-white">Funnel · últimos 7 días</h2>
+          <h2 className="text-sm font-semibold text-white">Funnel · {periodLabel(days)}</h2>
           <span className="text-[11px] text-neutral-500">% sobre visitas</span>
         </div>
         <div className="space-y-2.5">
@@ -127,8 +165,8 @@ function MetricsPanel({ m, deletionReasons }: { m: Metrics; deletionReasons: Del
           ))}
         </div>
         <p className="mt-3 text-[11px] leading-relaxed text-neutral-500">
-          Conversión visita→registro (7d): <strong className="text-neutral-300">{pct(m.users_7d, m.visitors_7d)}</strong> ·
-          registro→publicó (total): <strong className="text-neutral-300">{pct(m.sellers_total, m.users_total)}</strong> ·
+          Conversión visita→registro: <strong className="text-neutral-300">{pct(m.users, m.visitors)}</strong> ·
+          registro→publicó: <strong className="text-neutral-300">{pct(m.sellers, m.users)}</strong> ·
           publicaciones activas: <strong className="text-neutral-300">{m.listings_active}</strong> de {m.listings_total}
         </p>
       </div>
@@ -139,7 +177,7 @@ function MetricsPanel({ m, deletionReasons }: { m: Metrics; deletionReasons: Del
           <div className="mb-2.5 flex items-baseline justify-between">
             <h2 className="text-sm font-semibold text-white">Bajas de cuenta</h2>
             <span className="text-[11px] text-neutral-500">
-              {m.deletions_7d} en 7d · {m.deletions_total} en total
+              {m.deletions} en {periodLabel(days)} · {m.deletions_total} en total
             </span>
           </div>
           <div className="space-y-1.5">
@@ -167,6 +205,7 @@ export default function Admin() {
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [metricsError, setMetricsError] = useState('')
   const [deletionReasons, setDeletionReasons] = useState<DeletionReason[]>([])
+  const [metricsDays, setMetricsDays] = useState(7) // período del selector
   // Disputas de no-retiro de subasta (RPC 00046).
   const [disputes, setDisputes] = useState<Dispute[]>([])
   const [banningId, setBanningId] = useState<string | null>(null) // listing con el picker de meses abierto
@@ -201,22 +240,27 @@ export default function Admin() {
     if (profile?.is_admin) load()
   }, [profile, load])
 
-  // Métricas del funnel (RPC 00044). Si la migración no está aplicada, se
-  // muestra el aviso en vez de romper el panel.
+  // Métricas del funnel (RPC 00044/00050). Re-consulta al cambiar el período.
+  // Si la migración no está aplicada, muestra el aviso en vez de romper.
   useEffect(() => {
     if (!profile?.is_admin) return
-    supabase.rpc('admin_metrics').then(({ data, error }) => {
+    supabase.rpc('admin_metrics', { p_days: metricsDays }).then(({ data, error }) => {
       if (error) {
         setMetricsError(
           /function|schema cache/i.test(error.message)
-            ? 'Métricas no disponibles: falta aplicar la migración 00044 en Supabase.'
+            ? 'Métricas no disponibles: falta aplicar la migración 00050 en Supabase.'
             : error.message,
         )
         return
       }
+      setMetricsError('')
       setMetrics(data as Metrics)
     })
-    // Desglose de motivos de baja (00049); best-effort, no rompe si falta.
+  }, [profile, metricsDays])
+
+  // Desglose de motivos de baja (00049); best-effort, no rompe si falta.
+  useEffect(() => {
+    if (!profile?.is_admin) return
     supabase.rpc('admin_deletion_reasons').then(({ data, error }) => {
       if (!error && data) setDeletionReasons(data as DeletionReason[])
     })
@@ -397,7 +441,9 @@ export default function Admin() {
       </div>
 
       {/* Métricas + funnel de adquisición */}
-      {metrics && <MetricsPanel m={metrics} deletionReasons={deletionReasons} />}
+      {metrics && (
+        <MetricsPanel m={metrics} deletionReasons={deletionReasons} days={metricsDays} setDays={setMetricsDays} />
+      )}
       {metricsError && <p className="px-5 pb-3 text-xs text-amber-400">{metricsError}</p>}
 
       {/* Disputas de subasta (no-retiro). Solo aparece si hay casos. */}

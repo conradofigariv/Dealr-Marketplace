@@ -143,7 +143,9 @@ with checks(mig, objeto, existe) as (
     ('00049', 'tabla account_deletions',
       (to_regclass('public.account_deletions') is not null)),
     ('00049', 'RPC admin_deletion_reasons',
-      (exists (select 1 from pg_proc where proname='admin_deletion_reasons')))
+      (exists (select 1 from pg_proc where proname='admin_deletion_reasons'))),
+    ('00050', 'admin_metrics con parámetro p_days',
+      (exists (select 1 from pg_proc where proname='admin_metrics' and pronargs=1)))
 )
 select mig,
        objeto,
