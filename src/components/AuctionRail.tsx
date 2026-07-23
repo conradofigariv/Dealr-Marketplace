@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import type { Listing } from '../lib/types'
-import { photoUrl } from '../lib/supabase'
+import { photoUrl, thumbUrl } from '../lib/supabase'
 import { formatPrice, timeLeftLabel } from '../lib/format'
 import SmartImage from './SmartImage'
 
@@ -24,7 +24,8 @@ export default function AuctionRail({ listings }: { listings: Listing[] }) {
             <div className="relative aspect-square w-full overflow-hidden rounded-xl bg-neutral-900 ring-1 ring-amber-500/30">
               {l.photos?.[0] && (
                 <SmartImage
-                  src={photoUrl(l.photos[0])}
+                  src={thumbUrl(l.photos[0])}
+                  fallbackSrc={photoUrl(l.photos[0])}
                   alt={l.title}
                   loading="lazy"
                   wrapperClassName="absolute inset-0"

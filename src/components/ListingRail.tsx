@@ -1,6 +1,6 @@
 import { Link } from 'react-router-dom'
 import type { Listing } from '../lib/types'
-import { photoUrl } from '../lib/supabase'
+import { photoUrl, thumbUrl } from '../lib/supabase'
 import { formatPrice } from '../lib/format'
 
 type RailListing = Pick<Listing, 'id' | 'title' | 'price' | 'currency' | 'photos'>
@@ -17,7 +17,18 @@ export default function ListingRail({ title, listings }: { title: string; listin
           <Link key={l.id} to={`/p/${l.id}`} className="w-32 shrink-0">
             <div className="aspect-square w-full overflow-hidden rounded-xl bg-neutral-900">
               {l.photos?.[0] && (
-                <img src={photoUrl(l.photos[0])} alt={l.title} loading="lazy" className="h-full w-full object-cover" />
+                <img
+                  src={thumbUrl(l.photos[0])}
+                  alt={l.title}
+                  loading="lazy"
+                  onError={(e) => {
+                    const img = e.currentTarget
+                    if (img.dataset.full) return
+                    img.dataset.full = '1'
+                    img.src = photoUrl(l.photos![0])
+                  }}
+                  className="h-full w-full object-cover"
+                />
               )}
             </div>
             <p className="mt-1.5 text-xs font-bold text-white">{formatPrice(l.price, l.currency)}</p>

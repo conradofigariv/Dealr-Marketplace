@@ -3,7 +3,7 @@ import { Link, useNavigate, useParams, useLocation } from 'react-router-dom'
 import { supabase, photoUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthGate } from '../hooks/useAuthGate'
-import { compressPhoto } from '../lib/images'
+import { compressPhoto, compressThumb } from '../lib/images'
 import { capture } from '../lib/analytics'
 import { conditionLabels, formatPrice } from '../lib/format'
 import type { Category, FieldDef, ListingCondition, Currency } from '../lib/types'
@@ -237,6 +237,16 @@ export default function Publish() {
           .from('listing-photos')
           .upload(path, photo.file!, { contentType: 'image/webp' })
         if (upErr) throw upErr
+        // Miniatura para el feed (best-effort: si falla, el feed cae a la
+        // grande vía onError). Convención de ruta: `.thumb.webp`.
+        try {
+          const thumb = await compressThumb(photo.file!)
+          await supabase.storage
+            .from('listing-photos')
+            .upload(path.replace(/\.webp$/, '.thumb.webp'), thumb, { contentType: 'image/webp' })
+        } catch {
+          /* sin miniatura: el feed usa la foto grande */
+        }
         paths.push(path)
       }
 
@@ -278,7 +288,12 @@ export default function Publish() {
         if (err) throw err
         // Best-effort: borrar del storage las fotos que el usuario quitó.
         const removed = originalPhotosRef.current.filter((p) => !paths.includes(p))
-        if (removed.length) await supabase.storage.from('listing-photos').remove(removed).catch(() => {})
+        if (removed.length) {
+          // Borrar también la miniatura de cada foto quitada (mismo nombre con
+          // `.thumb.webp`); remove ignora las que no existan.
+          const withThumbs = removed.flatMap((p) => [p, p.replace(/\.webp$/, '.thumb.webp')])
+          await supabase.storage.from('listing-photos').remove(withThumbs).catch(() => {})
+        }
         invalidateFeedCache()
         navigate(`/p/${id}`)
       } else {

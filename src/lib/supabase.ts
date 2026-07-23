@@ -35,3 +35,12 @@ export function photoUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) return path
   return supabase.storage.from('listing-photos').getPublicUrl(path).data.publicUrl
 }
+
+// URL de la miniatura de una foto (para el feed). Convención: la misma ruta
+// con `.thumb.webp`. Las publicaciones viejas no tienen miniatura → el feed
+// cae a la foto grande con `onError` (ver ListingCard/SmartImage). Se generan
+// al publicar (ver images.ts::compressThumb).
+export function thumbUrl(path: string): string {
+  if (/^https?:\/\//i.test(path)) return path
+  return photoUrl(path.replace(/\.webp$/i, '.thumb.webp'))
+}
