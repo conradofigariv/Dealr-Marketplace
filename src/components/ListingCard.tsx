@@ -1,7 +1,7 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { useEffect, useState, type MouseEvent } from 'react'
 import type { Listing } from '../lib/types'
-import { photoUrl, supabase } from '../lib/supabase'
+import { photoUrl, thumbUrl, supabase } from '../lib/supabase'
 import { formatPrice, priceDropPct, isRecentlyPosted, timeAgo, timeLeftLabel } from '../lib/format'
 import { formatDistance } from '../lib/geo'
 import { useAuth } from '../hooks/useAuth'
@@ -93,11 +93,19 @@ export default function ListingCard({
         <div className={`relative ${imgLoaded ? '' : 'aspect-[3/4]'}`}>
           {!imgLoaded && <div className="img-shimmer pointer-events-none absolute inset-0" />}
           <img
-            src={photoUrl(photo)}
+            src={thumbUrl(photo)}
             alt={listing.title}
             loading="lazy"
             decoding="async"
             onLoad={() => setImgLoaded(true)}
+            // Publicaciones viejas sin miniatura: caer a la foto grande (una
+            // sola vez, para no entrar en loop si esa también falla).
+            onError={(e) => {
+              const img = e.currentTarget
+              if (img.dataset.full) return
+              img.dataset.full = '1'
+              img.src = photoUrl(photo)
+            }}
             className={`block w-full transition-opacity duration-500 ${
               imgLoaded ? 'h-auto opacity-100' : 'absolute inset-0 h-full object-cover opacity-0'
             }`}
