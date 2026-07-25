@@ -147,15 +147,16 @@ export async function compressPhoto(file: File): Promise<File> {
 }
 
 // Miniatura para el FEED (grilla + rieles): se ve chica pero se descarga
-// muchísimo (cada visitante nuevo baja todas las portadas). 720px + calidad
-// 68% → nítida en la grilla (que muestra las portadas hasta ~2.5x DPR) y sigue
-// pesando ~10x menos que la grande. Ahí está el ahorro de egress real. Recibe
-// la foto ya comprimida, no necesita corregir EXIF de nuevo.
+// muchísimo (cada visitante nuevo baja todas las portadas). 800px + calidad
+// 78% → nítida en la grilla y sigue pesando ~90-110KB, ~8-10x menos que la
+// grande. Ahí está el ahorro de egress real: si se hace mucho más pesada,
+// vuelve el problema de egress del feed. El techo de 1MB le da aire pero el
+// que manda es la calidad. Recibe la foto ya comprimida, no corrige EXIF.
 export async function compressThumb(file: File): Promise<File> {
   return imageCompression(file, {
-    maxSizeMB: 0.12,
-    maxWidthOrHeight: 720,
-    initialQuality: 0.68,
+    maxSizeMB: 1,
+    maxWidthOrHeight: 800,
+    initialQuality: 0.78,
     fileType: 'image/webp',
     useWebWorker: true,
   })
