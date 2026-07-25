@@ -54,6 +54,9 @@ export default function LocationPicker({ value, onChange }: Props) {
       attributionControl: true,
     })
     mapRef.current = map
+    // Sin el prefijo "Leaflet |" para que la atribución sea corta y no choque
+    // con los controles del mapa en pantallas chicas.
+    map.attributionControl.setPrefix(false)
     L.tileLayer(TILE_URL_LIGHT, { attribution: TILE_ATTRIBUTION, maxZoom: 19 }).addTo(map)
 
     const marker = L.marker([start.lat, start.lng], { draggable: true }).addTo(map)
@@ -239,6 +242,11 @@ export default function LocationPicker({ value, onChange }: Props) {
         )}
       </div>
 
+      {/* Ayuda como texto arriba del mapa (antes iba adentro, abajo-izq, y se
+          pisaba con la atribución de Leaflet). */}
+      <p className="mb-1.5 px-1 text-[11px] text-neutral-500">
+        Tocá el mapa o arrastrá el pin para ubicar tu zona.
+      </p>
       <div className={`relative isolate overflow-hidden rounded-2xl ring-1 ring-neutral-300 ${fullscreen ? 'flex-1' : ''}`}>
         <div ref={containerRef} className={`w-full bg-neutral-200 ${fullscreen ? 'h-full' : 'h-56'}`} />
         <button
@@ -257,23 +265,21 @@ export default function LocationPicker({ value, onChange }: Props) {
           )}
           {locating ? 'Buscando…' : 'Usar mi ubicación'}
         </button>
-        {/* Expandir a pantalla completa (solo cuando NO está expandido; cuando
-            lo está, se cierra con el botón "Listo" de abajo). */}
+        {/* Expandir a pantalla completa (arriba-izq: abajo-der lo ocupa la
+            atribución de Leaflet). Solo cuando NO está expandido; se cierra
+            con el botón "Listo" de abajo. */}
         {!fullscreen && (
           <button
             type="button"
             onClick={() => setFullscreen(true)}
             aria-label="Pantalla completa"
-            className="absolute bottom-3 right-3 z-[400] flex h-9 w-9 items-center justify-center rounded-full bg-black/75 text-white backdrop-blur-sm"
+            className="absolute left-3 top-3 z-[400] flex h-9 w-9 items-center justify-center rounded-full bg-black/75 text-white backdrop-blur-sm"
           >
             <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M8 3H5a2 2 0 0 0-2 2v3M21 8V5a2 2 0 0 0-2-2h-3M3 16v3a2 2 0 0 0 2 2h3M16 21h3a2 2 0 0 0 2-2v-3" />
             </svg>
           </button>
         )}
-        <p className="pointer-events-none absolute bottom-2 left-3 z-[400] rounded-full bg-black/60 px-2 py-0.5 text-[11px] text-white backdrop-blur-sm">
-          Tocá el mapa o arrastrá el pin para ajustar
-        </p>
       </div>
       {fullscreen && (
         <button
