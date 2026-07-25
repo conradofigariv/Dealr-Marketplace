@@ -114,10 +114,11 @@ export async function mirrorImage(file: File): Promise<File> {
   })
 }
 
-// Compresión client-side antes de subir: max 1920px lado mayor, calidad 60%,
-// tope ~0,7MB. La usa el DETALLE del producto (donde la foto se ve grande).
-// Se bajó de 90% a 60% para reducir el egress de Storage: WebP a 60% se ve muy
-// bien en fotos de producto y pesa ~40-50% menos. Corrige orientación EXIF.
+// Compresión client-side antes de subir: max 1920px, calidad 80%, tope ~1MB.
+// La usa el DETALLE del producto (foto grande). El egress lo resuelve la
+// miniatura del feed (compressThumb), no aplastar esta — el detalle se abre
+// poco, así que puede ir a buena calidad. WebP 80% se ve muy nítido y pesa
+// ~30% menos que el original de cámara. Corrige orientación EXIF.
 export async function compressPhoto(file: File): Promise<File> {
   const orientation = await getExifOrientation(file)
   let processedFile = file
@@ -125,24 +126,24 @@ export async function compressPhoto(file: File): Promise<File> {
     processedFile = await rotateImageByOrientation(file, orientation)
   }
   return imageCompression(processedFile, {
-    maxSizeMB: 0.7,
+    maxSizeMB: 1,
     maxWidthOrHeight: 1920,
-    initialQuality: 0.6,
+    initialQuality: 0.8,
     fileType: 'image/webp',
     useWebWorker: true,
   })
 }
 
-// Miniatura para el FEED (grilla + rieles): la foto se ve chica pero se
-// descarga muchísimo (cada visitante nuevo baja todas las portadas). ~500px,
-// calidad 50%, ~40KB → recorta drásticamente el egress. La grande
-// (compressPhoto) queda solo para el detalle. Recibe la foto ya comprimida,
-// así que no necesita corregir EXIF de nuevo.
+// Miniatura para el FEED (grilla + rieles): se ve chica pero se descarga
+// muchísimo (cada visitante nuevo baja todas las portadas). 720px + calidad
+// 68% → nítida en la grilla (que muestra las portadas hasta ~2.5x DPR) y sigue
+// pesando ~10x menos que la grande. Ahí está el ahorro de egress real. Recibe
+// la foto ya comprimida, no necesita corregir EXIF de nuevo.
 export async function compressThumb(file: File): Promise<File> {
   return imageCompression(file, {
-    maxSizeMB: 0.05,
-    maxWidthOrHeight: 500,
-    initialQuality: 0.5,
+    maxSizeMB: 0.12,
+    maxWidthOrHeight: 720,
+    initialQuality: 0.68,
     fileType: 'image/webp',
     useWebWorker: true,
   })
