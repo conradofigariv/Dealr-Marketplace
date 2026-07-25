@@ -114,11 +114,18 @@ export async function mirrorImage(file: File): Promise<File> {
   })
 }
 
-// Compresión client-side antes de subir: max 1920px, calidad 80%, tope ~1MB.
-// La usa el DETALLE del producto (foto grande). El egress lo resuelve la
-// miniatura del feed (compressThumb), no aplastar esta — el detalle se abre
-// poco, así que puede ir a buena calidad. WebP 80% se ve muy nítido y pesa
-// ~30% menos que el original de cámara. Corrige orientación EXIF.
+// Compresión client-side antes de subir: la usa el DETALLE del producto.
+// Estrategia = TAMAÑO objetivo, no calidad fija (que es lo malo):
+//   - maxSizeMB (1MB) es el TECHO REAL: la librería baja la calidad
+//     iterativamente hasta entrar bajo ese peso → empareja a todas, una foto
+//     de 10MB termina en ~1MB.
+//   - initialQuality (0.9) es el TECHO/punto de partida, no la calidad final:
+//     si la foto ya entra bajo 1MB, se queda cerca de 0.9 (no la aplasta) —
+//     así una foto ya justa no se rompe por re-comprimir. Solo baja de 0.9 si
+//     hace falta para respetar el 1MB.
+//   - maxWidthOrHeight (1920) achica la resolución primero (una foto de 4000px
+//     de cámara no aporta nada en un marketplace).
+// Corrige orientación EXIF.
 export async function compressPhoto(file: File): Promise<File> {
   const orientation = await getExifOrientation(file)
   let processedFile = file
@@ -128,7 +135,7 @@ export async function compressPhoto(file: File): Promise<File> {
   return imageCompression(processedFile, {
     maxSizeMB: 1,
     maxWidthOrHeight: 1920,
-    initialQuality: 0.8,
+    initialQuality: 0.9,
     fileType: 'image/webp',
     useWebWorker: true,
   })
