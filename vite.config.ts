@@ -49,7 +49,10 @@ export default defineConfig({
             handler: 'CacheFirst',
             options: {
               cacheName: 'dealr-images',
-              expiration: { maxEntries: 400, maxAgeSeconds: 60 * 60 * 24 * 30 },
+              // Sube de 400 a 1000: un feed con muchas fotos llenaba el caché
+              // rápido y descartaba las ya vistas (se re-descargaban). Con las
+              // miniaturas ~100KB, 1000 entradas ≈ 100MB, holgado.
+              expiration: { maxEntries: 1000, maxAgeSeconds: 60 * 60 * 24 * 30 },
               cacheableResponse: { statuses: [0, 200] },
             },
           },
