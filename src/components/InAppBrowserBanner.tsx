@@ -95,6 +95,11 @@ export default function InAppBrowserBanner({ compact = false }: { compact?: bool
             ))}
           </ol>
 
+          {/* Bonus: instalar la PWA (se hace desde el navegador real). */}
+          <p className="mt-2.5 text-xs leading-snug text-amber-200/70">
+            📲 Ya en el navegador, podés instalar Dealr en tu pantalla de inicio, como una app.
+          </p>
+
           <div className="mt-3 flex items-center gap-2">
             {auto ? (
               <button
