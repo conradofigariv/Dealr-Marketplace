@@ -145,7 +145,11 @@ with checks(mig, objeto, existe) as (
     ('00049', 'RPC admin_deletion_reasons',
       (exists (select 1 from pg_proc where proname='admin_deletion_reasons'))),
     ('00050', 'admin_metrics con parámetro p_days',
-      (exists (select 1 from pg_proc where proname='admin_metrics' and pronargs=1)))
+      (exists (select 1 from pg_proc where proname='admin_metrics' and pronargs=1))),
+    ('00051', 'notifications.email_sent_at (columna)',
+      (exists (select 1 from information_schema.columns where table_schema='public' and table_name='notifications' and column_name='email_sent_at'))),
+    ('00051', 'RPC email_queue',
+      (exists (select 1 from pg_proc where proname='email_queue')))
 )
 select mig,
        objeto,
