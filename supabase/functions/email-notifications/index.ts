@@ -21,6 +21,7 @@
 import { createClient } from 'jsr:@supabase/supabase-js@2'
 
 const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!
+const ANON_KEY = Deno.env.get('SUPABASE_ANON_KEY')!
 const SERVICE_ROLE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
 const RESEND_API_KEY = Deno.env.get('RESEND_API_KEY')
 const CRON_SECRET = Deno.env.get('CRON_SECRET')
@@ -123,6 +124,36 @@ async function sendEmail(to: string, rows: QueueRow[]): Promise<boolean> {
 }
 
 Deno.serve(async (req) => {
+  // Modo TEST: lo llama un admin logueado desde /admin ("Mandarme un mail de
+  // prueba"), no el cron. Manda un mail de MUESTRA a SU propio email, sin
+  // tocar la cola real (email_queue/email_sent_at) — así se puede iterar el
+  // diseño del mail sin esperar 10 min + el cron cada vez.
+  let body: { test?: boolean } = {}
+  try {
+    body = await req.json()
+  } catch {
+    /* sin body (llamada del cron): sigue el flujo normal de abajo */
+  }
+  if (body.test) {
+    if (!RESEND_API_KEY) return new Response('RESEND_API_KEY no configurado', { status: 200 })
+    const authHeader = req.headers.get('Authorization')
+    if (!authHeader) return new Response('no autenticado', { status: 401 })
+    const caller = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: authHeader } } })
+    const { data: { user } } = await caller.auth.getUser()
+    if (!user) return new Response('sesión inválida', { status: 401 })
+    const { data: profile } = await admin.from('profiles').select('is_admin').eq('id', user.id).maybeSingle()
+    if (!profile?.is_admin) return new Response('solo para administradores', { status: 403 })
+    if (!user.email) return new Response('tu cuenta no tiene email', { status: 400 })
+
+    const sample: QueueRow[] = [
+      { notif_id: 'test-1', user_id: user.id, email: user.email, type: 'message', title: 'Juan te escribió', body: 'Hola! Seguís teniendo la bici?' },
+      { notif_id: 'test-2', user_id: user.id, email: user.email, type: 'message', title: 'Juan te escribió', body: 'Vendida?' },
+      { notif_id: 'test-3', user_id: user.id, email: user.email, type: 'offer', title: 'Nueva oferta', body: 'Recibiste una oferta en "iPhone 13 128GB"' },
+    ]
+    const ok = await sendEmail(user.email, sample)
+    return new Response(JSON.stringify({ ok }), { status: ok ? 200 : 500, headers: { 'Content-Type': 'application/json' } })
+  }
+
   // Verificar que lo llame el cron (secret) — evita envíos masivos por randoms.
   const url = new URL(req.url)
   if (CRON_SECRET && url.searchParams.get('secret') !== CRON_SECRET) {

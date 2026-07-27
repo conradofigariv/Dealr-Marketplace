@@ -210,6 +210,7 @@ export default function Admin() {
   const [disputes, setDisputes] = useState<Dispute[]>([])
   const [banningId, setBanningId] = useState<string | null>(null) // listing con el picker de meses abierto
   const [disputeBusy, setDisputeBusy] = useState(false)
+  const [sendingTestEmail, setSendingTestEmail] = useState(false)
   // Concierge: crear vendedor + publicar en su nombre.
   // Abre la sección concierge de una si se llegó desde el acceso directo del
   // perfil ("Crear vendedor y publicar").
@@ -290,6 +291,26 @@ export default function Admin() {
   // Crea (o reusa) la cuenta del vendedor por email y abre Publicar en su
   // nombre. La cuenta es reclamable: el vendedor entra con magic link a ese
   // email y encuentra su publicación y mensajes.
+  // Manda un mail de MUESTRA (3 notifs de ejemplo) a tu propio email, sin
+  // tocar la cola real ni esperar el cron — para iterar el diseño rápido.
+  async function sendTestEmail() {
+    setSendingTestEmail(true)
+    const { data, error } = await supabase.functions.invoke('email-notifications', {
+      body: { test: true },
+    })
+    setSendingTestEmail(false)
+    if (error) {
+      let msg = 'No se pudo mandar el mail de prueba'
+      try {
+        const body = await (error as { context?: Response }).context?.json()
+        if (body?.error) msg = body.error
+      } catch { /* sin cuerpo legible */ }
+      return toast(msg)
+    }
+    if (data?.error) return toast(data.error)
+    toast('Mail de prueba enviado a tu correo')
+  }
+
   async function createSellerAndPublish(e: React.FormEvent) {
     e.preventDefault()
     setCreatingSeller(true)
@@ -438,6 +459,15 @@ export default function Admin() {
             + Publicar en nombre de un vendedor
           </button>
         )}
+        {/* Mail de prueba (00051): manda un mail de MUESTRA a tu propio
+            correo al toque, sin esperar el cron ni tocar la cola real. */}
+        <button
+          onClick={sendTestEmail}
+          disabled={sendingTestEmail}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-neutral-900 py-2.5 text-xs font-semibold text-neutral-400 ring-1 ring-neutral-800 disabled:opacity-50"
+        >
+          {sendingTestEmail ? 'Enviando…' : '✉️ Mandarme un mail de prueba'}
+        </button>
       </div>
 
       {/* Métricas + funnel de adquisición */}
