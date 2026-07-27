@@ -56,19 +56,54 @@ function esc(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
 }
 
+interface GroupedItem {
+  type: string
+  title: string
+  body: string | null
+  count: number
+}
+
+// Agrupa notifs iguales (mismo tipo+título — ej. 3 mensajes de la misma
+// persona en la ventana) en UNA línea con contador, en vez de repetir
+// "Fulano te escribió" varias veces.
+function groupRows(rows: QueueRow[]): GroupedItem[] {
+  const map = new Map<string, GroupedItem>()
+  for (const r of rows) {
+    const key = `${r.type}:${r.title}`
+    const g = map.get(key)
+    if (g) g.count++
+    else map.set(key, { type: r.type, title: r.title, body: r.body, count: 1 })
+  }
+  return [...map.values()]
+}
+
 // Email HTML simple y branded (ámbar Dealr).
-function emailHtml(rows: QueueRow[]): string {
-  const items = rows
+function emailHtml(items: GroupedItem[]): string {
+  const rows = items
     .slice(0, 6)
-    .map((r) => `<tr><td style="padding:6px 0;color:#e5e5e5;font-size:14px;">• <strong>${esc(r.title)}</strong>${r.body ? ` — ${esc(r.body)}` : ''}</td></tr>`)
+    .map((g) => {
+      // El texto ESCRITO del chat no va por mail (privacidad: tu chat no sale
+      // de la app hacia un mail, que es menos seguro). Para otros tipos
+      // (oferta, pregunta…) el "body" es una frase del sistema, no contenido
+      // privado, así que ahí sí se muestra.
+      const suffix =
+        g.type === 'message'
+          ? g.count > 1
+            ? ` (${g.count} mensajes)`
+            : ''
+          : g.body
+            ? ` — ${esc(g.body)}`
+            : ''
+      return `<tr><td style="padding:6px 0;color:#e5e5e5;font-size:14px;">• <strong>${esc(g.title)}</strong>${suffix}</td></tr>`
+    })
     .join('')
-  const more = rows.length > 6 ? `<p style="color:#a3a3a3;font-size:13px;">…y ${rows.length - 6} más.</p>` : ''
+  const more = items.length > 6 ? `<p style="color:#a3a3a3;font-size:13px;">…y ${items.length - 6} más.</p>` : ''
   return `<!doctype html><html><body style="margin:0;background:#0a0a0a;font-family:-apple-system,Segoe UI,Roboto,sans-serif;">
   <div style="max-width:480px;margin:0 auto;padding:32px 24px;">
     <div style="font-size:28px;font-weight:800;color:#fff;letter-spacing:-1px;">Deal<span style="color:#ffb020;">r</span></div>
     <h1 style="color:#fff;font-size:20px;margin:24px 0 8px;">Tenés novedades en Dealr</h1>
     <p style="color:#a3a3a3;font-size:14px;margin:0 0 16px;">Alguien te escribió o hay movimiento en tus publicaciones mientras no estabas:</p>
-    <table style="width:100%;border-collapse:collapse;">${items}</table>
+    <table style="width:100%;border-collapse:collapse;">${rows}</table>
     ${more}
     <a href="${APP_URL}/notificaciones" style="display:inline-block;margin-top:24px;background:#ffb020;color:#0a0a0a;font-weight:700;font-size:15px;text-decoration:none;padding:12px 24px;border-radius:999px;">Ver en Dealr</a>
     <p style="color:#666;font-size:12px;margin-top:32px;">Recibís este mail porque tenés notificaciones sin leer en Dealr. Entrá a la app para gestionarlas.</p>
@@ -76,12 +111,13 @@ function emailHtml(rows: QueueRow[]): string {
 }
 
 async function sendEmail(to: string, rows: QueueRow[]): Promise<boolean> {
-  const n = rows.length
-  const subject = n === 1 ? `Tenés un ${label(rows[0].type)} en Dealr` : `Tenés ${n} novedades en Dealr`
+  const items = groupRows(rows)
+  const n = items.length
+  const subject = n === 1 ? `Tenés un ${label(items[0].type)} en Dealr` : `Tenés ${n} novedades en Dealr`
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: { Authorization: `Bearer ${RESEND_API_KEY}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ from: EMAIL_FROM, to, subject, html: emailHtml(rows) }),
+    body: JSON.stringify({ from: EMAIL_FROM, to, subject, html: emailHtml(items) }),
   })
   return res.ok
 }
