@@ -300,15 +300,14 @@ export default function Admin() {
     })
     setSendingTestEmail(false)
     if (error) {
-      let msg = 'No se pudo mandar el mail de prueba'
-      try {
-        const body = await (error as { context?: Response }).context?.json()
-        if (body?.error) msg = body.error
-      } catch { /* sin cuerpo legible */ }
-      return toast(msg)
+      toast('Error: ' + error.message)
+      return
     }
-    if (data?.error) return toast(data.error)
-    toast('Mail de prueba enviado a tu correo')
+    if (!data?.ok) {
+      toast('No se pudo enviar el mail (verifica que Resend esté configurado)')
+      return
+    }
+    toast('✓ Mail de prueba enviado a tu correo')
   }
 
   async function createSellerAndPublish(e: React.FormEvent) {

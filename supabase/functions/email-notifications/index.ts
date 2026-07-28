@@ -150,8 +150,8 @@ Deno.serve(async (req) => {
       { notif_id: 'test-2', user_id: user.id, email: user.email, type: 'message', title: 'Juan te escribió', body: 'Vendida?' },
       { notif_id: 'test-3', user_id: user.id, email: user.email, type: 'offer', title: 'Nueva oferta', body: 'Recibiste una oferta en "iPhone 13 128GB"' },
     ]
-    const ok = await sendEmail(user.email, sample)
-    return new Response(JSON.stringify({ ok }), { status: ok ? 200 : 500, headers: { 'Content-Type': 'application/json' } })
+    const ok = await sendEmail(user.email, sample).catch(() => false)
+    return new Response(JSON.stringify({ ok }), { status: 200, headers: { 'Content-Type': 'application/json' } })
   }
 
   // Verificar que lo llame el cron (secret) — evita envíos masivos por randoms.
