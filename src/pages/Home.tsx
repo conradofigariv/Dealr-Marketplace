@@ -707,8 +707,8 @@ export default function Home() {
             <span className="truncate">{locating ? 'Buscando ubicación…' : buyerLabel ?? 'Definí tu zona'}</span>
           </button>
           {totalUsers != null && (
-            <span className="shrink-0 whitespace-nowrap text-xs font-medium text-neutral-500">
-              {totalUsers.toLocaleString('es-AR')} usuarios
+            <span className="glow-text shrink-0 whitespace-nowrap text-xs font-medium text-amber-400/90">
+              {totalUsers.toLocaleString('es-AR')} miembros
             </span>
           )}
         </div>
