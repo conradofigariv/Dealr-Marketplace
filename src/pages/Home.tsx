@@ -50,6 +50,10 @@ let feedCache: {
   scrollY: number
 } | null = null
 let categoriesCache: Category[] = []
+// Total de usuarios registrados (prueba social junto al selector de zona). Se
+// pide una sola vez por sesión de la app (no cambia seguido) y se cachea a
+// nivel de módulo igual que las categorías.
+let totalUsersCache: number | null = null
 
 // Tras cambiar el estado de una publicación (vender, pausar, reactivar) la
 // caché del feed queda vieja. Esto la descarta para que el próximo render del
@@ -121,6 +125,7 @@ export default function Home() {
   const [loadingMore, setLoadingMore] = useState(false)
   const [hasMore, setHasMore] = useState(feedCache?.hasMore ?? true)
   const [recentItems, setRecentItems] = useState<Listing[]>([])
+  const [totalUsers, setTotalUsers] = useState<number | null>(totalUsersCache)
   const pageRef = useRef(feedCache?.page ?? 0)
   // Generación del feed: cada loadFirst la incrementa. Un loadMore en vuelo de
   // una generación vieja (otros filtros / refresh) descarta su resultado en vez
@@ -156,6 +161,20 @@ export default function Home() {
       .then(({ data }) => {
         categoriesCache = data ?? []
         setCategories(categoriesCache)
+      })
+  }, [])
+
+  // Total de usuarios (prueba social junto al selector de zona). `head: true`
+  // no trae filas, solo el conteo del header de PostgREST.
+  useEffect(() => {
+    if (totalUsersCache != null) return
+    supabase
+      .from('profiles')
+      .select('*', { count: 'exact', head: true })
+      .then(({ count }) => {
+        if (count == null) return
+        totalUsersCache = count
+        setTotalUsers(count)
       })
   }, [])
 
@@ -668,23 +687,31 @@ export default function Home() {
             </Link>
           </div>
         </div>
-        {/* Pill de ubicación: define la zona de referencia para la cercanía */}
-        <button
-          ref={zoneButtonRef}
-          onClick={() => setZoneMenuRect(zoneButtonRef.current!.getBoundingClientRect())}
-          disabled={locating}
-          className="mt-1 flex items-center gap-1.5 whitespace-nowrap text-[15px] font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
-        >
-          {locating ? (
-            <span className="h-4 w-4 animate-spin rounded-full border-2 border-neutral-500/40 border-t-neutral-300" />
-          ) : (
-            <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
-              <circle cx="12" cy="10" r="3" />
-            </svg>
+        {/* Pill de ubicación: define la zona de referencia para la cercanía.
+            Al mismo nivel, a la derecha: el total de usuarios (prueba social). */}
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <button
+            ref={zoneButtonRef}
+            onClick={() => setZoneMenuRect(zoneButtonRef.current!.getBoundingClientRect())}
+            disabled={locating}
+            className="flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[15px] font-medium text-neutral-400 transition active:scale-95 active:text-white disabled:opacity-70"
+          >
+            {locating ? (
+              <span className="h-4 w-4 shrink-0 animate-spin rounded-full border-2 border-neutral-500/40 border-t-neutral-300" />
+            ) : (
+              <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
+                <circle cx="12" cy="10" r="3" />
+              </svg>
+            )}
+            <span className="truncate">{locating ? 'Buscando ubicación…' : buyerLabel ?? 'Definí tu zona'}</span>
+          </button>
+          {totalUsers != null && (
+            <span className="shrink-0 whitespace-nowrap text-xs font-medium text-neutral-500">
+              {totalUsers.toLocaleString('es-AR')} usuarios
+            </span>
           )}
-          {locating ? 'Buscando ubicación…' : buyerLabel ?? 'Definí tu zona'}
-        </button>
+        </div>
 
         {/* Barra de búsqueda fija, debajo de la ubicación */}
         <div className="mt-2.5 flex items-center gap-2.5 rounded-full bg-neutral-900 px-4 py-2.5 ring-1 ring-neutral-800">
