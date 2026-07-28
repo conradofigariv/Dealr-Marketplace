@@ -211,6 +211,7 @@ export default function Admin() {
   const [banningId, setBanningId] = useState<string | null>(null) // listing con el picker de meses abierto
   const [disputeBusy, setDisputeBusy] = useState(false)
   const [sendingTestEmail, setSendingTestEmail] = useState(false)
+  const [sendingStatsTestEmail, setSendingStatsTestEmail] = useState(false)
   // Concierge: crear vendedor + publicar en su nombre.
   // Abre la sección concierge de una si se llegó desde el acceso directo del
   // perfil ("Crear vendedor y publicar").
@@ -308,6 +309,26 @@ export default function Admin() {
       return
     }
     toast('✓ Mail de prueba enviado a tu correo')
+  }
+
+  // Mail de stats al vendedor (00052, lifecycle-emails): mismo patrón de
+  // prueba que el digest — manda una MUESTRA a tu propio correo sin tocar la
+  // cola real (seller_stats_queue/email_sends).
+  async function sendStatsTestEmail() {
+    setSendingStatsTestEmail(true)
+    const { data, error } = await supabase.functions.invoke('lifecycle-emails', {
+      body: { test: true },
+    })
+    setSendingStatsTestEmail(false)
+    if (error) {
+      toast('Error: ' + error.message)
+      return
+    }
+    if (!data?.ok) {
+      toast('No se pudo enviar el mail (verifica que Resend esté configurado)')
+      return
+    }
+    toast('✓ Mail de stats de prueba enviado a tu correo')
   }
 
   async function createSellerAndPublish(e: React.FormEvent) {
@@ -465,7 +486,15 @@ export default function Admin() {
           disabled={sendingTestEmail}
           className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-neutral-900 py-2.5 text-xs font-semibold text-neutral-400 ring-1 ring-neutral-800 disabled:opacity-50"
         >
-          {sendingTestEmail ? 'Enviando…' : '✉️ Mandarme un mail de prueba'}
+          {sendingTestEmail ? 'Enviando…' : '✉️ Mandarme un mail de prueba (digest)'}
+        </button>
+        {/* Mail de stats al vendedor (00052): mismo patrón de prueba rápida. */}
+        <button
+          onClick={sendStatsTestEmail}
+          disabled={sendingStatsTestEmail}
+          className="mt-2 flex w-full items-center justify-center gap-2 rounded-full bg-neutral-900 py-2.5 text-xs font-semibold text-neutral-400 ring-1 ring-neutral-800 disabled:opacity-50"
+        >
+          {sendingStatsTestEmail ? 'Enviando…' : '✉️ Mandarme un mail de prueba (stats vendedor)'}
         </button>
       </div>
 

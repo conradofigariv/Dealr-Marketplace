@@ -129,6 +129,9 @@ export default function Home() {
   const restoredScroll = useRef(false)
   const firstLoad = useRef(true)
   const sentinelRef = useRef<HTMLDivElement>(null)
+  // Dedupe de search_logs: no repetir el mismo término+categoría dentro de la
+  // sesión (evita loguear cada re-render/paginación de la misma búsqueda).
+  const loggedSearchesRef = useRef<Set<string>>(new Set())
   // Arrastrar la fila de categorías con el mouse (desktop); en touch el scroll
   // nativo ya hace el arrastre con momentum estilo iOS.
   const catScrollRef = useDragScroll<HTMLDivElement>()
@@ -285,7 +288,27 @@ export default function Home() {
       order,
       scrollY: feedCache?.scrollY ?? 0,
     }
+    logSearch(batch.length)
   }, [fetchPage, search, categoryId, onlyVerified, onlyAuctions, filters, order])
+
+  // Registra la búsqueda (00052): término + categoría + cuántos resultados dio.
+  // Sirve para saber qué falta en la oferta (concierge) y, a futuro, contenido
+  // de mail. Solo términos "de verdad" (2+ caracteres) y una vez por sesión
+  // por combinación término+categoría (evita ruido de re-fetches).
+  function logSearch(resultsCount: number) {
+    const term = search.trim()
+    if (term.length < 2) return
+    const key = `${term.toLowerCase()}|${categoryId ?? ''}`
+    if (loggedSearchesRef.current.has(key)) return
+    loggedSearchesRef.current.add(key)
+    const categorySlug = categories.find((c) => c.id === categoryId)?.slug ?? null
+    supabase.from('search_logs').insert({
+      user_id: session?.user.id ?? null,
+      term,
+      category_slug: categorySlug,
+      results_count: resultsCount,
+    })
+  }
 
   // Página siguiente (scroll infinito): agrega al final.
   const loadMore = useCallback(async () => {
