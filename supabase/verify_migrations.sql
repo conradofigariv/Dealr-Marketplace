@@ -149,7 +149,15 @@ with checks(mig, objeto, existe) as (
     ('00051', 'notifications.email_sent_at (columna)',
       (exists (select 1 from information_schema.columns where table_schema='public' and table_name='notifications' and column_name='email_sent_at'))),
     ('00051', 'RPC email_queue',
-      (exists (select 1 from pg_proc where proname='email_queue')))
+      (exists (select 1 from pg_proc where proname='email_queue'))),
+    ('00052', 'tabla search_logs',
+      (to_regclass('public.search_logs') is not null)),
+    ('00052', 'tabla email_sends',
+      (to_regclass('public.email_sends') is not null)),
+    ('00052', 'profiles.email_marketing (columna)',
+      (exists (select 1 from information_schema.columns where table_schema='public' and table_name='profiles' and column_name='email_marketing'))),
+    ('00052', 'RPC seller_stats_queue',
+      (exists (select 1 from pg_proc where proname='seller_stats_queue')))
 )
 select mig,
        objeto,
