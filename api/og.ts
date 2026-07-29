@@ -49,7 +49,21 @@ export default async function handler(
         title = `${listing.title} — ${formatPrice(listing.price, listing.currency)}`
         description = listing.description?.slice(0, 160) || 'Publicado en Dealr'
         if (listing.photos?.[0]) {
-          image = `${supabaseUrl}/storage/v1/object/public/listing-photos/${listing.photos[0]}`
+          // La foto grande de detalle pesa hasta 3MB (00xx: techo subido para
+          // más calidad) — el crawler de WhatsApp la descarta en silencio si
+          // no llega a bajarla a tiempo y el preview queda sin imagen. La
+          // miniatura (.thumb.webp, techo 1MB) es liviana y de sobra para un
+          // preview. Las publicaciones viejas no tienen miniatura: HEAD chequea
+          // que exista antes de usarla, si no cae a la foto grande.
+          const base = `${supabaseUrl}/storage/v1/object/public/listing-photos`
+          const thumbPath = listing.photos[0].replace(/\.webp$/i, '.thumb.webp')
+          image = `${base}/${listing.photos[0]}`
+          try {
+            const head = await fetch(`${base}/${thumbPath}`, { method: 'HEAD' })
+            if (head.ok) image = `${base}/${thumbPath}`
+          } catch {
+            // sin miniatura: seguimos con la foto grande
+          }
         }
       }
     } catch {
