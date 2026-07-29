@@ -707,8 +707,11 @@ export default function Home() {
             <span className="truncate">{locating ? 'Buscando ubicación…' : buyerLabel ?? 'Definí tu zona'}</span>
           </button>
           {totalUsers != null && (
-            <span className="glow-text shrink-0 whitespace-nowrap text-xs font-medium text-amber-400/90">
-              {totalUsers.toLocaleString('es-AR')} miembros
+            // El glow (text-shadow con blur) difumina un espacio simple y lo junta
+            // visualmente con el número; dos spans con gap real evitan eso.
+            <span className="glow-text flex shrink-0 items-baseline gap-1 whitespace-nowrap text-xs font-medium text-amber-400/90">
+              <span>{totalUsers.toLocaleString('es-AR')}</span>
+              <span>miembros</span>
             </span>
           )}
         </div>
