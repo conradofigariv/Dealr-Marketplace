@@ -1,44 +1,26 @@
 import { Link } from 'react-router-dom'
 import Logo from './Logo'
-import { useNotifications } from '../hooks/useNotifications'
 
-// Header de la app (logo + guardados + notificaciones), pensado para las
-// pantallas donde alguien puede ATERRIZAR desde afuera (link compartido,
-// publicidad) y no tendría ninguna navegación: sin esto el visitante queda
-// encerrado en el detalle, que oculta la BottomNav porque abajo van los
-// botones de conversión.
+// Header para las pantallas donde alguien puede ATERRIZAR desde afuera (link
+// compartido, publicidad) y no tendría ninguna navegación: sin esto el
+// visitante queda encerrado en el detalle, que oculta la BottomNav porque
+// abajo van los botones de conversión.
 //
-// Sin selector de ubicación a propósito: el interactivo vive en Home (con
-// geolocalización y mapa) y una versión de solo lectura acá solo confundía.
+// Solo marca + una salida al feed: guardados y notificaciones no le sirven a
+// quien todavía no es usuario, y el selector de ubicación vive en Home (acá,
+// de solo lectura, solo confundía).
 export default function AppHeader() {
-  const { unreadCount } = useNotifications()
-
   return (
-    <header className="px-4 pb-2 pt-[max(1.25rem,env(safe-area-inset-top))]">
-      {/* Logo centrado (absoluto) con los íconos de acción a la derecha. */}
-      <div className="relative flex h-11 items-center justify-end">
-        <Link to="/" aria-label="Ir a Dealr" className="absolute left-1/2 -translate-x-1/2">
-          <Logo size={32} />
-        </Link>
-        <div className="flex items-center">
-          <Link to="/guardados" aria-label="Guardados" className="p-2.5 text-white">
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1-1.1a5.5 5.5 0 0 0-7.8 7.8l1 1.1L12 21l7.8-7.6 1-1.1a5.5 5.5 0 0 0 0-7.7z" />
-            </svg>
-          </Link>
-          <Link to="/notificaciones" aria-label="Notificaciones" className="relative p-2 text-white">
-            <svg viewBox="0 0 24 24" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
-              <path d="M13.7 21a2 2 0 0 1-3.4 0" />
-            </svg>
-            {unreadCount > 0 && (
-              <span className="absolute right-1 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white">
-                {unreadCount > 9 ? '9+' : unreadCount}
-              </span>
-            )}
-          </Link>
-        </div>
-      </div>
+    <header className="flex items-center justify-between gap-3 px-4 pb-2 pt-[max(1.25rem,env(safe-area-inset-top))]">
+      <Link to="/" aria-label="Ir a Dealr" className="shrink-0">
+        <Logo size={32} />
+      </Link>
+      <Link
+        to="/"
+        className="shrink-0 whitespace-nowrap rounded-full bg-amber-500/15 px-4 py-2 text-sm font-bold text-amber-400 ring-1 ring-amber-500/30 transition active:scale-95"
+      >
+        Ver más productos
+      </Link>
     </header>
   )
 }
