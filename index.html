@@ -10,6 +10,14 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700&display=swap" rel="stylesheet" />
+    <!-- Login con Google: el script de Google Identity Services se carga recién
+         al entrar a /auth (lib/googleAuth.ts) y el botón tardaba en aparecer.
+         Abrimos la conexión desde el arranque y bajamos el script en segundo
+         plano (prefetch = baja prioridad, no compite con el render del feed):
+         al llegar al login ya está en caché. -->
+    <link rel="preconnect" href="https://accounts.google.com" />
+    <link rel="dns-prefetch" href="https://accounts.google.com" />
+    <link rel="prefetch" href="https://accounts.google.com/gsi/client" as="script" crossorigin />
     <link rel="apple-touch-icon" href="/icon-192.png" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />
