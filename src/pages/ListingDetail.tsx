@@ -502,11 +502,13 @@ export default function ListingDetail() {
   function share() {
     if (!listing) return
     const url = `${window.location.origin}/p/${listing.id}`
-    const text = `${listing.title} — ${formatPrice(listing.price, listing.currency)}\n${url}`
+    const summary = `${listing.title} — ${formatPrice(listing.price, listing.currency)}`
     if (navigator.share) {
-      navigator.share({ title: listing.title, text, url }).catch(() => {})
+      // OJO: no meter `url` dentro de `text` — el share sheet (WhatsApp
+      // incluido) concatena `text` + `url`, así que el link aparecía dos veces.
+      navigator.share({ title: listing.title, text: summary, url }).catch(() => {})
     } else {
-      window.open(`https://wa.me/?text=${encodeURIComponent(text)}`, '_blank')
+      window.open(`https://wa.me/?text=${encodeURIComponent(`${summary}\n${url}`)}`, '_blank')
     }
   }
 
