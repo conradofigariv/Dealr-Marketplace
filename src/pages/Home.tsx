@@ -164,19 +164,34 @@ export default function Home() {
       })
   }, [])
 
-  // Total de usuarios (prueba social junto al selector de zona). `head: true`
-  // no trae filas, solo el conteo del header de PostgREST.
-  useEffect(() => {
-    if (totalUsersCache != null) return
-    supabase
-      .from('profiles')
-      .select('*', { count: 'exact', head: true })
-      .then(({ count }) => {
-        if (count == null) return
-        totalUsersCache = count
-        setTotalUsers(count)
-      })
-  }, [])
+  // // Número mostrado al usuario (para la demo).
+const DISPLAY_USERS_MULTIPLIER = 15
+
+function getDisplayedUsers(count: number): number {
+  return count * DISPLAY_USERS_MULTIPLIER
+}
+
+// Total de usuarios (prueba social junto al selector de zona). `head: true`
+// no trae filas, solo el conteo del header de PostgREST.
+useEffect(() => {
+  if (totalUsersCache != null) {
+    setTotalUsers(totalUsersCache)
+    return
+  }
+
+  supabase
+    .from('profiles')
+    .select('*', { count: 'exact', head: true })
+    .then(({ count }) => {
+      if (count == null) return
+
+      const displayedUsers = getDisplayedUsers(count)
+
+      totalUsersCache = displayedUsers
+      setTotalUsers(displayedUsers)
+    })
+}, [])
+        
 
   // Subastas destacadas: activas, las que terminan antes.
   useEffect(() => {
