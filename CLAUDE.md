@@ -108,7 +108,8 @@ src/
               ActionMenu (popup contextual estilo iOS anclado a un elemento: difumina el fondo, clona nítido lo tocado y muestra acciones al lado; usado por el menú de mensajes del chat y el popup de "tu zona" en Home)
   pages/    Home(feed) ListingDetail Publish Chats ChatThread Profile PublicProfile
             Auth Onboarding Saved Notifications Feedback Explorar(grid de categorías) SavedSearches(/busquedas) MapView(/mapa)
-api/og.ts   OG para crawlers
+api/og.ts   OG para crawlers (Googlebot/Bingbot incluidos, no solo redes sociales — ver vercel.json)
+api/sitemap.ts  sitemap.xml dinámico (estáticas + publicaciones activas, sin build step) — public/robots.txt apunta acá
 supabase/migrations/, supabase/functions/didit-webhook/ (verificación de identidad, opcional)
 supabase/functions/admin-create-seller/ (concierge: crea cuenta de vendedor por email — service role, gateada a is_admin — para publicar en su nombre desde /admin)
 ```
