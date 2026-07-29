@@ -35,7 +35,15 @@ export default defineConfig({
         navigateFallbackDenylist: [/^\/api/],
         // Sumamos audio al precache (el default no incluye mp3): los sonidos de
         // public/sounds/ quedan disponibles offline.
-        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,mp3,ogg,m4a,wav}'],
+        // El video de fondo del login (+ su poster) se suman al precache: se
+        // bajan al entrar por primera vez, en segundo plano, y el login abre
+        // instantáneo aunque nunca se haya visitado. Van nombrados uno por uno
+        // a propósito: un `jpg` genérico se llevaría los ~3MB de fotos de
+        // categorías, que sí conviene bajar recién cuando se ven.
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest,mp3,ogg,m4a,wav}', 'login-bg.mp4', 'login-bg-poster.jpg'],
+        // El default de Workbox son 2MB y el video pesa ~2,2MB: sin esto queda
+        // afuera del precache en silencio.
+        maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         // Inyecta los handlers de Web Push (push + notificationclick) en el SW
         // generado, sin tener que escribir un SW propio (injectManifest).
         importScripts: ['push-listener.js'],
