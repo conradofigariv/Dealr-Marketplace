@@ -1,19 +1,17 @@
 import { Link } from 'react-router-dom'
 import Logo from './Logo'
 import { useNotifications } from '../hooks/useNotifications'
-import { getCachedBuyerLabel } from '../lib/geo'
 
-// Header de la app (logo + guardados + notificaciones + ubicación), pensado
-// para las pantallas donde alguien puede ATERRIZAR desde afuera (link
-// compartido, publicidad) y no tendría ninguna navegación: sin esto el
-// visitante queda encerrado en el detalle, que oculta la BottomNav porque
-// abajo van los botones de conversión.
+// Header de la app (logo + guardados + notificaciones), pensado para las
+// pantallas donde alguien puede ATERRIZAR desde afuera (link compartido,
+// publicidad) y no tendría ninguna navegación: sin esto el visitante queda
+// encerrado en el detalle, que oculta la BottomNav porque abajo van los
+// botones de conversión.
 //
-// La ubicación acá es de solo lectura (muestra la cacheada y lleva al feed);
-// el selector interactivo —geolocalización, mapa— vive en Home.
+// Sin selector de ubicación a propósito: el interactivo vive en Home (con
+// geolocalización y mapa) y una versión de solo lectura acá solo confundía.
 export default function AppHeader() {
   const { unreadCount } = useNotifications()
-  const label = getCachedBuyerLabel()
 
   return (
     <header className="px-4 pb-2 pt-[max(1.25rem,env(safe-area-inset-top))]">
@@ -41,16 +39,6 @@ export default function AppHeader() {
           </Link>
         </div>
       </div>
-      <Link
-        to="/"
-        className="mt-1 flex min-w-0 items-center gap-1.5 whitespace-nowrap text-[15px] font-medium text-neutral-400 transition active:scale-95 active:text-white"
-      >
-        <svg viewBox="0 0 24 24" className="h-4 w-4 shrink-0" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-          <path d="M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0 1 18 0Z" />
-          <circle cx="12" cy="10" r="3" />
-        </svg>
-        <span className="truncate">{label ?? 'Definí tu zona'}</span>
-      </Link>
     </header>
   )
 }
