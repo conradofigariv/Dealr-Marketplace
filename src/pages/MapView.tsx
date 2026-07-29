@@ -76,7 +76,9 @@ export default function MapView() {
       <div className="absolute inset-x-0 top-0 z-[500] bg-gradient-to-b from-black/85 via-black/55 to-transparent px-4 pb-10 pt-[max(1rem,env(safe-area-inset-top))]">
         <div className="flex items-center gap-3">
           <button
-            onClick={() => navigate(-1)}
+            // Sin historial de la app detrás (llegada directa al link) volver
+            // no va a ningún lado y el mapa no tiene BottomNav: caemos al feed.
+            onClick={() => ((window.history.state?.idx ?? 0) > 0 ? navigate(-1) : navigate('/', { replace: true }))}
             aria-label="Volver"
             className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-black/70 text-white backdrop-blur-sm"
           >
