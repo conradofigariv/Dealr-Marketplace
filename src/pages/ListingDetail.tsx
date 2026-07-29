@@ -18,6 +18,7 @@ import ListingRail from '../components/ListingRail'
 import PhotoViewer from '../components/PhotoViewer'
 import SmartImage from '../components/SmartImage'
 import ReportButton from '../components/ReportButton'
+import AppHeader from '../components/AppHeader'
 import LongPressActions from '../components/LongPressActions'
 import type { MenuAction } from '../components/ActionMenu'
 import { useToast } from '../components/Toast'
@@ -617,25 +618,28 @@ export default function ListingDetail() {
 
   return (
     <div className="pb-32">
+      {/* Llegada desde afuera: header completo de la app (logo, guardados,
+          notificaciones, ubicación) para que el visitante entienda dónde está
+          y tenga navegación — el detalle oculta la BottomNav. */}
+      {cameFromOutside && <AppHeader />}
       {/* Carrusel de fotos */}
       <div className="relative">
-        <button
-          onClick={goBack}
-          aria-label={cameFromOutside ? 'Ir a Dealr' : 'Volver'}
-          className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm"
-        >
-          {cameFromOutside ? (
-            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
-              <path d="M9 22V12h6v10" />
-            </svg>
-          ) : (
+        {!cameFromOutside && (
+          <button
+            onClick={goBack}
+            aria-label="Volver"
+            className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm"
+          >
             <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
               <path d="M15 18 9 12l6-6" />
             </svg>
-          )}
-        </button>
-        <div className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex gap-2">
+          </button>
+        )}
+        {/* Con el header arriba, el safe-area ya lo consumió él: estos botones
+            van pegados al borde de la foto, no desplazados por el notch. */}
+        <div
+          className={`absolute right-3 z-10 flex gap-2 ${cameFromOutside ? 'top-3' : 'top-[max(0.75rem,env(safe-area-inset-top))]'}`}
+        >
           <button
             onClick={share}
             aria-label="Compartir"
