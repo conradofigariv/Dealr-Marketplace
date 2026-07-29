@@ -499,6 +499,15 @@ export default function ListingDetail() {
     load()
   }
 
+  // Volver. Quien llega desde un link compartido (WhatsApp, publicidad) NO
+  // tiene historial de la app detrás y navigate(-1) no hace nada: quedaba
+  // encerrado en el detalle sin salida. react-router guarda el índice del
+  // historial en history.state.idx (mismo patrón que Publish.goBack).
+  function goBack() {
+    if ((window.history.state?.idx ?? 0) > 0) navigate(-1)
+    else navigate('/', { replace: true })
+  }
+
   function share() {
     if (!listing) return
     const url = `${window.location.origin}/p/${listing.id}`
@@ -601,18 +610,30 @@ export default function ListingDetail() {
         !def.showIf || def.showIf.in.includes(String(listing.structured_fields[def.showIf.key] ?? '')),
     )
 
+  // Llegada desde afuera (link compartido, publicidad): no hay historial de la
+  // app detrás, así que el botón no "vuelve" — entra al feed. Se muestra como
+  // casita: una flecha de volver ahí se lee como "salir a WhatsApp".
+  const cameFromOutside = (window.history.state?.idx ?? 0) === 0
+
   return (
     <div className="pb-32">
       {/* Carrusel de fotos */}
       <div className="relative">
         <button
-          onClick={() => navigate(-1)}
-          aria-label="Volver"
+          onClick={goBack}
+          aria-label={cameFromOutside ? 'Ir a Dealr' : 'Volver'}
           className="absolute left-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 rounded-full bg-black/50 p-2 text-white backdrop-blur-sm"
         >
-          <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M15 18 9 12l6-6" />
-          </svg>
+          {cameFromOutside ? (
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="m3 10 9-7 9 7v10a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+              <path d="M9 22V12h6v10" />
+            </svg>
+          ) : (
+            <svg viewBox="0 0 24 24" className="h-5 w-5" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M15 18 9 12l6-6" />
+            </svg>
+          )}
         </button>
         <div className="absolute right-3 top-[max(0.75rem,env(safe-area-inset-top))] z-10 flex gap-2">
           <button
