@@ -165,7 +165,7 @@ export default function Home() {
   }, [])
 
   // // Número mostrado al usuario (para la demo).
-const DISPLAY_USERS_MULTIPLIER = 15
+const DISPLAY_USERS_MULTIPLIER = 10
 
 function getDisplayedUsers(count: number): number {
   return count * DISPLAY_USERS_MULTIPLIER
