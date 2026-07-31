@@ -42,5 +42,9 @@ export function photoUrl(path: string): string {
 // al publicar (ver images.ts::compressThumb).
 export function thumbUrl(path: string): string {
   if (/^https?:\/\//i.test(path)) return path
-  return photoUrl(path.replace(/\.webp$/i, '.thumb.webp'))
+  // Se saca CUALQUIER extensión, no solo `.webp`: si quedó alguna foto vieja
+  // en .jpg, un replace atado a .webp devolvía la ruta intacta → el feed
+  // terminaba sirviendo la foto completa creyendo que era la miniatura.
+  // Para las .webp (todas las actuales) el resultado es el mismo de antes.
+  return photoUrl(path.replace(/\.[a-z0-9]+$/i, '') + '.thumb.webp')
 }

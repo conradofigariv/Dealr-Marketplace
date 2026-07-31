@@ -7,3 +7,8 @@ dev-dist
 .env.*
 !.env.example
 .DS_Store
+
+# Salida de scripts/backfill-photos.mjs: los originales respaldados (pesan) y
+# el registro de qué rutas ya se procesaron.
+backup-photos/
+backfill-log.json
