@@ -1,7 +1,7 @@
 import { useEffect, useLayoutEffect, useRef, useState, type FormEvent } from 'react'
 import { Link, useNavigate, useParams } from 'react-router-dom'
 import type { RealtimeChannel } from '@supabase/supabase-js'
-import { supabase, photoUrl } from '../lib/supabase'
+import { supabase, photoUrl, thumbUrl } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { useAuthGate } from '../hooks/useAuthGate'
 import { formatPrice, isOnline, lastSeenLabel } from '../lib/format'
@@ -502,7 +502,22 @@ export default function ChatThread() {
           <Link to={`/p/${listing.id}`} className="mt-2 flex items-center gap-2.5 rounded-xl bg-neutral-900/70 px-2 py-1.5 transition active:bg-neutral-800">
             <div className="h-9 w-9 shrink-0 overflow-hidden rounded-lg bg-neutral-800">
               {listing.photos?.[0] && (
-                <img src={photoUrl(listing.photos[0])} alt="" className="h-full w-full object-cover" />
+                /* 36x36 px: la miniatura sobra. Antes bajaba la foto completa
+                   (hasta 3MB) para esto. Las publicaciones viejas sin miniatura
+                   caen a la grande con onError, igual que en el feed. */
+                <img
+                  src={thumbUrl(listing.photos[0])}
+                  alt=""
+                  loading="lazy"
+                  decoding="async"
+                  onError={(e) => {
+                    const img = e.currentTarget
+                    if (img.dataset.full) return
+                    img.dataset.full = '1'
+                    img.src = photoUrl(listing.photos![0])
+                  }}
+                  className="h-full w-full object-cover"
+                />
               )}
             </div>
             <div className="min-w-0 flex-1">
@@ -591,6 +606,10 @@ export default function ChatThread() {
                 <img
                   src={photoUrl(m.image_path)}
                   alt="Foto"
+                  // Un chat largo con fotos las bajaba TODAS al abrirlo, aunque
+                  // el hilo arranca abajo y las viejas quedan fuera de pantalla.
+                  loading="lazy"
+                  decoding="async"
                   onClick={() => setViewerPhoto(m.image_path!)}
                   onPointerDown={(e) => startLongPress(m, e.currentTarget)}
                   onPointerUp={cancelLongPress}
