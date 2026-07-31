@@ -7,3 +7,6 @@ dev-dist
 .env.*
 !.env.example
 .DS_Store
+
+# Registro de avance de scripts/backfill-photos.mjs.
+backfill-log.json

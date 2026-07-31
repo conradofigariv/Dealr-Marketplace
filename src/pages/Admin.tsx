@@ -5,7 +5,8 @@ import { useAuth } from '../hooks/useAuth'
 import { useToast } from '../components/Toast'
 import { timeAgo } from '../lib/format'
 import EmptyState from '../components/EmptyState'
-import type { Report, ReportTargetType } from '../lib/types'
+import Avatar from '../components/Avatar'
+import type { Profile, Report, ReportTargetType } from '../lib/types'
 
 const typeLabel: Record<ReportTargetType, string> = {
   listing: 'Publicación',
@@ -66,6 +67,14 @@ interface DeletionReason {
   total: number
 }
 
+// Atribución del onboarding (tabla signup_surveys, 00031). No hace falta un
+// RPC: la policy "admin ve encuestas" ya deja leerlas todas, así que se
+// agrupan en el cliente (el volumen es chico).
+interface SignupSource {
+  source: string
+  total: number
+}
+
 // Disputa de no-retiro de subasta (RPC admin_auction_disputes, 00046).
 interface Dispute {
   listing_id: string
@@ -91,14 +100,19 @@ function pct(part: number, base: number): string {
 function MetricsPanel({
   m,
   deletionReasons,
+  signupSources,
+  signupOther,
   days,
   setDays,
 }: {
   m: Metrics
   deletionReasons: DeletionReason[]
+  signupSources: SignupSource[]
+  signupOther: string[]
   days: number
   setDays: (d: number) => void
 }) {
+  const answered = signupSources.reduce((a, s) => a + s.total, 0)
   // Funnel del período elegido: cada etapa con su barra relativa a visitas.
   const funnel = [
     { label: 'Visitaron la app', value: m.visitors },
@@ -171,6 +185,54 @@ function MetricsPanel({
         </p>
       </div>
 
+      {/* Atribución: "¿Cómo nos conociste?" del onboarding (00031). Es de
+          siempre, no del período: la encuesta se responde una sola vez al
+          registrarse y filtrarla por ventana dejaría casi todo afuera. */}
+      {signupSources.length > 0 && (
+        <div className="surface p-4">
+          <div className="mb-2.5 flex items-baseline justify-between">
+            <h2 className="text-sm font-semibold text-white">¿Cómo nos conocieron?</h2>
+            <span className="text-[11px] text-neutral-500">
+              {answered} de {m.users_total} respondieron
+            </span>
+          </div>
+          <div className="space-y-2.5">
+            {signupSources.map((s) => (
+              <div key={s.source}>
+                <div className="mb-1 flex items-baseline justify-between text-xs">
+                  <span className="text-neutral-300">{s.source}</span>
+                  <span className="font-semibold text-white">
+                    {s.total} <span className="ml-1 font-normal text-neutral-500">{pct(s.total, answered)}</span>
+                  </span>
+                </div>
+                <div className="h-1.5 overflow-hidden rounded-full bg-neutral-800">
+                  <div
+                    className="h-full rounded-full bg-sky-500"
+                    style={{ width: `${Math.max(2, (s.total / answered) * 100)}%` }}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+          {/* El texto libre de quienes eligieron "Otro": suele ser lo más útil
+              (aparecen canales que no están en las opciones). */}
+          {signupOther.length > 0 && (
+            <details className="mt-3">
+              <summary className="cursor-pointer text-[11px] font-semibold text-neutral-400">
+                Ver las respuestas de "Otro" ({signupOther.length})
+              </summary>
+              <ul className="mt-2 space-y-1">
+                {signupOther.map((d, i) => (
+                  <li key={i} className="rounded-lg bg-neutral-900 px-2 py-1 text-[11px] text-neutral-300">
+                    {d}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
+        </div>
+      )}
+
       {/* Bajas de cuenta (00049): solo aparece si hubo alguna. */}
       {m.deletions_total > 0 && (
         <div className="surface p-4">
@@ -221,6 +283,14 @@ export default function Admin() {
   const [sellerEmail, setSellerEmail] = useState('')
   const [sellerName, setSellerName] = useState('')
   const [creatingSeller, setCreatingSeller] = useState(false)
+  // Publicar otra vez con una cuenta ya creada: no hace falta crear nada ni
+  // recordar el email, se elige el vendedor de la lista y se va derecho a
+  // Publicar en modo on-behalf (mismo `location.state.onBehalf` de siempre).
+  const [conciergeMode, setConciergeMode] = useState<'new' | 'existing'>('new')
+  const [sellerQuery, setSellerQuery] = useState('')
+  const [sellerResults, setSellerResults] = useState<Profile[]>([])
+  const [signupSources, setSignupSources] = useState<SignupSource[]>([])
+  const [signupOther, setSignupOther] = useState<string[]>([])
 
   // Gate: solo admins.
   useEffect(() => {
@@ -267,6 +337,43 @@ export default function Admin() {
       if (!error && data) setDeletionReasons(data as DeletionReason[])
     })
   }, [profile])
+
+  // Encuesta de atribución (00031). Se agrupa acá en vez de con un RPC: la
+  // policy de admin ya deja leer todas y el volumen no justifica una migración.
+  useEffect(() => {
+    if (!profile?.is_admin) return
+    supabase
+      .from('signup_surveys')
+      .select('source, detail')
+      .limit(5000)
+      .then(({ data, error }) => {
+        if (error || !data) return
+        const counts = new Map<string, number>()
+        const others: string[] = []
+        for (const row of data as { source: string; detail: string | null }[]) {
+          counts.set(row.source, (counts.get(row.source) ?? 0) + 1)
+          if (row.detail?.trim()) others.push(row.detail.trim())
+        }
+        setSignupSources(
+          [...counts.entries()].map(([source, total]) => ({ source, total })).sort((a, b) => b.total - a.total),
+        )
+        setSignupOther(others)
+      })
+  }, [profile])
+
+  // Buscador de vendedores ya creados. Sin término muestra los perfiles más
+  // recientes, que en la práctica son los que venís dando de alta por
+  // concierge. Con debounce para no consultar en cada tecla.
+  useEffect(() => {
+    if (!conciergeOpen || conciergeMode !== 'existing') return
+    const q = sellerQuery.trim()
+    const t = setTimeout(() => {
+      let query = supabase.from('profiles').select('*').limit(10)
+      query = q ? query.ilike('username', `%${q}%`) : query.order('created_at', { ascending: false })
+      query.then(({ data }) => setSellerResults((data as Profile[]) ?? []))
+    }, 250)
+    return () => clearTimeout(t)
+  }, [conciergeOpen, conciergeMode, sellerQuery])
 
   // Disputas de subasta (RPC 00046). Si la migración no está aplicada, queda
   // vacío y la sección no aparece (degradación silenciosa).
@@ -436,41 +543,105 @@ export default function Admin() {
       {/* Concierge: crear vendedor + publicar en su nombre */}
       <div className="mb-4 px-5">
         {conciergeOpen ? (
-          <form onSubmit={createSellerAndPublish} className="surface space-y-3 p-4">
+          <div className="surface space-y-3 p-4">
             <div className="flex items-center justify-between">
               <h2 className="text-sm font-semibold text-white">Publicar en nombre de un vendedor</h2>
               <button type="button" onClick={() => setConciergeOpen(false)} className="text-xs text-neutral-500">
                 Cerrar
               </button>
             </div>
-            <p className="text-xs text-neutral-500">
-              Se crea una cuenta real con el email del vendedor (reclamable con magic link). La publicación queda a su nombre, no al tuyo.
-            </p>
-            <input
-              type="text"
-              required
-              value={sellerName}
-              onChange={(e) => setSellerName(e.target.value)}
-              placeholder="Nombre del vendedor"
-              className="w-full rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white outline-none ring-1 ring-neutral-800 focus:ring-neutral-600"
-            />
-            <input
-              type="email"
-              required
-              value={sellerEmail}
-              onChange={(e) => setSellerEmail(e.target.value)}
-              placeholder="Email del vendedor"
-              autoCapitalize="none"
-              autoCorrect="off"
-              className="w-full rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white outline-none ring-1 ring-neutral-800 focus:ring-neutral-600"
-            />
-            <button
-              disabled={creatingSeller}
-              className="w-full rounded-full bg-amber-500 py-3 text-sm font-bold text-black disabled:opacity-50"
-            >
-              {creatingSeller ? 'Creando…' : 'Crear cuenta y publicar →'}
-            </button>
-          </form>
+
+            {/* Cuenta nueva vs. una que ya diste de alta antes. */}
+            <div className="flex gap-1.5">
+              {([
+                { k: 'new' as const, label: 'Vendedor nuevo' },
+                { k: 'existing' as const, label: 'Ya tiene cuenta' },
+              ]).map((t) => (
+                <button
+                  key={t.k}
+                  type="button"
+                  onClick={() => setConciergeMode(t.k)}
+                  className={`flex-1 rounded-full py-2 text-xs font-semibold transition ${
+                    conciergeMode === t.k ? 'bg-white text-black' : 'bg-neutral-900 text-neutral-400 ring-1 ring-neutral-800'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
+
+            {conciergeMode === 'new' ? (
+              <form onSubmit={createSellerAndPublish} className="space-y-3">
+                <p className="text-xs text-neutral-500">
+                  Se crea una cuenta real con el email del vendedor (reclamable con magic link). La publicación queda a su nombre, no al tuyo.
+                </p>
+                <input
+                  type="text"
+                  required
+                  value={sellerName}
+                  onChange={(e) => setSellerName(e.target.value)}
+                  placeholder="Nombre del vendedor"
+                  className="w-full rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white outline-none ring-1 ring-neutral-800 focus:ring-neutral-600"
+                />
+                <input
+                  type="email"
+                  required
+                  value={sellerEmail}
+                  onChange={(e) => setSellerEmail(e.target.value)}
+                  placeholder="Email del vendedor"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  className="w-full rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white outline-none ring-1 ring-neutral-800 focus:ring-neutral-600"
+                />
+                <button
+                  disabled={creatingSeller}
+                  className="w-full rounded-full bg-amber-500 py-3 text-sm font-bold text-black disabled:opacity-50"
+                >
+                  {creatingSeller ? 'Creando…' : 'Crear cuenta y publicar →'}
+                </button>
+              </form>
+            ) : (
+              <div className="space-y-3">
+                <p className="text-xs text-neutral-500">
+                  Elegí una cuenta que ya exista y publicá otro producto a su nombre. No se crea nada ni se manda ningún mail.
+                </p>
+                <input
+                  type="text"
+                  value={sellerQuery}
+                  onChange={(e) => setSellerQuery(e.target.value)}
+                  placeholder="Buscar por nombre…"
+                  autoCapitalize="none"
+                  autoCorrect="off"
+                  className="w-full rounded-xl bg-neutral-900 px-4 py-3 text-sm text-white outline-none ring-1 ring-neutral-800 focus:ring-neutral-600"
+                />
+                {sellerResults.length === 0 ? (
+                  <p className="py-2 text-center text-xs text-neutral-600">
+                    {sellerQuery.trim() ? 'Ningún vendedor con ese nombre' : 'Cargando…'}
+                  </p>
+                ) : (
+                  <ul className="space-y-1.5">
+                    {!sellerQuery.trim() && (
+                      <li className="pb-0.5 text-[11px] font-semibold uppercase tracking-wide text-neutral-600">
+                        Más recientes
+                      </li>
+                    )}
+                    {sellerResults.map((s) => (
+                      <li key={s.id}>
+                        <button
+                          onClick={() => navigate('/publicar', { state: { onBehalf: { id: s.id, name: s.username } } })}
+                          className="flex w-full items-center gap-3 rounded-xl bg-neutral-900 px-3 py-2 text-left transition active:bg-neutral-800"
+                        >
+                          <Avatar profile={s} size="sm" />
+                          <span className="min-w-0 flex-1 truncate text-sm font-medium text-white">{s.username}</span>
+                          <span className="shrink-0 text-xs font-semibold text-amber-400">Publicar →</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </div>
         ) : (
           <button
             onClick={() => setConciergeOpen(true)}
@@ -500,7 +671,14 @@ export default function Admin() {
 
       {/* Métricas + funnel de adquisición */}
       {metrics && (
-        <MetricsPanel m={metrics} deletionReasons={deletionReasons} days={metricsDays} setDays={setMetricsDays} />
+        <MetricsPanel
+          m={metrics}
+          deletionReasons={deletionReasons}
+          signupSources={signupSources}
+          signupOther={signupOther}
+          days={metricsDays}
+          setDays={setMetricsDays}
+        />
       )}
       {metricsError && <p className="px-5 pb-3 text-xs text-amber-400">{metricsError}</p>}
 
