@@ -13,7 +13,7 @@ import { playSound, haptic } from '../lib/notify'
 import { burstConfetti } from '../lib/confetti'
 import { invalidateFeedCache } from './Home'
 
-const MAX_PHOTOS = 6
+const MAX_PHOTOS = 4
 
 // Un campo con `showIf` solo aplica cuando otro campo tiene cierto valor
 // (ej. marca/modelo de Celulares solo si "Tipo" = Teléfono). Sin `showIf`,
@@ -25,7 +25,7 @@ function fieldVisible(def: FieldDef, values: Record<string, unknown>): boolean {
 }
 
 const WIZARD_STEPS = [
-  { name: 'Fotos', title: 'Mostrá tu producto', subtitle: 'Subí hasta 6 fotos. La primera es la portada.' },
+  { name: 'Fotos', title: 'Mostrá tu producto', subtitle: 'Subí hasta 4 fotos. La primera es la portada.' },
   { name: 'Detalles', title: 'Contá los detalles', subtitle: 'Categoría, condición y una buena descripción.' },
   { name: 'Precio', title: 'Poné el precio', subtitle: 'Precio fijo o subasta — vos elegís.' },
   { name: 'Entrega', title: '¿Dónde lo entregás?', subtitle: 'Solo se muestra el área aproximada.' },
