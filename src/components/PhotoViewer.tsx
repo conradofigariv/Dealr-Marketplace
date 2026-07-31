@@ -84,6 +84,11 @@ export default function PhotoViewer({
             <img
               src={photoUrl(p)}
               alt={`Foto ${i + 1}`}
+              // La que se abre va eager (es la que se ve ya); el resto espera al
+              // swipe. El ancho lo fija el contenedor, así que diferirlas no
+              // afecta el posicionamiento inicial del scroller.
+              loading={i === index ? 'eager' : 'lazy'}
+              decoding="async"
               onClick={(e) => onPhotoTap(e, i)}
               className={`max-h-full max-w-full object-contain transition-transform duration-300 ${
                 zoomed === i ? 'scale-[2.2]' : 'scale-100'

@@ -10,7 +10,7 @@
         {
           "type": "header",
           "key": "user-agent",
-          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Googlebot|Bingbot|DuckDuckBot|YandexBot|AhrefsBot|SemrushBot).*"
+          "value": ".*(WhatsApp|facebookexternalhit|Facebot|Twitterbot|TelegramBot|LinkedInBot|Slackbot|Discordbot|Googlebot|Bingbot|DuckDuckBot|YandexBot).*"
         }
       ],
       "destination": "/api/og?id=:id"

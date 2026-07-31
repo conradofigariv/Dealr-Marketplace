@@ -682,6 +682,12 @@ export default function ListingDetail() {
                 <SmartImage
                   src={photoUrl(p)}
                   alt={`${listing.title} foto ${i + 1}`}
+                  // Solo la portada se baja al abrir; las demás recién cuando el
+                  // carrusel se acerca a ellas. Sin esto, una publicación de 5
+                  // fotos descargaba las 5 (hasta 3MB c/u, ver compressPhoto)
+                  // para mostrar una sola — el grueso del egress de Storage.
+                  loading={i === 0 ? 'eager' : 'lazy'}
+                  decoding="async"
                   onClick={() => setViewerAt(i)}
                   wrapperClassName="h-full w-full"
                   className="h-full w-full cursor-zoom-in object-cover"
