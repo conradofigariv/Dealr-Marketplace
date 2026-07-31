@@ -88,6 +88,34 @@ No hay suite de tests ni linter configurado. Verificación = `npm run build`.
 
 - `00052` **lifecycle emails (remarketing), arranque acotado por poco inventario**: con pocos productos, un mail de "recomendado para vos" mostraría oferta pobre y quemaría el canal — así que este arranque NO recomienda productos. Dos piezas: (1) tabla `search_logs` (término + categoría + `results_count`, `user_id` nullable para anónimos; RLS: cada quien inserta la suya, admin lee todas) que **`Home.tsx`** llena en `loadFirst` (`logSearch`, dedupe en memoria por término+categoría por sesión, solo términos de 2+ caracteres) — sirve para saber qué falta en la oferta (guía al concierge de `admin-create-seller`) y a futuro para contenido de mail; (2) el mail de stats al vendedor (día 3 de una publicación activa: "tu publicación tuvo N vistas / M guardados"), el único mail de retención con contenido siempre real sin inventar oferta. RPC `seller_stats_queue()` (security definer, solo `service_role`: publicaciones `active` de 3-4 días, con vistas/favoritos, sin envío previo) + tabla `email_sends` (log de envíos por usuario+campaña+ref, idempotencia — sin policies, solo `service_role` la toca) + `profiles.email_marketing` (opt-out; el digest transaccional de 00051 NO lo consulta, esas notifs no son marketing). Dos Edge Functions nuevas: **`lifecycle-emails`** (mismo patrón que `email-notifications` — cron con `?secret=<CRON_SECRET>` cada 1-2 horas, o `body:{test:true}` con JWT de admin para probar sin esperar; botón "✉️ Mandarme un mail de prueba (stats vendedor)" en `/admin`) y **`unsubscribe`** (GET público, sin JWT — el link va directo en el mail — verifica un token HMAC-SHA256 del `user_id` firmado con `UNSUB_SECRET` y setea `email_marketing=false`; devuelve una página HTML de confirmación, no JSON). **Requiere:** secret nuevo `UNSUB_SECRET` (compartido entre `lifecycle-emails` y `unsubscribe`), deploy de ambas funciones, desactivar "Verify JWT" en las dos (igual que `email-notifications`), y un cron para `lifecycle-emails`. Sin `UNSUB_SECRET` el link de baja cae a `/perfil` (degradación silenciosa, no rompe el envío).
 
+## Optimizaciones recientes (sesión de julio)
+
+### Fotos y egreso
+
+- **Compresión de fotos grandes:** `images.ts::compressPhoto` bajó de 1920px/3MB a 1440px/1.5MB. A la misma quality (90), reduce el payload 44% (1.2-1.8MB típicamente) sin perder nitidez (1440px supera el max display de ~1290px @ 3xDPR en phones). La calidad dinámica (baja de a 8% si pesa más) casi nunca entra en juego ahora.
+- **Lazy loading de carousel:** `ListingDetail` + `PhotoViewer` cargan solo la foto visible (eager) y el resto lazy; la primera es eager, al swipear las demás se cargan demanda. Esto evita descargar 15MB en 5-photo listings. `decoding="async"` para no frenar el render.
+- **Thumbnails en chat:** `ChatThread` muestra `.thumb.webp` (100KB) en previsualizaciones en lugar de la foto completa (3MB) para msgs/listings. Fallback a foto completa si la miniatura falta.
+- **Backfill de miniaturas:** `scripts/backfill-photos.mjs` genera las `.thumb.webp` que faltaban (27 generadas, 26MB de egreso ahorrados en feed). Dos fases: miniaturas (default, aditivo) y --recompress (destructivo). Resumible vía `backfill-log.json`. Requiere `SUPABASE_SERVICE_ROLE_KEY`.
+- **Imágenes de categorías comprimidas:** `/public/categories/*.jpg` reducidas 10x (2MB → 243KB total) comprimidas a 1000px max, quality 82%.
+
+### SEO
+
+- **`public/robots.txt`:** bloquea crawlers de spambots (Ahrefs, Semrush, etc. que se llevaban egreso). `Sitemap:` apunta a `/sitemap.xml`.
+- **`api/sitemap.ts`:** genera sitemap.xml dinámicamente (home, /explorar, up to 5000 listings activos). 10-min CDN cache. XML con escaping.
+- **`api/og.ts` optimizado:** usa `.thumb.webp` si existe (HEAD check, no egress) para OG image en compartidas. Fallback a foto completa si no hay miniatura.
+- **`vercel.json`:** OG rewrite solo para bots reales (Googlebot, Bingbot, etc.). Bloqueados: Ahrefs, Semrush.
+
+### Admin
+
+- **Panel de métricas extendido:** nueva sección "¿Cómo nos conocieron?" con gráfico de barras de `signup_surveys` (opciones: Instagram, TikTok, Un amigo, Google, Facebook, Otro). Agrupado por source con detalles colapables de `detail` cuando aplica.
+- **Concierge: modo existente:** además de crear cuenta nueva, ahora permite seleccionar vendedor existente (`profiles` lista + búsqueda con debounce 250ms). Click navega a `/publish` con `location.state.onBehalf = {id, username}`. Mismo banner ámbar "Publicando en nombre de X".
+
+### UI/UX
+
+- **Límite de fotos:** 6 → 4 (constante `MAX_PHOTOS` en `Publish.tsx`). Se propaga automáticamente a grid + contadores.
+- **Fixes de navegación:** usuarios externos que entran por link ahora ven AppHeader + pueden navegar (fallback a `/` si no hay history).
+- **Compartir en WhatsApp:** separados `text` (resumen) y `url` (link solo), evita URL duplicada en el mensaje.
+
 > **Verificar qué está aplicado:** `supabase/verify_migrations.sql` (solo lectura) devuelve OK/FALTA por migración. Correlo en el SQL Editor cuando dudes.
 > **Pendientes en un solo bloque:** `supabase/apply_pending.sql` concatena, en orden y de forma idempotente, TODO lo que no está en `apply_all.sql` (00025 + 00030→00051, 00041 incluida). Pegarlo entero en el SQL Editor y después correr `health_check.sql`. (00025 va antes que 00033/00035 y 00041 después de ambas porque reescriben `place_bid` — ya está ordenado.) `verify_migrations.sql` también cubre hasta 00052 (00052 todavía no está sumada a `apply_pending.sql` — pegarla aparte, es idempotente).
 > **Atajo:** `supabase/apply_all.sql` es un script único e idempotente con 00008→00029. Pegarlo entero en el SQL Editor evita trackear migración por migración (se puede re-correr sin romper). **Excepción 00024:** los `alter type report_target add value` no pueden usarse en la misma transacción donde se crean — si pegás todo junto y PG se queja, corré la 00024 sola. **00030/00031/00032/00033/00034 no están en `apply_all.sql`** todavía: pegalos aparte (son idempotentes). **OJO:** la 00025 puede no estar aplicada en prod (chequear con `verify_migrations.sql`); el flujo de "confirmá la entrega" / castigo de no-show de subastas la necesita, y la 00033 (anti-snipe) reescribe el `place_bid` que 00025 dejó — aplicá 00025 ANTES que 00033.
