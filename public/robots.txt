@@ -1,4 +1,36 @@
+# Buscadores de verdad: bienvenidos (de ahí viene el tráfico).
 User-agent: *
 Allow: /
+
+# Crawlers de herramientas SEO: no traen una sola visita y recorren el
+# sitemap entero. Cada publicación que visitan dispara el OG (api/og), que
+# apunta a una foto en Supabase Storage → egress pagado a cambio de nada.
+# Si algún día contratás Ahrefs/Semrush para auditar el sitio, hay que
+# sacar su línea de acá o no van a poder rastrearlo.
+User-agent: AhrefsBot
+Disallow: /
+
+User-agent: SemrushBot
+Disallow: /
+
+User-agent: DotBot
+Disallow: /
+
+User-agent: MJ12bot
+Disallow: /
+
+User-agent: DataForSeoBot
+Disallow: /
+
+User-agent: BLEXBot
+Disallow: /
+
+# Bytespider (TikTok) y PetalBot (Huawei) rastrean muy seguido y el tráfico
+# que devuelven a un marketplace de Córdoba es nulo.
+User-agent: Bytespider
+Disallow: /
+
+User-agent: PetalBot
+Disallow: /
 
 Sitemap: https://dealr.com.ar/sitemap.xml

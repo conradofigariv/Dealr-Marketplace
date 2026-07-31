@@ -133,13 +133,16 @@ export async function compressPhoto(file: File): Promise<File> {
     processedFile = await rotateImageByOrientation(file, orientation)
   }
   return imageCompression(processedFile, {
-    // 3MB de techo: con 1MB, la foto de 1920px al 90% (que suele pesar
-    // ~1.5-2.5MB) se bajaba de calidad para entrar → se veía comprimida.
-    // Con 3MB la mayoría entra sin tocar la calidad y se queda cerca de 0.9.
-    // El egress del detalle sube algo, pero el detalle es bajo volumen (el
-    // feed usa la miniatura).
-    maxSizeMB: 3,
-    maxWidthOrHeight: 1920,
+    // El peso se baja por RESOLUCIÓN, no bajando el techo de tamaño: con
+    // 1920px al 90% la foto pesa ~1.5-2.5MB, así que un techo chico la
+    // obligaba a perder calidad para entrar (el "se ve comprimida" del 1MB).
+    // 1440px no se nota — el carrusel del detalle son ~400px CSS y el visor a
+    // pantalla completa ~430px, que ni a 3x DPR pasa de ~1290px — pero corta
+    // 44% de píxeles a la MISMA calidad 0.9. Con eso la foto cae en ~0.85-1.4MB
+    // y el techo de 1.5MB casi nunca llega a activarse: solo atrapa las muy
+    // detalladas, que son las que de verdad conviene recortar.
+    maxSizeMB: 1.5,
+    maxWidthOrHeight: 1440,
     initialQuality: 0.9,
     fileType: 'image/webp',
     useWebWorker: true,
